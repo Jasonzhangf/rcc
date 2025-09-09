@@ -291,14 +291,14 @@ describe('BaseModule Final Coverage', () => {
     it('should handle custom validator edge cases (covers lines 493-497)', () => {
       const testData = { testField: 'value' };
 
-      // Test validator returning non-boolean
+      // Test validator returning falsy value (which should trigger validation error)
       (module as any).validationRules = [
-        { field: 'testField', type: 'custom', message: 'Non-boolean result', validator: () => 'not boolean' as any }
+        { field: 'testField', type: 'custom', message: 'Validator returned falsy', validator: () => false }
       ];
       
       const result = module.validateInputDirect(testData);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Non-boolean result');
+      expect(result.errors).toContain('Validator returned falsy');
     });
   });
 

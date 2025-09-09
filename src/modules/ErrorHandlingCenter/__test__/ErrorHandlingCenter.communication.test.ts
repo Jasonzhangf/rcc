@@ -219,9 +219,12 @@ describe('Error Handling Center Communication Tests', () => {
       const moduleRegistration: ModuleRegistration = {
         moduleId: 'queue-router-module',
         moduleName: 'QueueRouterModule',
+        moduleType: 'test',
         version: '1.0.0',
+        config: { enableLogging: true },
+        capabilities: ['error-handling'],
         responseHandler: mockModuleHandler
-      } as ModuleRegistration;
+      };
 
       errorInterfaceGateway.registerModule(moduleRegistration);
       

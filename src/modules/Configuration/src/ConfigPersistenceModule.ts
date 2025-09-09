@@ -174,7 +174,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       
       console.log(`${CONFIG_PERSISTENCE_CONSTANTS.MODULE_NAME} initialized successfully`);
     } catch (error) {
-      const errorMessage = `Failed to initialize ${CONFIG_PERSISTENCE_CONSTANTS.MODULE_NAME}: ${error.message}`;
+      const errorMessage = `Failed to initialize ${CONFIG_PERSISTENCE_CONSTANTS.MODULE_NAME}: ${error instanceof Error ? error.message : String(error)}`;
       console.error(errorMessage);
       throw new Error(errorMessage);
     }

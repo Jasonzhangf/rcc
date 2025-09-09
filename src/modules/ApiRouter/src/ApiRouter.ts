@@ -4,7 +4,7 @@
  * Extracted from monolithic server for better modularity
  */
 
-import { BaseModule } from '../../core/BaseModule';
+import { BaseModule } from '../../../core/BaseModule';
 import { API_ROUTER_CONSTANTS } from '../constants/ApiRouter.constants';
 import {
   IApiRouter,
@@ -19,7 +19,13 @@ export class ApiRouter extends BaseModule implements IApiRouter {
   private routeConfigs: Map<string, IRouteConfig>;
 
   constructor() {
-    super('ApiRouter', '1.0.0', 'API request routing and response formatting');
+    super({
+      id: 'api-router',
+      name: 'ApiRouter',
+      version: '1.0.0',
+      description: 'API request routing and response formatting',
+      type: 'system'
+    });
     this.handlers = new Map();
     this.routeConfigs = new Map();
   }

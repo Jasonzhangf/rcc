@@ -1,0 +1,13 @@
+{
+  "scan_type": "api_validation",
+  "exit_code": 0,
+  "violations_count": 0,
+  "violations": [
+  ""
+],
+  "raw_output": [
+  "[2025-09-09 16:59:16] [INFO] Starting API validation scan in /Users/fanzhang/Documents/github/rcc",
+  "[2025-09-09 16:59:16] [INFO] No API violations found in modules",
+  "[2025-09-09 16:59:16] [INFO] API validation completed successfully"
+]
+}

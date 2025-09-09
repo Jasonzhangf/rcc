@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCC Provider & Router Configuration Manager</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+
+        .header {
+            background: #333;
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .config-path-info {
+            background: #666;
+            color: white;
+            padding: 12px 30px;
+            font-size: 0.9em;
+            font-family: monospace;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* Tab System */
+        .tab-container {
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .tab-nav {
+            display: flex;
+            background: #f0f0f0;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #333;
+            border-bottom: 3px solid #333;
+        }
+
+        .tab-button:hover:not(.active) {
+            background: #ddd;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Provider/Router Cards */
+        .provider-card, .router-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #fafafa;
+            transition: all 0.3s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .provider-card:hover, .router-card:hover {
+            border-color: #333;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .provider-name, .router-name {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .key-list {
+            margin: 15px 0;
+        }
+
+        .key-item, .route-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .key-value {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 3px;
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        /* Router specific styles */
+        .route-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .route-type.default { background: #f0f0f0; color: #333; }
+        .route-type.background { background: #e8e8e8; color: #333; }
+        .route-type.think { background: #ddd; color: #333; }
+        .route-type.longContext { background: #f5f5f5; color: #333; }
+        .route-type.webSearch { background: #eee; color: #333; }
+        .route-type.image { background: #f8f8f8; color: #333; }
+
+        .route-config {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .priority-badge {
+            background: #666;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        .status-available { background: #d4edda; color: #155724; }
+        .status-blacklisted { background: #f8d7da; color: #721c24; }
+        .status-whitelisted { background: #cce5ff; color: #0066cc; }
+        .status-warning { background: #fff3cd; color: #856404; }
+
+        /* Button styles */
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary { background: #333; color: white; }
+        .btn-success { background: #666; color: white; }
+        .btn-warning { background: #999; color: white; }
+        .btn-danger { background: #222; color: white; }
+        .btn-secondary { background: #888; color: white; }
+        .btn-light { background: #f8f8f8; color: #333; border: 1px solid #ddd; }
+
+        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content.large {
+            max-width: 800px;
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin: 0;
+        }
+
+        .form-row .form-group.narrow {
+            flex: 0 0 100px;
+        }
+
+        .auth-badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .auth-api-key { background: #f0f0f0; color: #333; }
+        .auth-oauth { background: #e8e8e8; color: #333; }
+
+        .test-result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .test-success { background: #f0f8f0; color: #2d5a2d; border-left: 4px solid #666; }
+        .test-error { background: #fdf0f0; color: #5a2d2d; border-left: 4px solid #333; }
+        .test-info { background: #f0f5f8; color: #2d4a5a; border-left: 4px solid #888; }
+
+        /* Import/Export */
+        .import-export-section {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .import-export-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .config-section {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .model-status-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+
+        /* Drag and drop */
+        .drag-indicator {
+            cursor: grab;
+            color: #999;
+            margin-right: 10px;
+        }
+
+        .drag-indicator:hover {
+            color: #333;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .form-row .form-group {
+                margin: 10px 0;
+            }
+
+            .container {
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>RCC Configuration Manager</h1>
+            <p>Provider & Router Configuration Management System</p>
+        </div>
+        
+        <div class="config-path-info">
+            <span id="config-path-display">Config Path: ~/.rcc</span>
+            <button class="btn btn-light" onclick="changeConfigPath()" style="margin-left: 15px; padding: 4px 12px;">Change Path</button>
+            <button class="btn btn-light" onclick="initializeConfig()" style="margin-left: 10px; padding: 4px 12px;">Initialize</button>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab-nav">
+                <button class="tab-button active" onclick="switchTab('providers')">Providers</button>
+                <button class="tab-button" onclick="switchTab('routers')">Routers</button>
+                <button class="tab-button" onclick="switchTab('config')">Configuration</button>
+            </div>
+            
+            <div id="providers-tab" class="tab-content active">
+                <div id="empty-providers-message" class="empty-state" style="display: none;">
+                    <h3>No Providers Configured</h3>
+                    <p>Add your first OpenAI-compatible provider to get started.</p>
+                    <button class="btn btn-primary" onclick="addNewProvider()">Add Provider</button>
+                </div>
+                
+                <div id="providers-header" style="display: none; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>API Providers</h2>
+                        <div>
+                            <button class="btn btn-primary" onclick="addNewProvider()">Add Provider</button>
+                            <button class="btn btn-secondary" onclick="refreshAllProviders()">Refresh All</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="providers-container">
+                    <!-- Providers will be loaded here -->
+                </div>
+            </div>
+            
+            <div id="routers-tab" class="tab-content">
+                <div class="import-export-section">
+                    <h3>🔄 Import/Export Configuration</h3>
+                    <p>Manage your router configuration settings</p>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-success" onclick="exportRouterConfig()">📥 Export Config</button>
+                        <button class="btn btn-primary" onclick="importRouterConfig()">📤 Import Config</button>
+                        <button class="btn btn-warning" onclick="resetRouterConfig()">🔄 Reset to Default</button>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+                    <h2>Router Configuration</h2>
+                    <button class="btn btn-primary" onclick="addRoute()">➕ Add Route</button>
+                </div>
+                
+                <div id="routers-container">
+                    <!-- Router configurations will be loaded here -->
+                </div>
+            </div>
+            
+            <div id="config-tab" class="tab-content">
+                <div class="config-section">
+                    <h3>Configuration Management</h3>
+                    <p>Manage global settings and configuration files</p>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Configuration Directory:</label>
+                            <input type="text" id="config-directory" class="form-input" value="~/.rcc" readonly>
+                        </div>
+                        <div class="form-group narrow">
+                            <button class="btn btn-secondary" onclick="changeConfigPath()">Change</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-section">
+                    <h3>Blacklist & Whitelist Management</h3>
+                    <p>Manage model availability and recommendations</p>
+                    
+                    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                        <button class="btn btn-secondary" onclick="showBlacklistManager()">Manage Blacklist</button>
+                        <button class="btn btn-primary" onclick="showWhitelistManager()">Manage Whitelist</button>
+                        <button class="btn btn-warning" onclick="updateAllModels()">Update All Models</button>
+                    </div>
+                    
+                    <div id="model-status-summary">
+                        <!-- Model status summary will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="import-export-section">
+                    <h3>Import/Export Configuration</h3>
+                    <p>Backup and restore your complete configuration</p>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-success" onclick="exportFullConfig()">Export Full Config</button>
+                        <button class="btn btn-primary" onclick="importFullConfig()">Import Config</button>
+                        <button class="btn btn-warning" onclick="resetToDefaults()">Reset to Defaults</button>
+                    </div>
+                </div>
+                
+                <div class="router-card">
+                    <div class="router-name">🎚️ Global Settings</div>
+                    <div style="color: #666; margin-bottom: 15px;">Configure global routing parameters</div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Long Context Threshold (tokens):</label>
+                            <input type="number" id="longContextThreshold" class="form-input" value="32000" min="1000" max="200000">
+                        </div>
+                        <div class="form-group narrow">
+                            <button class="btn btn-success" onclick="updateGlobalSettings()">Update</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Provider Modal -->
+    <div id="add-provider-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="provider-modal-title">Add New Provider</h3>
+            <form id="add-provider-form">
+                <div class="form-group">
+                    <label class="form-label">Provider Name:</label>
+                    <input type="text" id="provider-name" class="form-input" placeholder="my-openai-provider" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Base URL:</label>
+                    <input type="text" id="provider-base-url" class="form-input" placeholder="https://api.openai.com/v1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Key:</label>
+                    <input type="password" id="provider-api-key" class="form-input" placeholder="sk-your-key-here" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description (optional):</label>
+                    <input type="text" id="provider-description" class="form-input" placeholder="OpenAI GPT models">
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeProviderModal()">Cancel</button>
+                    <button type="submit" class="btn btn-success">Test & Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Model Management Modal -->
+    <div id="model-management-modal" class="modal">
+        <div class="modal-content large">
+            <h3 id="model-modal-title">Model Management</h3>
+            <div id="model-management-content">
+                <!-- Model management content will be loaded here -->
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="closeModelModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Blacklist/Whitelist Manager Modal -->
+    <div id="list-manager-modal" class="modal">
+        <div class="modal-content large">
+            <h3 id="list-modal-title">Model List Manager</h3>
+            <div id="list-manager-content">
+                <!-- List manager content will be loaded here -->
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeListManagerModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Route Modal -->
+    <div id="add-route-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="route-modal-title">Add New Route</h3>
+            <form id="add-route-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Route Type:</label>
+                        <select id="route-type" class="form-select">
+                            <option value="default">Default</option>
+                            <option value="background">Background</option>
+                            <option value="think">Think</option>
+                            <option value="longContext">Long Context</option>
+                            <option value="webSearch">Web Search</option>
+                            <option value="image">Image</option>
+                        </select>
+                    </div>
+                    <div class="form-group narrow">
+                        <label class="form-label">Priority:</label>
+                        <input type="number" id="route-priority" class="form-input" value="1" min="1" max="100">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Provider:</label>
+                        <select id="route-provider" class="form-select">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Model:</label>
+                        <select id="route-model" class="form-select">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Conditions (optional):</label>
+                    <textarea id="route-conditions" class="form-textarea" placeholder="Enter JSON conditions (e.g., {&quot;contextLength&quot;: &quot;&gt;50000&quot;, &quot;requestType&quot;: &quot;chat&quot;})"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description:</label>
+                    <input type="text" id="route-description" class="form-input" placeholder="Brief description of this route">
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeRouteModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Route</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Route Test Modal -->
+    <div id="route-test-modal" class="modal">
+        <div class="modal-content large">
+            <h3>🧪 Route Testing</h3>
+            <p>Test different scenarios to see which route would be selected</p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Request Type:</label>
+                    <select id="test-request-type" class="form-select">
+                        <option value="chat">Chat Completion</option>
+                        <option value="image">Image Generation</option>
+                        <option value="search">Web Search</option>
+                        <option value="background">Background Task</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Context Length (tokens):</label>
+                    <input type="number" id="test-context-length" class="form-input" value="5000" min="0">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Additional Conditions (JSON):</label>
+                <textarea id="test-conditions" class="form-textarea" placeholder="Additional test conditions as JSON"></textarea>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <button class="btn btn-success" onclick="runRouteTest()">🚀 Test Route Selection</button>
+            </div>
+            
+            <div id="route-test-results"></div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="closeRouteTestModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import/Export Modal -->
+    <div id="import-export-modal" class="modal">
+        <div class="modal-content large">
+            <h3 id="import-export-title">Import Configuration</h3>
+            <div id="import-section">
+                <div class="form-group">
+                    <label class="form-label">Configuration JSON:</label>
+                    <textarea id="import-config-text" class="form-textarea" style="min-height: 200px;" placeholder="Paste your configuration JSON here..."></textarea>
+                </div>
+                <div style="margin: 15px 0;">
+                    <label>
+                        <input type="checkbox" id="merge-config"> Merge with existing configuration (instead of replace)
+                    </label>
+                </div>
+            </div>
+            
+            <div id="export-section" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Current Configuration:</label>
+                    <textarea id="export-config-text" class="form-textarea" style="min-height: 200px;" readonly></textarea>
+                </div>
+                <div style="margin: 15px 0;">
+                    <button class="btn btn-success" onclick="copyConfigToClipboard()">📋 Copy to Clipboard</button>
+                    <button class="btn btn-primary" onclick="downloadConfig()">💾 Download as File</button>
+                </div>
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeImportExportModal()">Cancel</button>
+                <button id="import-export-action" class="btn btn-primary" onclick="performImport()">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Results Modal -->
+    <div id="test-modal" class="modal">
+        <div class="modal-content">
+            <h3>Test Results</h3>
+            <div id="test-results"></div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="closeTestModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration data
+        let configPath = '~/.rcc';
+        let providers = [];
+        let blacklistedModels = new Set();
+        let whitelistedModels = new Set();
+        let modelStatus = new Map(); // modelId -> { status, lastUpdated, maxTokens }
+
+        // Router configuration
+        let routes = [
+            {
+                id: 'default-route',
+                type: 'default',
+                priority: 1,
+                provider: 'anthropic-single',
+                model: 'claude-3-sonnet',
+                conditions: {},
+                description: 'Default route for general chat'
+            },
+            {
+                id: 'long-context-route',
+                type: 'longContext',
+                priority: 2,
+                provider: 'anthropic-single',
+                model: 'claude-3-opus',
+                conditions: { contextLength: '>32000' },
+                description: 'Long context conversations'
+            },
+            {
+                id: 'image-route',
+                type: 'image',
+                priority: 1,
+                provider: 'google-gemini',
+                model: 'gemini-pro-vision',
+                conditions: { requestType: 'image' },
+                description: 'Image analysis and generation'
+            },
+            {
+                id: 'background-route',
+                type: 'background',
+                priority: 1,
+                provider: 'openai-multi',
+                model: 'gpt-3.5-turbo',
+                conditions: { priority: 'low' },
+                description: 'Background processing tasks'
+            }
+        ];
+
+        // Global settings
+        let globalSettings = {
+            longContextThreshold: 32000,
+            defaultTimeout: 30000,
+            retryAttempts: 3,
+            configPath: '~/.rcc',
+            autoUpdateModels: true,
+            testConcurrency: 3
+        };
+
+        // Current editing route (for edit mode)
+        let currentEditingRoute = null;
+
+        // Initialize
+        function init() {
+            loadConfiguration();
+            renderProviders();
+            renderRouters();
+            renderModelStatusSummary();
+            setupEventListeners();
+            updateGlobalSettingsUI();
+        }
+
+        // Configuration Management
+        function loadConfiguration() {
+            // In a real implementation, this would load from the config path
+            updateConfigPathDisplay();
+            
+            // Load sample data if no providers exist
+            if (providers.length === 0) {
+                // Start with empty state to encourage adding providers
+                console.log('No providers configured, showing empty state');
+            }
+        }
+        
+        function updateConfigPathDisplay() {
+            document.getElementById('config-path-display').textContent = `Config Path: ${configPath}`;
+            document.getElementById('config-directory').value = configPath;
+        }
+        
+        function changeConfigPath() {
+            const newPath = prompt('Enter new configuration path:', configPath);
+            if (newPath && newPath.trim()) {
+                configPath = newPath.trim();
+                globalSettings.configPath = configPath;
+                updateConfigPathDisplay();
+                showNotification('Configuration path updated', 'success');
+            }
+        }
+        
+        function initializeConfig() {
+            if (confirm(`Initialize configuration directory at ${configPath}?`)) {
+                // In a real implementation, this would create the directory structure
+                showNotification('Configuration directory initialized', 'success');
+            }
+        }
+
+        // Tab Management
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            // Refresh data when switching tabs
+            if (tabName === 'routers') {
+                renderRouters();
+            } else if (tabName === 'config') {
+                renderModelStatusSummary();
+            }
+        }
+
+        // Router Management Functions
+        function renderRouters() {
+            const container = document.getElementById('routers-container');
+            
+            // Sort routes by priority and type
+            const sortedRoutes = [...routes].sort((a, b) => {
+                if (a.type !== b.type) {
+                    const typeOrder = ['default', 'longContext', 'image', 'webSearch', 'background', 'think'];
+                    return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+                }
+                return a.priority - b.priority;
+            });
+
+            container.innerHTML = sortedRoutes.map(route => {
+                const provider = providers.find(p => p.name === route.provider);
+                const conditionsText = Object.keys(route.conditions).length > 0 
+                    ? JSON.stringify(route.conditions) 
+                    : 'No conditions';
+
+                return `
+                    <div class="router-card" data-route-id="${route.id}">
+                        <div class="router-name">
+                            <span class="drag-indicator">⋮⋮</span>
+                            <span class="route-type ${route.type}">${route.type}</span>
+                            <span class="priority-badge">${route.priority}</span>
+                            ${route.description}
+                        </div>
+                        
+                        <div class="route-item">
+                            <div class="route-config">
+                                <strong>Provider:</strong> ${route.provider} → 
+                                <strong>Model:</strong> ${route.model}
+                                ${provider ? `<span class="auth-badge auth-${provider.auth_type}">${provider.auth_type}</span>` : ''}
+                            </div>
+                            <div>
+                                <button class="btn btn-success btn-sm" onclick="testRoute('${route.id}')">🧪 Test</button>
+                                <button class="btn btn-primary btn-sm" onclick="editRoute('${route.id}')">✏️ Edit</button>
+                                <button class="btn btn-danger btn-sm" onclick="removeRoute('${route.id}')">🗑️ Delete</button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                            <strong>Conditions:</strong> <code>${conditionsText}</code>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update route test button
+            if (sortedRoutes.length > 0) {
+                const testAllButton = `
+                    <div style="text-align: center; margin: 20px 0;">
+                        <button class="btn btn-warning" onclick="openRouteTestModal()">🚀 Test Route Selection</button>
+                    </div>
+                `;
+                container.innerHTML += testAllButton;
+            }
+        }
+
+        // Route Management Functions
+        function addRoute() {
+            currentEditingRoute = null;
+            document.getElementById('route-modal-title').textContent = 'Add New Route';
+            document.getElementById('add-route-form').reset();
+            updateRouteProviderSelect();
+            document.getElementById('add-route-modal').classList.add('show');
+        }
+
+        function editRoute(routeId) {
+            currentEditingRoute = routeId;
+            const route = routes.find(r => r.id === routeId);
+            if (!route) return;
+
+            document.getElementById('route-modal-title').textContent = 'Edit Route';
+            document.getElementById('route-type').value = route.type;
+            document.getElementById('route-priority').value = route.priority;
+            document.getElementById('route-provider').value = route.provider;
+            document.getElementById('route-description').value = route.description;
+            document.getElementById('route-conditions').value = JSON.stringify(route.conditions, null, 2);
+
+            updateRouteProviderSelect();
+            updateRouteModelSelect(); // This will set the model after provider is set
+            setTimeout(() => {
+                document.getElementById('route-model').value = route.model;
+            }, 100);
+
+            document.getElementById('add-route-modal').classList.add('show');
+        }
+
+        function removeRoute(routeId) {
+            if (confirm('Are you sure you want to remove this route?')) {
+                routes = routes.filter(r => r.id !== routeId);
+                renderRouters();
+                showNotification('Route removed successfully', 'success');
+            }
+        }
+
+        function testRoute(routeId) {
+            const route = routes.find(r => r.id === routeId);
+            if (!route) return;
+
+            const provider = providers.find(p => p.name === route.provider);
+            
+            setTimeout(() => {
+                const success = Math.random() > 0.2;
+                const result = `
+                    <div class="test-result ${success ? 'test-success' : 'test-error'}">
+                        <h4>Route Test: ${route.type}</h4>
+                        <p><strong>Status:</strong> ${success ? '✅ Success' : '❌ Failed'}</p>
+                        <p><strong>Provider:</strong> ${route.provider}</p>
+                        <p><strong>Model:</strong> ${route.model}</p>
+                        <p><strong>Priority:</strong> ${route.priority}</p>
+                        <p><strong>Conditions:</strong> ${JSON.stringify(route.conditions)}</p>
+                        <p><strong>Response Time:</strong> ${Math.floor(Math.random() * 2000 + 300)}ms</p>
+                        <p><strong>Message:</strong> ${success ? 'Route is accessible and working correctly' : 'Route configuration has issues'}</p>
+                    </div>
+                `;
+                document.getElementById('test-results').innerHTML = result;
+                document.getElementById('test-modal').classList.add('show');
+            }, 800);
+
+            showNotification('Testing route...', 'info');
+        }
+
+        // Route Testing Functions
+        function openRouteTestModal() {
+            document.getElementById('route-test-modal').classList.add('show');
+        }
+
+        function closeRouteTestModal() {
+            document.getElementById('route-test-modal').classList.remove('show');
+            document.getElementById('route-test-results').innerHTML = '';
+        }
+
+        function runRouteTest() {
+            const requestType = document.getElementById('test-request-type').value;
+            const contextLength = parseInt(document.getElementById('test-context-length').value) || 0;
+            const additionalConditions = document.getElementById('test-conditions').value;
+
+            let testConditions = {
+                requestType: requestType,
+                contextLength: contextLength
+            };
+
+            // Parse additional conditions
+            if (additionalConditions) {
+                try {
+                    const additional = JSON.parse(additionalConditions);
+                    testConditions = { ...testConditions, ...additional };
+                } catch (e) {
+                    showNotification('Invalid JSON in additional conditions', 'error');
+                    return;
+                }
+            }
+
+            // Find matching routes
+            const matchingRoutes = findMatchingRoutes(testConditions);
+            const selectedRoute = selectBestRoute(matchingRoutes, testConditions);
+
+            // Display results
+            const resultsHtml = `
+                <div class="test-result test-info">
+                    <h4>🎯 Route Selection Test Results</h4>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <strong>Test Conditions:</strong>
+                        <pre>${JSON.stringify(testConditions, null, 2)}</pre>
+                    </div>
+                    
+                    <div style="margin: 15px 0;">
+                        <strong>Matching Routes (${matchingRoutes.length}):</strong>
+                        ${matchingRoutes.map(route => `
+                            <div style="margin: 8px 0; padding: 8px; background: ${route === selectedRoute ? '#d4edda' : '#f8f9fa'}; border-radius: 4px;">
+                                <strong>${route.type}</strong> (Priority: ${route.priority}) → 
+                                ${route.provider}/${route.model}
+                                ${route === selectedRoute ? ' <strong style="color: #155724;">← SELECTED</strong>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    ${selectedRoute ? `
+                        <div class="test-success" style="margin-top: 15px;">
+                            <h5>Selected Route:</h5>
+                            <p><strong>Type:</strong> ${selectedRoute.type}</p>
+                            <p><strong>Provider:</strong> ${selectedRoute.provider}</p>
+                            <p><strong>Model:</strong> ${selectedRoute.model}</p>
+                            <p><strong>Priority:</strong> ${selectedRoute.priority}</p>
+                            <p><strong>Description:</strong> ${selectedRoute.description}</p>
+                        </div>
+                    ` : `
+                        <div class="test-error">
+                            <p>No matching routes found for the given conditions.</p>
+                        </div>
+                    `}
+                </div>
+            `;
+
+            document.getElementById('route-test-results').innerHTML = resultsHtml;
+        }
+
+        // Route selection logic
+        function findMatchingRoutes(testConditions) {
+            return routes.filter(route => {
+                // Check each condition in the route
+                for (const [key, condition] of Object.entries(route.conditions)) {
+                    if (!evaluateCondition(testConditions[key], condition)) {
+                        return false;
+                    }
+                }
+
+                // Special logic for route types
+                if (route.type === 'longContext' && testConditions.contextLength < globalSettings.longContextThreshold) {
+                    return false;
+                }
+                
+                if (route.type === 'image' && testConditions.requestType !== 'image') {
+                    return false;
+                }
+
+                if (route.type === 'webSearch' && testConditions.requestType !== 'search') {
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        function selectBestRoute(matchingRoutes) {
+            if (matchingRoutes.length === 0) return null;
+            
+            // Sort by priority (lower number = higher priority)
+            return matchingRoutes.sort((a, b) => a.priority - b.priority)[0];
+        }
+
+        function evaluateCondition(value, condition) {
+            if (typeof condition === 'string' && condition.startsWith('>')) {
+                const threshold = parseInt(condition.substring(1));
+                return value > threshold;
+            }
+            if (typeof condition === 'string' && condition.startsWith('<')) {
+                const threshold = parseInt(condition.substring(1));
+                return value < threshold;
+            }
+            return value === condition;
+        }
+
+        // Global Settings Functions
+        function updateGlobalSettingsUI() {
+            document.getElementById('longContextThreshold').value = globalSettings.longContextThreshold;
+        }
+
+        function updateGlobalSettings() {
+            const newThreshold = parseInt(document.getElementById('longContextThreshold').value);
+            if (newThreshold && newThreshold > 0) {
+                globalSettings.longContextThreshold = newThreshold;
+                showNotification('Global settings updated successfully', 'success');
+            } else {
+                showNotification('Invalid threshold value', 'error');
+            }
+        }
+
+        // Import/Export Functions
+        function exportRouterConfig() {
+            const config = {
+                providers: providers,
+                routes: routes,
+                globalSettings: globalSettings,
+                version: '1.0',
+                exportDate: new Date().toISOString()
+            };
+            
+            document.getElementById('import-export-title').textContent = 'Export Configuration';
+            document.getElementById('export-config-text').value = JSON.stringify(config, null, 2);
+            document.getElementById('import-section').style.display = 'none';
+            document.getElementById('export-section').style.display = 'block';
+            document.getElementById('import-export-action').style.display = 'none';
+            document.getElementById('import-export-modal').classList.add('show');
+        }
+
+        function importRouterConfig() {
+            document.getElementById('import-export-title').textContent = 'Import Configuration';
+            document.getElementById('import-section').style.display = 'block';
+            document.getElementById('export-section').style.display = 'none';
+            document.getElementById('import-export-action').style.display = 'block';
+            document.getElementById('import-export-action').textContent = 'Import';
+            document.getElementById('import-export-modal').classList.add('show');
+        }
+
+        function resetRouterConfig() {
+            if (confirm('Are you sure you want to reset to default configuration? This will remove all custom routes.')) {
+                // Reset to default configuration
+                routes.length = 0;
+                routes.push(
+                    {
+                        id: 'default-route',
+                        type: 'default',
+                        priority: 1,
+                        provider: 'anthropic-single',
+                        model: 'claude-3-sonnet',
+                        conditions: {},
+                        description: 'Default route for general chat'
+                    }
+                );
+                globalSettings.longContextThreshold = 32000;
+                renderRouters();
+                updateGlobalSettingsUI();
+                showNotification('Configuration reset to defaults', 'success');
+            }
+        }
+
+        function performImport() {
+            const configText = document.getElementById('import-config-text').value;
+            const mergeConfig = document.getElementById('merge-config').checked;
+
+            if (!configText.trim()) {
+                showNotification('Please paste configuration JSON', 'error');
+                return;
+            }
+
+            try {
+                const importedConfig = JSON.parse(configText);
+                
+                // Validate configuration format
+                if (!importedConfig.version) {
+                    showNotification('Missing configuration version', 'error');
+                    return;
+                }
+
+                if (mergeConfig) {
+                    // Merge providers
+                    if (importedConfig.providers && Array.isArray(importedConfig.providers)) {
+                        importedConfig.providers.forEach(importedProvider => {
+                            const existingIndex = providers.findIndex(p => p.name === importedProvider.name);
+                            if (existingIndex >= 0) {
+                                providers[existingIndex] = importedProvider;
+                            } else {
+                                providers.push(importedProvider);
+                            }
+                        });
+                    }
+                    
+                    // Merge routes
+                    if (importedConfig.routes && Array.isArray(importedConfig.routes)) {
+                        importedConfig.routes.forEach(importedRoute => {
+                            const existingIndex = routes.findIndex(r => r.id === importedRoute.id);
+                            if (existingIndex >= 0) {
+                                routes[existingIndex] = importedRoute;
+                            } else {
+                                routes.push(importedRoute);
+                            }
+                        });
+                    }
+                    
+                    // Merge blacklist/whitelist
+                    if (importedConfig.blacklistedModels) {
+                        importedConfig.blacklistedModels.forEach(model => blacklistedModels.add(model));
+                    }
+                    if (importedConfig.whitelistedModels) {
+                        importedConfig.whitelistedModels.forEach(model => whitelistedModels.add(model));
+                    }
+                } else {
+                    // Replace all configuration
+                    if (importedConfig.providers) providers = importedConfig.providers;
+                    if (importedConfig.routes) routes = importedConfig.routes;
+                    
+                    blacklistedModels.clear();
+                    whitelistedModels.clear();
+                    
+                    if (importedConfig.blacklistedModels) {
+                        importedConfig.blacklistedModels.forEach(model => blacklistedModels.add(model));
+                    }
+                    if (importedConfig.whitelistedModels) {
+                        importedConfig.whitelistedModels.forEach(model => whitelistedModels.add(model));
+                    }
+                }
+                
+                // Update model status
+                if (importedConfig.modelStatus) {
+                    for (const [key, value] of Object.entries(importedConfig.modelStatus)) {
+                        modelStatus.set(key, value);
+                    }
+                }
+
+                // Update global settings if present
+                if (importedConfig.globalSettings) {
+                    globalSettings = { ...globalSettings, ...importedConfig.globalSettings };
+                    updateGlobalSettingsUI();
+                }
+                
+                // Update config path if present
+                if (importedConfig.configPath) {
+                    configPath = importedConfig.configPath;
+                    updateConfigPathDisplay();
+                }
+
+                // Re-render everything
+                renderProviders();
+                renderRouters();
+                renderModelStatusSummary();
+                closeImportExportModal();
+                showNotification('Configuration imported successfully', 'success');
+
+            } catch (e) {
+                showNotification('Invalid JSON format: ' + e.message, 'error');
+            }
+        }
+
+        function copyConfigToClipboard() {
+            const configText = document.getElementById('export-config-text');
+            configText.select();
+            document.execCommand('copy');
+            showNotification('Configuration copied to clipboard', 'success');
+        }
+
+        function downloadConfig() {
+            const configText = document.getElementById('export-config-text').value;
+            const blob = new Blob([configText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'router-config.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification('Configuration downloaded', 'success');
+        }
+
+        // Modal Functions
+        function closeRouteModal() {
+            document.getElementById('add-route-modal').classList.remove('show');
+            document.getElementById('add-route-form').reset();
+            currentEditingRoute = null;
+        }
+
+        function closeImportExportModal() {
+            document.getElementById('import-export-modal').classList.remove('show');
+            document.getElementById('import-config-text').value = '';
+            document.getElementById('merge-config').checked = false;
+        }
+
+        // Helper Functions
+        function updateProviderSelects() {
+            // Update route provider select
+            const routeSelect = document.getElementById('route-provider');
+            if (routeSelect) {
+                routeSelect.innerHTML = providers.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            }
+        }
+        
+        function updateRouteProviderSelect() {
+            updateProviderSelects();
+            
+            // Setup model update on provider change
+            const select = document.getElementById('route-provider');
+            if (select) {
+                select.onchange = updateRouteModelSelect;
+                updateRouteModelSelect();
+            }
+        }
+
+        function updateRouteModelSelect() {
+            const providerName = document.getElementById('route-provider').value;
+            const provider = providers.find(p => p.name === providerName);
+            const modelSelect = document.getElementById('route-model');
+            
+            if (provider && modelSelect) {
+                // Only show available (non-blacklisted) models
+                const availableModels = provider.models ? provider.models.filter(model => {
+                    return !blacklistedModels.has(`${provider.name}:${model}`);
+                }) : [];
+                
+                modelSelect.innerHTML = availableModels.map(model => {
+                    const isWhitelisted = whitelistedModels.has(`${provider.name}:${model}`);
+                    return `<option value="${model}">${model}${isWhitelisted ? ' ★' : ''}</option>`;
+                }).join('');
+                
+                if (availableModels.length === 0) {
+                    modelSelect.innerHTML = '<option value="">No available models</option>';
+                }
+            }
+        }
+
+        // Provider Management
+        function renderProviders() {
+            const container = document.getElementById('providers-container');
+            const emptyMessage = document.getElementById('empty-providers-message');
+            const header = document.getElementById('providers-header');
+            
+            if (providers.length === 0) {
+                emptyMessage.style.display = 'block';
+                header.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+            
+            emptyMessage.style.display = 'none';
+            header.style.display = 'block';
+            
+            container.innerHTML = providers.map(provider => {
+                const modelCount = provider.models ? provider.models.length : 0;
+                const availableModels = provider.models ? provider.models.filter(m => !blacklistedModels.has(`${provider.name}:${m}`)).length : 0;
+                const whitelistedCount = provider.models ? provider.models.filter(m => whitelistedModels.has(`${provider.name}:${m}`)).length : 0;
+                
+                return `
+                    <div class="provider-card">
+                        <div class="provider-name">
+                            ${provider.name}
+                            <span class="status-badge status-available">Active</span>
+                        </div>
+                        <div style="color: #666; margin-bottom: 15px;">
+                            <strong>Base URL:</strong> ${provider.base_url}<br>
+                            <strong>Description:</strong> ${provider.description || 'No description'}
+                        </div>
+                        
+                        <div class="key-list">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <strong>Models: ${availableModels}/${modelCount} available</strong>
+                                ${whitelistedCount > 0 ? `<span class="status-badge status-whitelisted">${whitelistedCount} whitelisted</span>` : ''}
+                            </div>
+                            
+                            ${provider.models ? `
+                                <div style="max-height: 150px; overflow-y: auto; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">
+                                    ${provider.models.map(model => {
+                                        const modelKey = `${provider.name}:${model}`;
+                                        const isBlacklisted = blacklistedModels.has(modelKey);
+                                        const isWhitelisted = whitelistedModels.has(modelKey);
+                                        const status = modelStatus.get(modelKey);
+                                        
+                                        return `
+                                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-family: monospace; font-size: 0.9em;">
+                                                <span style="${isBlacklisted ? 'text-decoration: line-through; color: #999;' : ''}">${model}</span>
+                                                <div>
+                                                    ${isWhitelisted ? '<span class="status-badge status-whitelisted">★</span>' : ''}
+                                                    ${isBlacklisted ? '<span class="status-badge status-blacklisted">✕</span>' : ''}
+                                                    ${status ? `<small style="color: #666;">${status.maxTokens || '?'}k</small>` : ''}
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : '<div style="color: #999; font-style: italic;">No models loaded</div>'}
+                        </div>
+                        
+                        <div class="model-status-controls">
+                            <button class="btn btn-success" onclick="testProvider('${provider.name}')">Test Connection</button>
+                            <button class="btn btn-primary" onclick="refreshModels('${provider.name}')">Refresh Models</button>
+                            <button class="btn btn-secondary" onclick="manageModels('${provider.name}')">Manage Models</button>
+                            <button class="btn btn-warning" onclick="editProvider('${provider.name}')">Edit</button>
+                            <button class="btn btn-danger" onclick="removeProvider('${provider.name}')">Remove</button>
+                        </div>
+                    </div>
+                `;
+            }).join(''));
+            
+            updateProviderSelects();
+        }
+        
+        function addNewProvider() {
+            document.getElementById('provider-modal-title').textContent = 'Add New Provider';
+            document.getElementById('add-provider-form').reset();
+            document.getElementById('add-provider-modal').classList.add('show');
+        }
+        
+        function editProvider(providerName) {
+            const provider = providers.find(p => p.name === providerName);
+            if (!provider) return;
+            
+            document.getElementById('provider-modal-title').textContent = 'Edit Provider';
+            document.getElementById('provider-name').value = provider.name;
+            document.getElementById('provider-base-url').value = provider.base_url;
+            document.getElementById('provider-api-key').value = provider.api_key;
+            document.getElementById('provider-description').value = provider.description || '';
+            
+            document.getElementById('add-provider-modal').classList.add('show');
+        }
+        
+        function removeProvider(providerName) {
+            if (confirm(`Are you sure you want to remove provider "${providerName}"?`)) {
+                providers = providers.filter(p => p.name !== providerName);
+                
+                // Remove related routes
+                routes = routes.filter(r => r.provider !== providerName);
+                
+                renderProviders();
+                renderRouters();
+                showNotification('Provider removed successfully', 'success');
+            }
+        }
+        
+        function refreshAllProviders() {
+            if (providers.length === 0) {
+                showNotification('No providers to refresh', 'info');
+                return;
+            }
+            
+            showNotification('Refreshing all providers...', 'info');
+            
+            providers.forEach(provider => {
+                refreshModels(provider.name);
+            });
+        }
+
+        // Utility functions
+        function maskKey(key) {
+            if (key.startsWith('./') || key.startsWith('/')) return `📁 ${key}`;
+            return key.length > 10 ? key.substring(0, 8) + '***' + key.slice(-4) : '*'.repeat(key.length);
+        }
+
+        function showNotification(message, type = 'info') {
+            alert(`${type.toUpperCase()}: ${message}`);
+        }
+
+        // Model Management Functions
+        function manageModels(providerName) {
+            const provider = providers.find(p => p.name === providerName);
+            if (!provider) return;
+            
+            const content = `
+                <div>
+                    <p><strong>Provider:</strong> ${provider.name}</p>
+                    <p><strong>Total Models:</strong> ${provider.models ? provider.models.length : 0}</p>
+                    
+                    <div style="margin: 20px 0;">
+                        <button class="btn btn-primary" onclick="updateModelsMaxTokens('${providerName}')">Update Max Tokens</button>
+                        <button class="btn btn-warning" onclick="testAllModels('${providerName}')">Test All Models</button>
+                    </div>
+                    
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        ${provider.models ? provider.models.map(model => {
+                            const modelKey = `${providerName}:${model}`;
+                            const isBlacklisted = blacklistedModels.has(modelKey);
+                            const isWhitelisted = whitelistedModels.has(modelKey);
+                            const status = modelStatus.get(modelKey);
+                            
+                            return `
+                                <div class="key-item" style="margin: 8px 0;">
+                                    <div style="flex: 1;">
+                                        <strong>${model}</strong>
+                                        ${isWhitelisted ? '<span class="status-badge status-whitelisted">Whitelisted</span>' : ''}
+                                        ${isBlacklisted ? '<span class="status-badge status-blacklisted">Blacklisted</span>' : ''}
+                                        ${status ? `<small style="color: #666; margin-left: 10px;">${status.maxTokens || '?'}k tokens</small>` : ''}
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-success" onclick="testModel('${providerName}', '${model}')">Test</button>
+                                        ${!isWhitelisted ? `<button class="btn btn-primary" onclick="addToWhitelist('${providerName}', '${model}')">Whitelist</button>` : `<button class="btn btn-secondary" onclick="removeFromWhitelist('${providerName}', '${model}')">Un-whitelist</button>`}
+                                        ${!isBlacklisted ? `<button class="btn btn-danger" onclick="addToBlacklist('${providerName}', '${model}')">Blacklist</button>` : `<button class="btn btn-warning" onclick="removeFromBlacklist('${providerName}', '${model}')">Un-blacklist</button>`}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') : '<p>No models available</p>'}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('model-modal-title').textContent = `Manage Models: ${providerName}`;
+            document.getElementById('model-management-content').innerHTML = content;
+            document.getElementById('model-management-modal').classList.add('show');
+        }
+        
+        function updateModelsMaxTokens(providerName) {
+            const provider = providers.find(p => p.name === providerName);
+            if (!provider || !provider.models) return;
+            
+            showNotification(`Testing max tokens for ${provider.models.length} models...`, 'info');
+            
+            provider.models.forEach(model => {
+                setTimeout(() => {
+                    // Simulate binary search for max tokens
+                    const maxTokens = [4, 8, 16, 32, 128, 256, 512][Math.floor(Math.random() * 7)];
+                    const modelKey = `${providerName}:${model}`;
+                    
+                    modelStatus.set(modelKey, {
+                        status: 'available',
+                        lastUpdated: new Date().toISOString(),
+                        maxTokens: maxTokens
+                    });
+                }, Math.random() * 2000);
+            });
+            
+            setTimeout(() => {
+                renderProviders();
+                showNotification('Max tokens updated for all models', 'success');
+            }, 3000);
+        }
+        
+        function testModel(providerName, modelName) {
+            showNotification(`Testing ${modelName}...`, 'info');
+            
+            setTimeout(() => {
+                const success = Math.random() > 0.2;
+                const modelKey = `${providerName}:${modelName}`;
+                
+                if (success) {
+                    modelStatus.set(modelKey, {
+                        status: 'available',
+                        lastUpdated: new Date().toISOString(),
+                        maxTokens: modelStatus.get(modelKey)?.maxTokens
+                    });
+                    showNotification(`${modelName} is working correctly`, 'success');
+                } else {
+                    // Auto-blacklist failed models
+                    blacklistedModels.add(modelKey);
+                    showNotification(`${modelName} failed test and was blacklisted`, 'warning');
+                }
+                
+                renderProviders();
+            }, 1000);
+        }
+        
+        function testAllModels(providerName) {
+            const provider = providers.find(p => p.name === providerName);
+            if (!provider || !provider.models) return;
+            
+            showNotification(`Testing ${provider.models.length} models...`, 'info');
+            
+            let tested = 0;
+            provider.models.forEach((model, index) => {
+                setTimeout(() => {
+                    testModel(providerName, model);
+                    tested++;
+                    if (tested === provider.models.length) {
+                        setTimeout(() => {
+                            showNotification('All models tested', 'success');
+                        }, 1000);
+                    }
+                }, index * 500);
+            });
+        }
+        
+        // Blacklist/Whitelist Management
+        function addToBlacklist(providerName, modelName) {
+            const modelKey = `${providerName}:${modelName}`;
+            blacklistedModels.add(modelKey);
+            whitelistedModels.delete(modelKey); // Remove from whitelist if present
+            renderProviders();
+            showNotification(`${modelName} added to blacklist`, 'warning');
+        }
+        
+        function removeFromBlacklist(providerName, modelName) {
+            const modelKey = `${providerName}:${modelName}`;
+            blacklistedModels.delete(modelKey);
+            renderProviders();
+            showNotification(`${modelName} removed from blacklist`, 'success');
+        }
+        
+        function addToWhitelist(providerName, modelName) {
+            const modelKey = `${providerName}:${modelName}`;
+            whitelistedModels.add(modelKey);
+            blacklistedModels.delete(modelKey); // Remove from blacklist if present
+            renderProviders();
+            showNotification(`${modelName} added to whitelist`, 'success');
+        }
+        
+        function removeFromWhitelist(providerName, modelName) {
+            const modelKey = `${providerName}:${modelName}`;
+            whitelistedModels.delete(modelKey);
+            renderProviders();
+            showNotification(`${modelName} removed from whitelist`, 'info');
+        }
+
+        function closeTestModal() {
+            document.getElementById('test-modal').classList.remove('show');
+        }
+
+        // Key management
+        function testKey(providerName, keyIndex) {
+            const provider = providers.find(p => p.name === providerName);
+            const keys = Array.isArray(provider.api_key) ? provider.api_key : [provider.api_key];
+            const key = keys[keyIndex];
+
+            // Simulate test
+            setTimeout(() => {
+                const success = Math.random() > 0.3;
+                const result = `
+                    <div class="test-result ${success ? 'test-success' : 'test-error'}">
+                        <h4>Key Test: ${providerName}</h4>
+                        <p><strong>Status:</strong> ${success ? '✅ Success' : '❌ Failed'}</p>
+                        <p><strong>Key:</strong> ${maskKey(key)}</p>
+                        <p><strong>Response Time:</strong> ${Math.floor(Math.random() * 1000 + 200)}ms</p>
+                        <p><strong>Message:</strong> ${success ? 'Key is valid and accessible' : 'Authentication failed'}</p>
+                    </div>
+                `;
+                document.getElementById('test-results').innerHTML = result;
+                document.getElementById('test-modal').classList.add('show');
+            }, 500);
+
+            showNotification('Testing key...', 'info');
+        }
+
+        // Provider testing and model management
+        async function testProviderConnection(name, baseUrl, apiKey) {
+            // Simulate API testing
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const success = Math.random() > 0.2;
+                    if (success) {
+                        // Simulate getting models list
+                        const sampleModels = [
+                            'gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo',
+                            'claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku',
+                            'gemini-pro', 'gemini-pro-vision'
+                        ].slice(0, Math.floor(Math.random() * 5) + 2);
+                        
+                        resolve({
+                            success: true,
+                            models: sampleModels,
+                            responseTime: Math.floor(Math.random() * 1000 + 200)
+                        });
+                    } else {
+                        resolve({
+                            success: false,
+                            error: 'Connection failed or API key invalid'
+                        });
+                    }
+                }, 800);
+            });
+        }
+        
+        function testProvider(providerName) {
+            const provider = providers.find(p => p.name === providerName);
+            if (!provider) return;
+            
+            showNotification('Testing provider connection...', 'info');
+            
+            testProviderConnection(provider.name, provider.base_url, provider.api_key).then(result => {
+                const resultHtml = `
+                    <div class="test-result ${result.success ? 'test-success' : 'test-error'}">
+                        <h4>Provider Test: ${provider.name}</h4>
+                        <p><strong>Status:</strong> ${result.success ? '✅ Success' : '❌ Failed'}</p>
+                        <p><strong>Base URL:</strong> ${provider.base_url}</p>
+                        ${result.success ? `
+                            <p><strong>Response Time:</strong> ${result.responseTime}ms</p>
+                            <p><strong>Available Models:</strong> ${result.models ? result.models.length : 0}</p>
+                            ${result.models ? `
+                                <div style="margin-top: 10px;">
+                                    <strong>Models:</strong><br>
+                                    ${result.models.map(m => `<code>${m}</code>`).join(', ')}
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <p><strong>Error:</strong> ${result.error}</p>
+                        `}
+                    </div>
+                `;
+                document.getElementById('test-results').innerHTML = resultHtml;
+                document.getElementById('test-modal').classList.add('show');
+            }).catch(error => {
+                const errorHtml = `
+                    <div class="test-result test-error">
+                        <h4>Provider Test: ${provider.name}</h4>
+                        <p><strong>Status:</strong> ❌ Error</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+                document.getElementById('test-results').innerHTML = errorHtml;
+                document.getElementById('test-modal').classList.add('show');
+            });
+        }
+        
+        function refreshModels(providerName) {
+            const provider = providers.find(p => p.name === providerName);
+            if (!provider) return;
+            
+            showNotification(`Refreshing models for ${providerName}...`, 'info');
+            
+            testProviderConnection(provider.name, provider.base_url, provider.api_key).then(result => {
+                if (result.success && result.models) {
+                    provider.models = result.models;
+                    renderProviders();
+                    showNotification(`Models updated for ${providerName}`, 'success');
+                } else {
+                    showNotification(`Failed to refresh models for ${providerName}`, 'error');
+                }
+            });
+        }
+
+        function testRotation(providerName) {
+            const provider = providers.find(p => p.name === providerName);
+            const keys = Array.isArray(provider.api_key) ? provider.api_key : [provider.api_key];
+            
+            const rotationResults = [];
+            for (let i = 0; i < 5; i++) {
+                const selectedIndex = i % keys.length;
+                const selectedKey = keys[selectedIndex];
+                rotationResults.push(`
+                    <div style="margin: 5px 0; font-family: monospace;">
+                        Round ${i + 1}: Key #${selectedIndex + 1} → ${maskKey(selectedKey)}
+                    </div>
+                `);
+            }
+
+            const result = `
+                <div class="test-result test-success">
+                    <h4>Key Rotation Demo: ${providerName}</h4>
+                    <p>Round-robin rotation demonstration:</p>
+                    ${rotationResults.join('')}
+                </div>
+            `;
+            document.getElementById('test-results').innerHTML = result;
+            document.getElementById('test-modal').classList.add('show');
+        }
+
+        function editKey(providerName, keyIndex) {
+            showNotification('Edit functionality would open edit dialog', 'info');
+        }
+
+        // Legacy functions (removed or simplified)
+        function maskKey(key) {
+            if (key.startsWith('./') || key.startsWith('/')) return `📁 ${key}`;
+            return key.length > 10 ? key.substring(0, 8) + '***' + key.slice(-4) : '*'.repeat(key.length);
+        }
+        
+        function closeTestModal() {
+            document.getElementById('test-modal').classList.remove('show');
+        }
+
+        // Model Status Summary
+        function renderModelStatusSummary() {
+            const container = document.getElementById('model-status-summary');
+            if (!container) return;
+            
+            let totalModels = 0;
+            let availableModels = 0;
+            let blacklistedCount = blacklistedModels.size;
+            let whitelistedCount = whitelistedModels.size;
+            
+            providers.forEach(provider => {
+                if (provider.models) {
+                    totalModels += provider.models.length;
+                    availableModels += provider.models.filter(m => !blacklistedModels.has(`${provider.name}:${m}`)).length;
+                }
+            });
+            
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div style="background: #f8f8f8; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: #333;">${totalModels}</div>
+                        <div>Total Models</div>
+                    </div>
+                    <div style="background: #f0f8f0; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: #2d5a2d;">${availableModels}</div>
+                        <div>Available</div>
+                    </div>
+                    <div style="background: #cce5ff; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: #0066cc;">${whitelistedCount}</div>
+                        <div>Whitelisted</div>
+                    </div>
+                    <div style="background: #fdf0f0; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: #5a2d2d;">${blacklistedCount}</div>
+                        <div>Blacklisted</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function updateAllModels() {
+            if (providers.length === 0) {
+                showNotification('No providers configured', 'warning');
+                return;
+            }
+            
+            showNotification('Updating all models...', 'info');
+            
+            // Prioritize whitelisted models
+            const whitelistedProviders = providers.filter(p => {
+                return p.models && p.models.some(m => whitelistedModels.has(`${p.name}:${m}`));
+            });
+            
+            // Update whitelisted models first
+            whitelistedProviders.forEach(provider => {
+                updateModelsMaxTokens(provider.name);
+            });
+            
+            // Then update remaining models
+            setTimeout(() => {
+                providers.forEach(provider => {
+                    if (!whitelistedProviders.includes(provider)) {
+                        updateModelsMaxTokens(provider.name);
+                    }
+                });
+            }, 2000);
+        }
+        
+        // List Manager Functions
+        function showBlacklistManager() {
+            const content = `
+                <div>
+                    <p>Manage blacklisted models that should not be used for requests.</p>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        ${Array.from(blacklistedModels).map(modelKey => {
+                            const [providerName, modelName] = modelKey.split(':');
+                            return `
+                                <div class="key-item" style="margin: 8px 0;">
+                                    <div style="flex: 1;">
+                                        <strong>${providerName}:</strong> ${modelName}
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-warning" onclick="removeFromBlacklist('${providerName}', '${modelName}'); closeListManagerModal(); showBlacklistManager();">Remove</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') || '<p style="color: #666; font-style: italic;">No blacklisted models</p>'}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('list-modal-title').textContent = 'Blacklist Manager';
+            document.getElementById('list-manager-content').innerHTML = content;
+            document.getElementById('list-manager-modal').classList.add('show');
+        }
+        
+        function showWhitelistManager() {
+            const content = `
+                <div>
+                    <p>Manage whitelisted models that are recommended for use and get priority in updates.</p>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        ${Array.from(whitelistedModels).map(modelKey => {
+                            const [providerName, modelName] = modelKey.split(':');
+                            return `
+                                <div class="key-item" style="margin: 8px 0;">
+                                    <div style="flex: 1;">
+                                        <strong>${providerName}:</strong> ${modelName}
+                                        <span class="status-badge status-whitelisted">★ Recommended</span>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-secondary" onclick="removeFromWhitelist('${providerName}', '${modelName}'); closeListManagerModal(); showWhitelistManager();">Remove</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') || '<p style="color: #666; font-style: italic;">No whitelisted models</p>'}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('list-modal-title').textContent = 'Whitelist Manager';
+            document.getElementById('list-manager-content').innerHTML = content;
+            document.getElementById('list-manager-modal').classList.add('show');
+        }
+        
+        // Modal Management
+        function closeProviderModal() {
+            document.getElementById('add-provider-modal').classList.remove('show');
+            document.getElementById('add-provider-form').reset();
+        }
+        
+        function closeModelModal() {
+            document.getElementById('model-management-modal').classList.remove('show');
+        }
+        
+        function closeListManagerModal() {
+            document.getElementById('list-manager-modal').classList.remove('show');
+        }
+        
+        // Configuration Export/Import
+        function exportFullConfig() {
+            const config = {
+                version: '2.0',
+                configPath: configPath,
+                exportDate: new Date().toISOString(),
+                providers: providers,
+                routes: routes,
+                blacklistedModels: Array.from(blacklistedModels),
+                whitelistedModels: Array.from(whitelistedModels),
+                modelStatus: Object.fromEntries(modelStatus),
+                globalSettings: globalSettings
+            };
+            
+            document.getElementById('import-export-title').textContent = 'Export Configuration';
+            document.getElementById('export-config-text').value = JSON.stringify(config, null, 2);
+            document.getElementById('import-section').style.display = 'none';
+            document.getElementById('export-section').style.display = 'block';
+            document.getElementById('import-export-action').style.display = 'none';
+            document.getElementById('import-export-modal').classList.add('show');
+        }
+        
+        function importFullConfig() {
+            document.getElementById('import-export-title').textContent = 'Import Configuration';
+            document.getElementById('import-section').style.display = 'block';
+            document.getElementById('export-section').style.display = 'none';
+            document.getElementById('import-export-action').style.display = 'block';
+            document.getElementById('import-export-action').textContent = 'Import';
+            document.getElementById('import-export-modal').classList.add('show');
+        }
+        
+        function resetToDefaults() {
+            if (confirm('This will reset ALL configuration to defaults. Are you sure?')) {
+                providers.length = 0;
+                routes.length = 0;
+                blacklistedModels.clear();
+                whitelistedModels.clear();
+                modelStatus.clear();
+                globalSettings.longContextThreshold = 32000;
+                
+                renderProviders();
+                renderRouters();
+                renderModelStatusSummary();
+                showNotification('Configuration reset to defaults', 'success');
+            }
+        }
+        
+        // Event listeners
+        function setupEventListeners() {
+
+            // Provider form submission
+            document.getElementById('add-provider-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('provider-name').value.trim();
+                const baseUrl = document.getElementById('provider-base-url').value.trim();
+                const apiKey = document.getElementById('provider-api-key').value.trim();
+                const description = document.getElementById('provider-description').value.trim();
+
+                if (!name || !baseUrl || !apiKey) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+                
+                // Check if provider name already exists (for new providers)
+                const existingProvider = providers.find(p => p.name === name);
+                if (existingProvider && document.getElementById('provider-modal-title').textContent === 'Add New Provider') {
+                    showNotification('Provider name already exists', 'error');
+                    return;
+                }
+
+                // Test connection first
+                testProviderConnection(name, baseUrl, apiKey).then(result => {
+                    if (result.success) {
+                        // Save provider
+                        if (existingProvider) {
+                            // Update existing
+                            existingProvider.base_url = baseUrl;
+                            existingProvider.api_key = apiKey;
+                            existingProvider.description = description;
+                            existingProvider.models = result.models || [];
+                        } else {
+                            // Add new
+                            providers.push({
+                                name: name,
+                                base_url: baseUrl,
+                                api_key: apiKey,
+                                description: description,
+                                models: result.models || [],
+                                created: new Date().toISOString()
+                            });
+                        }
+                        
+                        renderProviders();
+                        closeProviderModal();
+                        showNotification('Provider saved successfully!', 'success');
+                    } else {
+                        showNotification(`Connection test failed: ${result.error}`, 'error');
+                    }
+                }).catch(error => {
+                    showNotification('Connection test failed: ' + error.message, 'error');
+                }).catch(error => {
+                    showNotification('Connection test failed: ' + error.message, 'error');
+                });
+            });
+
+            // Route form submission
+            document.getElementById('add-route-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const routeType = document.getElementById('route-type').value;
+                const priority = parseInt(document.getElementById('route-priority').value);
+                const provider = document.getElementById('route-provider').value;
+                const model = document.getElementById('route-model').value;
+                const description = document.getElementById('route-description').value;
+                const conditionsText = document.getElementById('route-conditions').value;
+
+                // Validate required fields
+                if (!provider || !model || !description.trim()) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+
+                // Parse conditions
+                let conditions = {};
+                if (conditionsText.trim()) {
+                    try {
+                        conditions = JSON.parse(conditionsText);
+                    } catch (e) {
+                        showNotification('Invalid JSON in conditions field', 'error');
+                        return;
+                    }
+                }
+
+                // Create or update route
+                if (currentEditingRoute) {
+                    // Edit existing route
+                    const routeIndex = routes.findIndex(r => r.id === currentEditingRoute);
+                    if (routeIndex >= 0) {
+                        routes[routeIndex] = {
+                            ...routes[routeIndex],
+                            type: routeType,
+                            priority: priority,
+                            provider: provider,
+                            model: model,
+                            conditions: conditions,
+                            description: description
+                        };
+                        showNotification('Route updated successfully', 'success');
+                    }
+                } else {
+                    // Add new route
+                    const newRoute = {
+                        id: 'route-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                        type: routeType,
+                        priority: priority,
+                        provider: provider,
+                        model: model,
+                        conditions: conditions,
+                        description: description
+                    };
+                    routes.push(newRoute);
+                    showNotification('Route added successfully', 'success');
+                }
+
+                renderRouters();
+                closeRouteModal();
+            });
+        }
+
+        // Utility functions
+        function showNotification(message, type = 'info') {
+            // Create a modern notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#2d5a2d' : type === 'error' ? '#5a2d2d' : type === 'warning' ? '#856404' : '#333'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                max-width: 300px;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                transition: all 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

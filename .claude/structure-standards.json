@@ -1,0 +1,209 @@
+{
+  "structure_standards": {
+    "version": "1.0.0",
+    "updated": "2024-01-15",
+    "module_requirements": {
+      "required_directories": [
+        {
+          "name": "src",
+          "description": "Source code directory",
+          "required": true,
+          "subdirectories": [
+            {
+              "name": "constants",
+              "description": "Constants and configuration",
+              "required": true
+            },
+            {
+              "name": "interfaces",
+              "description": "TypeScript interfaces",
+              "required": true
+            },
+            {
+              "name": "types",
+              "description": "TypeScript types",
+              "required": true
+            },
+            {
+              "name": "utils",
+              "description": "Utility functions",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "__test__",
+          "description": "Test directory",
+          "required": true,
+          "subdirectories": [
+            {
+              "name": "unit",
+              "description": "Unit tests",
+              "required": false
+            },
+            {
+              "name": "integration",
+              "description": "Integration tests",
+              "required": false
+            },
+            {
+              "name": "fixtures",
+              "description": "Test fixtures and data",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "docs",
+          "description": "Documentation directory",
+          "required": false,
+          "subdirectories": [
+            {
+              "name": "api",
+              "description": "API documentation",
+              "required": false
+            },
+            {
+              "name": "examples",
+              "description": "Usage examples",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "required_files": [
+        {
+          "path": "README.md",
+          "description": "Module documentation",
+          "required": true
+        },
+        {
+          "path": "package.json",
+          "description": "Package configuration",
+          "required": false
+        },
+        {
+          "path": "tsconfig.json",
+          "description": "TypeScript configuration",
+          "required": false
+        },
+        {
+          "path": "src/index.ts",
+          "description": "Module entry point",
+          "required": true
+        },
+        {
+          "path": "src/constants/index.ts",
+          "description": "Constants entry point",
+          "required": true
+        },
+        {
+          "path": "src/interfaces/index.ts",
+          "description": "Interfaces entry point",
+          "required": true
+        },
+        {
+          "path": "src/types/index.ts",
+          "description": "Types entry point",
+          "required": true
+        }
+      ],
+      "optional_files": [
+        {
+          "path": ".gitignore",
+          "description": "Git ignore file",
+          "required": false
+        },
+        {
+          "path": ".npmignore",
+          "description": "NPM ignore file",
+          "required": false
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "description": "Contribution guidelines",
+          "required": false
+        },
+        {
+          "path": "CHANGELOG.md",
+          "description": "Change log",
+          "required": false
+        }
+      ]
+    },
+    "file_naming_conventions": {
+      "source_files": {
+        "pattern": "^[a-z][a-zA-Z0-9_]*\\.ts$",
+        "description": "camelCase with .ts extension",
+        "examples": ["userModule.ts", "databaseConnection.ts"]
+      },
+      "test_files": {
+        "pattern": "^[a-z][a-zA-Z0-9_]*\\.test\\.ts$",
+        "description": "camelCase with .test.ts extension",
+        "examples": ["userModule.test.ts", "databaseConnection.test.ts"]
+      },
+      "interface_files": {
+        "pattern": "^[A-Z][a-zA-Z0-9_]*\\.interface\\.ts$",
+        "description": "PascalCase with .interface.ts extension",
+        "examples": ["User.interface.ts", "Database.interface.ts"]
+      },
+      "type_files": {
+        "pattern": "^[A-Z][a-zA-Z0-9_]*\\.type\\.ts$",
+        "description": "PascalCase with .type.ts extension",
+        "examples": ["User.type.ts", "Database.type.ts"]
+      },
+      "constant_files": {
+        "pattern": "^[a-z][a-zA-Z0-9_]*\\.constants\\.ts$",
+        "description": "camelCase with .constants.ts extension",
+        "examples": ["api.constants.ts", "database.constants.ts"]
+      }
+    },
+    "content_standards": {
+      "readme_requirements": {
+        "sections": [
+          {
+            "title": "Description",
+            "required": true,
+            "description": "Module description and purpose"
+          },
+          {
+            "title": "Installation",
+            "required": true,
+            "description": "Installation instructions"
+          },
+          {
+            "title": "Usage",
+            "required": true,
+            "description": "Usage examples"
+          },
+          {
+            "title": "API",
+            "required": true,
+            "description": "API documentation"
+          },
+          {
+            "title": "Contributing",
+            "required": false,
+            "description": "Contribution guidelines"
+          }
+        ]
+      },
+      "module_entry_point": {
+        "requirements": [
+          {
+            "type": "import",
+            "description": "Should import required classes and functions"
+          },
+          {
+            "type": "export",
+            "description": "Should have default export"
+          },
+          {
+            "type": "types",
+            "description": "Should export types and interfaces"
+          }
+        ]
+      }
+    }
+  }
+}

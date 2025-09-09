@@ -1,0 +1,1211 @@
+{
+  "module_apis": {
+    "BaseModule": {
+      "module": {
+        "name": "BaseModule",
+        "description": "Abstract base class for all modules Provides foundational functionality for module management, connections, and validation",
+        "version": "1.0.0",
+        "basePath": "/api/basemodule"
+      },
+      "endpoints": [
+        {
+          "name": "configure",
+          "description": "Configures the module with initialization data This method should be called before initialize() @param config - Configuration data for the module",
+          "method": "GET",
+          "path": "/configure",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "Record<string",
+              "description": "Parameter config"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "getInfo",
+          "description": "Gets the module information @returns Module information",
+          "method": "GET",
+          "path": "/getInfo",
+          "parameters": [],
+          "returnType": "ModuleInfo",
+          "access": "public"
+        },
+        {
+          "name": "getConfig",
+          "description": "Gets the module configuration @returns Module configuration",
+          "method": "GET",
+          "path": "/getConfig",
+          "parameters": [],
+          "returnType": "Record<string,",
+          "access": "public"
+        },
+        {
+          "name": "initialize",
+          "description": "Initializes the module This method should be overridden by subclasses",
+          "method": "POST",
+          "path": "/initialize",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "addInputConnection",
+          "description": "Adds an input connection @param connection - Connection information",
+          "method": "GET",
+          "path": "/addInputConnection",
+          "parameters": [
+            {
+              "name": "connection",
+              "type": "ConnectionInfo",
+              "description": "Parameter connection"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "addOutputConnection",
+          "description": "Adds an output connection @param connection - Connection information",
+          "method": "GET",
+          "path": "/addOutputConnection",
+          "parameters": [
+            {
+              "name": "connection",
+              "type": "ConnectionInfo",
+              "description": "Parameter connection"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "removeInputConnection",
+          "description": "Removes an input connection @param connectionId - Connection ID",
+          "method": "GET",
+          "path": "/removeInputConnection",
+          "parameters": [
+            {
+              "name": "connectionId",
+              "type": "string",
+              "description": "Parameter connectionId"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "removeOutputConnection",
+          "description": "Removes an output connection @param connectionId - Connection ID",
+          "method": "GET",
+          "path": "/removeOutputConnection",
+          "parameters": [
+            {
+              "name": "connectionId",
+              "type": "string",
+              "description": "Parameter connectionId"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "getInputConnections",
+          "description": "Gets all input connections @returns Array of input connections",
+          "method": "GET",
+          "path": "/getInputConnections",
+          "parameters": [],
+          "returnType": "ConnectionInfo[]",
+          "access": "public"
+        },
+        {
+          "name": "getOutputConnections",
+          "description": "Gets all output connections @returns Array of output connections",
+          "method": "GET",
+          "path": "/getOutputConnections",
+          "parameters": [],
+          "returnType": "ConnectionInfo[]",
+          "access": "public"
+        },
+        {
+          "name": "handshake",
+          "description": "Performs handshake with another module @param targetModule - Target module to handshake with @returns Whether handshake was successful",
+          "method": "POST",
+          "path": "/handshake",
+          "parameters": [
+            {
+              "name": "targetModule",
+              "type": "BaseModule",
+              "description": "Parameter targetModule"
+            }
+          ],
+          "returnType": "Promise<boolean>",
+          "access": "public"
+        },
+        {
+          "name": "receiveData",
+          "description": "Receives data from connected modules This method should be overridden by subclasses @param dataTransfer - Data transfer information",
+          "method": "POST",
+          "path": "/receiveData",
+          "parameters": [
+            {
+              "name": "dataTransfer",
+              "type": "DataTransfer",
+              "description": "Parameter dataTransfer"
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "destroy",
+          "description": "Cleans up resources and connections",
+          "method": "POST",
+          "path": "/destroy",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        }
+      ]
+    },
+    "ExampleModule": {
+      "module": {
+        "name": "ExampleModule",
+        "description": "Example module implementation Demonstrates how to extend BaseModule",
+        "version": "1.0.0",
+        "basePath": "/api/examplemodule"
+      },
+      "endpoints": [
+        {
+          "name": "initialize",
+          "description": "Initializes the module",
+          "method": "POST",
+          "path": "/initialize",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "handshake",
+          "description": "Performs handshake with another module @param targetModule - Target module to handshake with @returns Whether handshake was successful",
+          "method": "POST",
+          "path": "/handshake",
+          "parameters": [
+            {
+              "name": "targetModule",
+              "type": "BaseModule",
+              "description": "Parameter targetModule"
+            }
+          ],
+          "returnType": "Promise<boolean>",
+          "access": "public"
+        },
+        {
+          "name": "receiveData",
+          "description": "Receives data from connected modules @param dataTransfer - Data transfer information",
+          "method": "POST",
+          "path": "/receiveData",
+          "parameters": [
+            {
+              "name": "dataTransfer",
+              "type": "DataTransfer",
+              "description": "Parameter dataTransfer"
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "processMessage",
+          "description": "Example public method that can be exposed through API @param message - Message to process",
+          "method": "POST",
+          "path": "/processMessage",
+          "parameters": [
+            {
+              "name": "message",
+              "type": "string",
+              "description": "Parameter message"
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "getStatus",
+          "description": "Example public method that can be exposed through API @returns Current status",
+          "method": "GET",
+          "path": "/getStatus",
+          "parameters": [],
+          "returnType": "string",
+          "access": "public"
+        },
+        {
+          "name": "destroy",
+          "description": "Cleans up resources and connections",
+          "method": "POST",
+          "path": "/destroy",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        }
+      ]
+    },
+    "DebugModule": {
+      "module": {
+        "name": "DebugModule",
+        "description": "DebugModule for logging and debugging module communications. This module supports simultaneous console output and file logging.",
+        "version": "1.0.0",
+        "basePath": "/api/debugmodule"
+      },
+      "endpoints": [
+        {
+          "name": "configure",
+          "description": "Configures the debug module.",
+          "method": "POST",
+          "path": "/configure",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "Partial<DebugConfig>",
+              "description": "Debug configuration"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "updatePort",
+          "description": "Updates the port configuration.",
+          "method": "POST",
+          "path": "/port",
+          "parameters": [
+            {
+              "name": "port",
+              "type": "number",
+              "description": "New port number"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "initialize",
+          "description": "Initializes the module.",
+          "method": "POST",
+          "path": "/initialize",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "log",
+          "description": "Logs a message with module information and call stack.",
+          "method": "POST",
+          "path": "/log",
+          "parameters": [
+            {
+              "name": "message",
+              "type": "string",
+              "description": "Message to log"
+            },
+            {
+              "name": "level",
+              "type": "LogLevel",
+              "description": "Log level"
+            },
+            {
+              "name": "moduleInfo",
+              "type": "ModuleInfo",
+              "description": "Module information (optional)"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "recordDataFlow",
+          "description": "Records data flow between modules.",
+          "method": "POST",
+          "path": "/dataflow",
+          "parameters": [
+            {
+              "name": "sourceModuleId",
+              "type": "string",
+              "description": "Source module ID"
+            },
+            {
+              "name": "targetModuleId",
+              "type": "string",
+              "description": "Target module ID"
+            },
+            {
+              "name": "data",
+              "type": "any",
+              "description": "Data being transferred"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "addModuleConnection",
+          "description": "Adds a module connection for data flow recording.",
+          "method": "POST",
+          "path": "/connections",
+          "parameters": [
+            {
+              "name": "moduleId",
+              "type": "string",
+              "description": "Module ID"
+            },
+            {
+              "name": "connectionType",
+              "type": "'input' | 'output'",
+              "description": "Connection type"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "removeModuleConnection",
+          "description": "Removes a module connection.",
+          "method": "DELETE",
+          "path": "/connections/{moduleId}",
+          "parameters": [
+            {
+              "name": "moduleId",
+              "type": "string",
+              "description": "Module ID"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "getLogs",
+          "description": "Gets all log entries.",
+          "method": "GET",
+          "path": "/logs",
+          "parameters": [],
+          "returnType": "DebugLogEntry[]",
+          "access": "public"
+        },
+        {
+          "name": "clearLogs",
+          "description": "Clears all log entries.",
+          "method": "POST",
+          "path": "/logs/clear",
+          "parameters": [],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "getDebugConfig",
+          "description": "Gets the debug configuration.",
+          "method": "GET",
+          "path": "/config",
+          "parameters": [],
+          "returnType": "DebugConfig",
+          "access": "public"
+        },
+        {
+          "name": "receiveData",
+          "description": "Receives data from connected modules.",
+          "method": "POST",
+          "path": "/data/receive",
+          "parameters": [
+            {
+              "name": "dataTransfer",
+              "type": "DataTransfer",
+              "description": "Data transfer information"
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "destroy",
+          "description": "Cleans up resources and connections.",
+          "method": "POST",
+          "path": "/destroy",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        }
+      ]
+    },
+    "ConfigLoaderModule": {
+      "module": {
+        "name": "ConfigLoaderModule",
+        "description": "Configuration file loading, JSON5 parsing, and environment variable interpolation module",
+        "version": "1.0.0",
+        "basePath": "/api/configuration/loader"
+      },
+      "endpoints": [
+        {
+          "name": "loadFromFile",
+          "description": "Loads configuration data from a file with JSON5 parsing and environment variable interpolation",
+          "method": "POST",
+          "path": "/load",
+          "parameters": [
+            {
+              "name": "filePath",
+              "type": "string",
+              "description": "Path to the configuration file",
+              "required": true
+            },
+            {
+              "name": "options",
+              "type": "ConfigLoadOptions",
+              "description": "Load options including watch settings and validation level",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<ConfigurationData>",
+          "access": "public"
+        },
+        {
+          "name": "watchFile",
+          "description": "Watch a configuration file for changes with automatic reload",
+          "method": "POST",
+          "path": "/watch",
+          "parameters": [
+            {
+              "name": "filePath",
+              "type": "string",
+              "description": "Path to the configuration file to watch",
+              "required": true
+            },
+            {
+              "name": "callback",
+              "type": "FileChangeCallback",
+              "description": "Callback function to invoke on file changes",
+              "required": true
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "interpolateEnvironmentVariables",
+          "description": "Process environment variable interpolation in configuration data",
+          "method": "POST",
+          "path": "/interpolate",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "any",
+              "description": "Configuration object to process",
+              "required": true
+            },
+            {
+              "name": "options",
+              "type": "EnvironmentInterpolationOptions",
+              "description": "Interpolation options",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<any>",
+          "access": "public"
+        },
+        {
+          "name": "mergeConfigurations",
+          "description": "Merge multiple configuration objects using specified strategy",
+          "method": "POST",
+          "path": "/merge",
+          "parameters": [
+            {
+              "name": "configs",
+              "type": "ConfigurationData[]",
+              "description": "Array of configuration objects to merge",
+              "required": true
+            },
+            {
+              "name": "options",
+              "type": "ConfigMergeOptions",
+              "description": "Merge strategy and options",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<ConfigurationData>",
+          "access": "public"
+        }
+      ]
+    },
+    "ConfigValidatorModule": {
+      "module": {
+        "name": "ConfigValidatorModule",
+        "description": "Multi-layer configuration validation with schema enforcement and custom validation rules",
+        "version": "1.0.0",
+        "basePath": "/api/configuration/validator"
+      },
+      "endpoints": [
+        {
+          "name": "validateComplete",
+          "description": "Perform complete multi-layer validation of configuration data",
+          "method": "POST",
+          "path": "/validate/complete",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "any",
+              "description": "Configuration data to validate",
+              "required": true
+            },
+            {
+              "name": "options",
+              "type": "ValidationOptions",
+              "description": "Validation options and level",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<ValidationResult>",
+          "access": "public"
+        },
+        {
+          "name": "validateSection",
+          "description": "Validate a specific section of configuration data",
+          "method": "POST",
+          "path": "/validate/section",
+          "parameters": [
+            {
+              "name": "section",
+              "type": "string",
+              "description": "Configuration section name",
+              "required": true
+            },
+            {
+              "name": "data",
+              "type": "any",
+              "description": "Section data to validate",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<ValidationResult>",
+          "access": "public"
+        },
+        {
+          "name": "registerSchema",
+          "description": "Register a new configuration schema for validation",
+          "method": "POST",
+          "path": "/schemas",
+          "parameters": [
+            {
+              "name": "name",
+              "type": "string",
+              "description": "Schema name identifier",
+              "required": true
+            },
+            {
+              "name": "schema",
+              "type": "ConfigSchema",
+              "description": "Schema definition object",
+              "required": true
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "validateAgainstSchema",
+          "description": "Validate configuration data against a specific registered schema",
+          "method": "POST",
+          "path": "/validate/schema",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "any",
+              "description": "Configuration data to validate",
+              "required": true
+            },
+            {
+              "name": "schemaName",
+              "type": "string",
+              "description": "Name of registered schema to validate against",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<ValidationResult>",
+          "access": "public"
+        }
+      ]
+    },
+    "ConfigPersistenceModule": {
+      "module": {
+        "name": "ConfigPersistenceModule",
+        "description": "Atomic configuration persistence with backup management and rollback capabilities",
+        "version": "1.0.0",
+        "basePath": "/api/configuration/persistence"
+      },
+      "endpoints": [
+        {
+          "name": "saveConfiguration",
+          "description": "Atomically save configuration data with backup creation",
+          "method": "POST",
+          "path": "/save",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "ConfigurationData",
+              "description": "Configuration data to save",
+              "required": true
+            },
+            {
+              "name": "options",
+              "type": "SaveOptions",
+              "description": "Save options including backup settings",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<boolean>",
+          "access": "public"
+        },
+        {
+          "name": "createBackup",
+          "description": "Create a backup of current configuration",
+          "method": "POST",
+          "path": "/backup",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "ConfigurationData",
+              "description": "Configuration data to backup",
+              "required": true
+            },
+            {
+              "name": "metadata",
+              "type": "Record<string, any>",
+              "description": "Backup metadata",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<string>",
+          "access": "public"
+        },
+        {
+          "name": "restoreFromBackup",
+          "description": "Restore configuration from a specific backup",
+          "method": "POST",
+          "path": "/restore",
+          "parameters": [
+            {
+              "name": "backupId",
+              "type": "string",
+              "description": "Backup identifier to restore from",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<ConfigurationData>",
+          "access": "public"
+        },
+        {
+          "name": "listBackups",
+          "description": "List all available configuration backups",
+          "method": "GET",
+          "path": "/backups",
+          "parameters": [],
+          "returnType": "Promise<BackupInfo[]>",
+          "access": "public"
+        },
+        {
+          "name": "exportConfiguration",
+          "description": "Export configuration in specified format",
+          "method": "POST",
+          "path": "/export",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "ConfigurationData",
+              "description": "Configuration data to export",
+              "required": true
+            },
+            {
+              "name": "format",
+              "type": "ExportFormat",
+              "description": "Export format (JSON, YAML, TOML, etc.)",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<string>",
+          "access": "public"
+        }
+      ]
+    },
+    "ConfigUIModule": {
+      "module": {
+        "name": "ConfigUIModule",
+        "description": "Web-based configuration management interface with real-time updates",
+        "version": "1.0.0",
+        "basePath": "/api/configuration/ui"
+      },
+      "endpoints": [
+        {
+          "name": "startWebServer",
+          "description": "Start the embedded web server for configuration UI",
+          "method": "POST",
+          "path": "/server/start",
+          "parameters": [
+            {
+              "name": "port",
+              "type": "number",
+              "description": "Port number for web server",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "stopWebServer",
+          "description": "Stop the embedded web server",
+          "method": "POST",
+          "path": "/server/stop",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "handleConfigurationRequest",
+          "description": "Process configuration requests from web UI",
+          "method": "POST",
+          "path": "/request",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "UIConfigurationRequest",
+              "description": "UI configuration request object",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<UIConfigurationResponse>",
+          "access": "public"
+        },
+        {
+          "name": "broadcastConfigurationUpdate",
+          "description": "Broadcast configuration changes to all connected clients",
+          "method": "POST",
+          "path": "/broadcast",
+          "parameters": [
+            {
+              "name": "update",
+              "type": "ConfigurationData",
+              "description": "Updated configuration data",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "openBrowser",
+          "description": "Open web browser to configuration UI",
+          "method": "POST",
+          "path": "/browser/open",
+          "parameters": [
+            {
+              "name": "url",
+              "type": "string",
+              "description": "Custom URL to open (optional)",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "setUITheme",
+          "description": "Set UI theme configuration",
+          "method": "POST",
+          "path": "/theme",
+          "parameters": [
+            {
+              "name": "theme",
+              "type": "UITheme",
+              "description": "UI theme configuration",
+              "required": true
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        }
+      ]
+    },
+    "StatusLineModule": {
+      "module": {
+        "name": "StatusLineModule",
+        "description": "Status line configuration and theme management with real-time preview",
+        "version": "1.0.0",
+        "basePath": "/api/configuration/statusline"
+      },
+      "endpoints": [
+        {
+          "name": "setTheme",
+          "description": "Set status line theme configuration",
+          "method": "POST",
+          "path": "/theme",
+          "parameters": [
+            {
+              "name": "theme",
+              "type": "StatusLineTheme",
+              "description": "Status line theme configuration",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "updateConfiguration",
+          "description": "Update status line configuration with validation",
+          "method": "POST",
+          "path": "/config",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "StatusLineConfig",
+              "description": "Status line configuration",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<ValidationResult>",
+          "access": "public"
+        },
+        {
+          "name": "getPreview",
+          "description": "Generate real-time preview of status line configuration",
+          "method": "GET",
+          "path": "/preview",
+          "parameters": [
+            {
+              "name": "config",
+              "type": "StatusLineConfig",
+              "description": "Configuration to preview",
+              "required": false
+            }
+          ],
+          "returnType": "Promise<StatusLinePreview>",
+          "access": "public"
+        },
+        {
+          "name": "exportTheme",
+          "description": "Export status line theme in specified format",
+          "method": "POST",
+          "path": "/export",
+          "parameters": [
+            {
+              "name": "theme",
+              "type": "StatusLineTheme",
+              "description": "Theme to export",
+              "required": true
+            },
+            {
+              "name": "format",
+              "type": "ExportFormat",
+              "description": "Export format (JSON, YAML, CSS)",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<string>",
+          "access": "public"
+        },
+        {
+          "name": "importTheme",
+          "description": "Import status line theme from file or data",
+          "method": "POST",
+          "path": "/import",
+          "parameters": [
+            {
+              "name": "data",
+              "type": "string",
+              "description": "Theme data to import",
+              "required": true
+            },
+            {
+              "name": "format",
+              "type": "ImportFormat",
+              "description": "Data format (JSON, YAML, CSS)",
+              "required": true
+            }
+          ],
+          "returnType": "Promise<StatusLineTheme>",
+          "access": "public"
+        }
+      ]
+    },
+    "UnderConstruction": {
+      "module": {
+        "name": "UnderConstruction",
+        "description": "UnderConstruction class for marking unfinished modules This class helps identify incomplete implementations and track call chains",
+        "version": "1.0.0",
+        "basePath": "/api/underconstruction"
+      },
+      "endpoints": [
+        {
+          "name": "initialize",
+          "description": "Initializes the module",
+          "method": "POST",
+          "path": "/initialize",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "handshake",
+          "description": "Performs handshake with another module @param targetModule - Target module to handshake with @returns Whether handshake was successful",
+          "method": "POST",
+          "path": "/handshake",
+          "parameters": [
+            {
+              "name": "targetModule",
+              "type": "BaseModule",
+              "description": "Parameter targetModule"
+            }
+          ],
+          "returnType": "Promise<boolean>",
+          "access": "public"
+        },
+        {
+          "name": "receiveData",
+          "description": "Receives data from connected modules @param dataTransfer - Data transfer information",
+          "method": "POST",
+          "path": "/receiveData",
+          "parameters": [
+            {
+              "name": "dataTransfer",
+              "type": "any",
+              "description": "Parameter dataTransfer"
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "underconstruction",
+          "description": "Method to mark functionality as under construction @param methodName - Name of the method that is under construction",
+          "method": "GET",
+          "path": "/underconstruction",
+          "parameters": [
+            {
+              "name": "methodName",
+              "type": "string",
+              "description": "Parameter methodName"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        }
+      ]
+    },
+    "RouterModule": {
+      "module": {
+        "name": "RouterModule",
+        "description": "Router module for handling request routing between modules This module acts as a central hub for directing requests to appropriate modules",
+        "version": "1.0.0",
+        "basePath": "/api/routermodule"
+      },
+      "endpoints": [
+        {
+          "name": "createInstance",
+          "description": "Static factory method to create an instance of RouterModule @param info - Module information @returns Instance of RouterModule",
+          "method": "POST",
+          "path": "/createInstance",
+          "parameters": [
+            {
+              "name": "info",
+              "type": "ModuleInfo",
+              "description": "Module information"
+            }
+          ],
+          "returnType": "RouterModule",
+          "access": "public"
+        },
+        {
+          "name": "initialize",
+          "description": "Initializes the module",
+          "method": "POST",
+          "path": "/initialize",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "addRoute",
+          "description": "Adds a route mapping @param pattern - Route pattern @param moduleId - Target module ID",
+          "method": "POST",
+          "path": "/addRoute",
+          "parameters": [
+            {
+              "name": "pattern",
+              "type": "string",
+              "description": "Route pattern"
+            },
+            {
+              "name": "moduleId",
+              "type": "string",
+              "description": "Target module ID"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "removeRoute",
+          "description": "Removes a route mapping @param pattern - Route pattern",
+          "method": "POST",
+          "path": "/removeRoute",
+          "parameters": [
+            {
+              "name": "pattern",
+              "type": "string",
+              "description": "Route pattern"
+            }
+          ],
+          "returnType": "void",
+          "access": "public"
+        },
+        {
+          "name": "getRouteTarget",
+          "description": "Gets the target module ID for a route pattern @param pattern - Route pattern @returns Target module ID or undefined if not found",
+          "method": "GET",
+          "path": "/getRouteTarget",
+          "parameters": [
+            {
+              "name": "pattern",
+              "type": "string",
+              "description": "Route pattern"
+            }
+          ],
+          "returnType": "string | undefined",
+          "access": "public"
+        },
+        {
+          "name": "routeRequest",
+          "description": "Routes a request to the appropriate module @param pattern - Route pattern @param data - Request data",
+          "method": "POST",
+          "path": "/routeRequest",
+          "parameters": [
+            {
+              "name": "pattern",
+              "type": "string",
+              "description": "Route pattern"
+            },
+            {
+              "name": "data",
+              "type": "any",
+              "description": "Request data"
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "getRoutes",
+          "description": "Gets all route mappings @returns Array of route mappings",
+          "method": "GET",
+          "path": "/getRoutes",
+          "parameters": [],
+          "returnType": "{ pattern: string; moduleId: string }[]",
+          "access": "public"
+        },
+        {
+          "name": "destroy",
+          "description": "Cleans up resources and connections",
+          "method": "POST",
+          "path": "/destroy",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        }
+      ]
+    },
+    "TestModule": {
+      "module": {
+        "name": "TestModule",
+        "description": "Test module for demonstrating API standards This module shows how to properly document and expose public methods",
+        "version": "1.0.0",
+        "basePath": "/api/testmodule"
+      },
+      "endpoints": [
+        {
+          "name": "initialize",
+          "description": "Initializes the test module Sets up initial state and configuration",
+          "method": "POST",
+          "path": "/initialize",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "processData",
+          "description": "Processes test data @param data - The data to process @param options - Processing options @returns Processed result",
+          "method": "POST",
+          "path": "/processData",
+          "parameters": [
+            {
+              "name": "data",
+              "type": "string",
+              "description": "The data to process"
+            },
+            {
+              "name": "options",
+              "type": "{ uppercase: boolean }",
+              "description": "Processing options"
+            }
+          ],
+          "returnType": "Promise<string>",
+          "access": "public"
+        },
+        {
+          "name": "getCurrentData",
+          "description": "Gets the current test data @returns Current test data",
+          "method": "GET",
+          "path": "/getCurrentData",
+          "parameters": [],
+          "returnType": "string",
+          "access": "public"
+        },
+        {
+          "name": "handshake",
+          "description": "Performs a test handshake with another module @param targetModule - Target module to handshake with @returns Whether handshake was successful",
+          "method": "POST",
+          "path": "/handshake",
+          "parameters": [
+            {
+              "name": "targetModule",
+              "type": "BaseModule",
+              "description": "Target module to handshake with"
+            }
+          ],
+          "returnType": "Promise<boolean>",
+          "access": "public"
+        },
+        {
+          "name": "receiveData",
+          "description": "Receives data from connected modules @param dataTransfer - Data transfer information",
+          "method": "POST",
+          "path": "/receiveData",
+          "parameters": [
+            {
+              "name": "dataTransfer",
+              "type": "DataTransfer",
+              "description": "Data transfer information"
+            }
+          ],
+          "returnType": "Promise<void>",
+          "access": "public"
+        },
+        {
+          "name": "destroy",
+          "description": "Cleans up resources and connections",
+          "method": "POST",
+          "path": "/destroy",
+          "parameters": [],
+          "returnType": "Promise<void>",
+          "access": "public"
+        }
+      ]
+    }
+  }
+}

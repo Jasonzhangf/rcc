@@ -1,0 +1,37 @@
+# File Creation Allowlist
+# Each line represents a file path pattern that is allowed to be created
+# Patterns can be:
+#   - Exact file paths: src/index.ts
+#   - Directory patterns: src/modules/
+#   - File extensions: *.ts, *.js, *.json
+#   - Temp directory: tmp/
+
+# Core project files
+src/
+dist/
+tests/
+docs/
+tools/
+config/
+.claude/
+.github/
+docker/
+examples/
+coverage/
+logs/
+
+# File types
+*.ts
+*.js
+*.json
+*.md
+*.yml
+*.yaml
+*.env
+*.config.js
+*.test.ts
+*.spec.ts
+
+# Temporary files (only in tmp directory)
+tmp/
+

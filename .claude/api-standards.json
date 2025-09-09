@@ -1,0 +1,193 @@
+{
+  "api_standards": {
+    "version": "1.0.0",
+    "updated": "2024-01-15",
+    "base_module_requirements": {
+      "required_methods": [
+        {
+          "name": "initialize",
+          "description": "Module initialization method",
+          "parameters": ["config"],
+          "return_type": "Promise<void>",
+          "required": true
+        },
+        {
+          "name": "destroy",
+          "description": "Module cleanup method",
+          "parameters": [],
+          "return_type": "Promise<void>",
+          "required": true
+        },
+        {
+          "name": "handshake",
+          "description": "Module handshake method",
+          "parameters": ["moduleInfo", "connectionInfo"],
+          "return_type": "Promise<void>",
+          "required": true
+        }
+      ],
+      "required_properties": [
+        {
+          "name": "getModuleInfo",
+          "description": "Module information getter",
+          "type": "function",
+          "required": true
+        },
+        {
+          "name": "moduleConfig",
+          "description": "Module configuration",
+          "type": "object",
+          "required": true
+        }
+      ],
+      "required_interfaces": [
+        {
+          "name": "ModuleInfo",
+          "description": "Module information interface",
+          "properties": ["name", "version", "description", "dependencies"],
+          "required": true
+        },
+        {
+          "name": "ConnectionInfo",
+          "description": "Connection information interface",
+          "properties": ["hostname", "port", "protocol", "path"],
+          "required": true
+        }
+      ]
+    },
+    "module_structure_standards": {
+      "required_files": [
+        {
+          "path": "README.md",
+          "description": "Module documentation with Description, Installation, API, and Usage sections",
+          "required": true
+        },
+        {
+          "path": "__test__",
+          "description": "Test directory",
+          "required": true,
+          "is_directory": true
+        },
+        {
+          "path": "src",
+          "description": "Source directory",
+          "required": true,
+          "is_directory": true
+        },
+        {
+          "path": "src/index.ts",
+          "description": "Module entry point",
+          "required": true
+        }
+      ],
+      "required_directories": [
+        "src",
+        "__test__",
+        "constants",
+        "interfaces",
+        "types"
+      ],
+      "required_sections_in_readme": [
+        "Description",
+        "Installation",
+        "API",
+        "Usage"
+      ]
+    },
+    "lifecycle_methods": [
+      {
+        "name": "initialize",
+        "phase": "startup",
+        "required": true
+      },
+      {
+        "name": "handshake",
+        "phase": "connection",
+        "required": true
+      },
+      {
+        "name": "destroy",
+        "phase": "shutdown",
+        "required": true
+      }
+    ],
+    "naming_conventions": {
+      "class_names": {
+        "pattern": "^[A-Z][a-zA-Z0-9]*$",
+        "description": "PascalCase for class names",
+        "example": "UserModule"
+      },
+      "method_names": {
+        "pattern": "^[a-z][a-zA-Z0-9]*$",
+        "description": "camelCase for method names",
+        "example": "initializeModule"
+      },
+      "interface_names": {
+        "pattern": "^[A-Z][a-zA-Z0-9]*$",
+        "description": "PascalCase for interface names",
+        "example": "ModuleConfig"
+      },
+      "constant_names": {
+        "pattern": "^[A-Z][A-Z0-9_]*$",
+        "description": "UPPER_SNAKE_CASE for constants",
+        "example": "MAX_CONNECTIONS"
+      },
+      "file_names": {
+        "pattern": "^[a-z][a-zA-Z0-9]*\\.(ts|js)$",
+        "description": "camelCase for source files with .ts or .js extension",
+        "example": "userModule.ts"
+      },
+      "test_file_names": {
+        "pattern": "^[a-z][a-zA-Z0-9]*\\.test\\.(ts|js)$",
+        "description": "camelCase with .test.ts or .test.js extension",
+        "example": "userModule.test.ts"
+      }
+    },
+    "export_standards": {
+      "default_export": {
+        "required": true,
+        "description": "Module should have a default export"
+      },
+      "named_exports": {
+        "optional": true,
+        "description": "Named exports are optional"
+      },
+      "type_exports": {
+        "required": true,
+        "description": "Types and interfaces should be exported"
+      }
+    },
+    "api_registry_consistency": {
+      "registry_file": ".claude/module-api-registry.json",
+      "required": true,
+      "validation_rules": [
+        "Every module implementation must be registered in the API registry",
+        "Every public method must be documented in the API registry",
+        "Method signatures in implementation must match registry declarations",
+        "When a module is removed, its API registry entry must also be removed"
+      ]
+    },
+    "module_management_standards": {
+      "required_tools": {
+        "module_manager": "scripts/module-manager.sh",
+        "validation_script": "scripts/validate-module-api-registry.js"
+      },
+      "management_commands": {
+        "create": "module-manager.sh create <module_name>",
+        "list": "module-manager.sh list",
+        "inspect": "module-manager.sh inspect <module_name>",
+        "update": "module-manager.sh update <module_name>",
+        "delete": "module-manager.sh delete <module_name>",
+        "validate": "module-manager.sh validate <module_name>",
+        "sync": "module-manager.sh sync"
+      },
+      "lifecycle_rules": [
+        "Always use module-manager.sh for module operations",
+        "Validate module structure after creation",
+        "Check dependencies before deletion",
+        "Maintain API registry consistency during updates",
+        "Create backups before destructive operations"
+      ]
+    }
+  }
+}

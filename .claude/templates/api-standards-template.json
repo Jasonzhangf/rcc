@@ -1,0 +1,25 @@
+{
+  "module": {
+    "name": "ModuleName",
+    "description": "Brief description of the module",
+    "version": "1.0.0",
+    "basePath": "/api/modulename"
+  },
+  "endpoints": [
+    {
+      "name": "methodName",
+      "description": "Brief description of what this method does",
+      "method": "GET",
+      "path": "/methodname",
+      "parameters": [
+        {
+          "name": "parameterName",
+          "type": "string",
+          "description": "Description of the parameter"
+        }
+      ],
+      "returnType": "void",
+      "access": "public"
+    }
+  ]
+}

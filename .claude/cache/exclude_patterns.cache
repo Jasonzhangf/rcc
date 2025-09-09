@@ -1,0 +1,11 @@
+dist/
+node_modules/
+node_modules/acorn/dist/
+node_modules/ts-node/dist/
+node_modules/diff/dist/
+node_modules/make-error/dist/
+node_modules/@jridgewell/sourcemap-codec/dist/
+node_modules/@jridgewell/trace-mapping/dist/
+node_modules/@jridgewell/resolve-uri/dist/
+node_modules/acorn-walk/dist/
+.git/

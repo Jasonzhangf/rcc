@@ -1,0 +1,261 @@
+{
+  "file_creation_allowlist": {
+    "meta": {
+      "version": "1.0.0",
+      "last_updated": "2024-01-15T10:30:00Z",
+      "description": "File creation whitelist for RCC project",
+      "managed_by": "claude-hooks"
+    },
+    "directories": [
+      {
+        "path": "src/",
+        "description": "Source code directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "All source code files and modules"
+      },
+      {
+        "path": "dist/",
+        "description": "Compiled output directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Generated compiled files"
+      },
+      {
+        "path": "tests/",
+        "description": "Test files directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Unit tests, integration tests, E2E tests"
+      },
+      {
+        "path": "docs/",
+        "description": "Documentation directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Project documentation and guides"
+      },
+      {
+        "path": "tools/",
+        "description": "Development tools directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Build scripts, generators, validators"
+      },
+      {
+        "path": "config/",
+        "description": "Configuration files directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Project configuration files"
+      },
+      {
+        "path": ".claude/",
+        "description": "Claude configuration directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Claude Code configuration and rules"
+      },
+      {
+        "path": ".github/",
+        "description": "GitHub workflows directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "GitHub Actions workflows and issue templates"
+      },
+      {
+        "path": "docker/",
+        "description": "Docker configuration directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Docker files and compose configurations"
+      },
+      {
+        "path": "examples/",
+        "description": "Example files directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Usage examples and integration samples"
+      },
+      {
+        "path": "coverage/",
+        "description": "Test coverage directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Test coverage reports and data"
+      },
+      {
+        "path": "logs/",
+        "description": "Log files directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Application and system log files"
+      }
+    ],
+    "file_patterns": [
+      {
+        "pattern": "*.ts",
+        "description": "TypeScript source files",
+        "allowed": true,
+        "notes": "All TypeScript files"
+      },
+      {
+        "pattern": "*.js",
+        "description": "JavaScript files",
+        "allowed": true,
+        "notes": "Compiled JavaScript files"
+      },
+      {
+        "pattern": "*.json",
+        "description": "JSON configuration files",
+        "allowed": true,
+        "notes": "Configuration and data files"
+      },
+      {
+        "pattern": "*.md",
+        "description": "Markdown documentation",
+        "allowed": true,
+        "notes": "Documentation files"
+      },
+      {
+        "pattern": "*.yml",
+        "description": "YAML configuration files",
+        "allowed": true,
+        "notes": "YAML configuration files"
+      },
+      {
+        "pattern": "*.yaml",
+        "description": "YAML configuration files",
+        "allowed": true,
+        "notes": "Alternative YAML extension"
+      },
+      {
+        "pattern": "*.env",
+        "description": "Environment files",
+        "allowed": true,
+        "notes": "Environment configuration files"
+      },
+      {
+        "pattern": "*.config.js",
+        "description": "JavaScript config files",
+        "allowed": true,
+        "notes": "JavaScript-based configuration"
+      },
+      {
+        "pattern": "*.test.ts",
+        "description": "TypeScript test files",
+        "allowed": true,
+        "notes": "TypeScript unit test files"
+      },
+      {
+        "pattern": "*.spec.ts",
+        "description": "TypeScript spec files",
+        "allowed": true,
+        "notes": "TypeScript specification test files"
+      },
+      {
+        "pattern": "*.lock.json",
+        "description": "Lock files",
+        "allowed": true,
+        "notes": "Package dependency lock files"
+      },
+      {
+        "pattern": "*.log",
+        "description": "Log files",
+        "allowed": true,
+        "notes": "Application log files (in logs/ directory preferred)"
+      }
+    ],
+    "specific_files": [
+      {
+        "path": "package.json",
+        "description": "NPM package configuration",
+        "allowed": true,
+        "notes": "Node.js package configuration"
+      },
+      {
+        "path": "package-lock.json",
+        "description": "NPM lock file",
+        "allowed": true,
+        "notes": "NPM dependency lock file"
+      },
+      {
+        "path": "tsconfig.json",
+        "description": "TypeScript configuration",
+        "allowed": true,
+        "notes": "TypeScript compiler configuration"
+      },
+      {
+        "path": ".gitignore",
+        "description": "Git ignore file",
+        "allowed": true,
+        "notes": "Git ignore patterns"
+      },
+      {
+        "path": ".npmignore",
+        "description": "NPM ignore file",
+        "allowed": true,
+        "notes": "NPM publish ignore patterns"
+      },
+      {
+        "path": ".nvmrc",
+        "description": "Node version file",
+        "allowed": true,
+        "notes": "Node.js version specification"
+      },
+      {
+        "path": ".env.example",
+        "description": "Environment example file",
+        "allowed": true,
+        "notes": "Example environment configuration"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "description": "Change log file",
+        "allowed": true,
+        "notes": "Project change history"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "description": "Contributing guidelines",
+        "allowed": true,
+        "notes": "Project contribution guidelines"
+      },
+      {
+        "path": "LICENSE",
+        "description": "License file",
+        "allowed": true,
+        "notes": "Project license"
+      },
+      {
+        "path": "README.md",
+        "description": "Project README",
+        "allowed": true,
+        "notes": "Project main documentation"
+      }
+    ],
+    "temporary_files": {
+      "directory": "tmp/",
+      "description": "Temporary files directory",
+      "allowed": true,
+      "auto_cleanup": true,
+      "max_age_days": 7,
+      "notes": "All temporary and scratch files must be created here"
+    },
+    "rules": {
+      "case_sensitive": false,
+      "allow_subdirectories": true,
+      "require_explicit_allow": true,
+      "block_temp_files_outside_tmp": true,
+      "log_all_attempts": true
+    }
+  },
+  "specific_files": [
+    {
+      "path": "data/custom2.json",
+      "description": "Manually added",
+      "allowed": true,
+      "notes": "Added via command line"
+    }
+  ]
+}

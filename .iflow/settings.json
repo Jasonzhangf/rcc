@@ -1,0 +1,36 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|Bash|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/fanzhang/Documents/github/rcc/.claude/scripts/file-creation-hook.sh pre-tool-use \"$TOOL_NAME\" \"$TOOL_ARGS\" 2>&1 || exit 2"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|Bash|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/fanzhang/Documents/github/rcc/.claude/scripts/file-creation-hook.sh post-tool-use \"$TOOL_NAME\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/fanzhang/Documents/github/rcc/.claude/scripts/file-creation-hook.sh stop 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

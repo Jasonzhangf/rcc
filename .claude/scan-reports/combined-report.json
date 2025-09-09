@@ -1,0 +1,42 @@
+{
+  "scan_info": {
+    "timestamp": "2025-09-09T08:59:16Z",
+    "scan_type": "custom",
+    "project_path": "/Users/fanzhang/Documents/github/rcc",
+    "scanner_version": "1.0.0"
+  },
+  "summary": {
+    "total_files_scanned": 0,
+    "total_violations": 0,
+    "critical_violations": 0,
+    "warning_violations": 0,
+    "info_violations": 0
+  },
+  "results": {
+    "mock_detection": {
+      "status": "not_run",
+      "violations": [],
+      "summary": {}
+    },
+    "hardcode_detection": {
+      "status": "not_run",
+      "violations": [],
+      "summary": {}
+    },
+    "api_validation": {
+      "status": "passed",
+      "violations": [],
+      "summary": {},
+      "violations_count": 0,
+      "result_file": "/Users/fanzhang/Documents/github/rcc/.claude/scan-reports/api-validation-result.json"
+    },
+    "module_structure_validation": {
+      "status": "passed",
+      "violations": [],
+      "summary": {},
+      "violations_count": 0,
+      "result_file": "/Users/fanzhang/Documents/github/rcc/.claude/scan-reports/module-structure-result.json"
+    }
+  },
+  "recommendations": []
+}

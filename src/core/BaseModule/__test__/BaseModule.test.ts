@@ -1103,4 +1103,126 @@ describe('BaseModule', () => {
     // This should not throw any errors
     await expect(module.destroy()).resolves.not.toThrow();
   });
+
+  // 11. Static factory method tests
+  it('should create instance using static factory method', () => {
+    const moduleInfo: ModuleInfo = {
+      id: 'test-static-1',
+      type: 'test',
+      name: 'Test Static Module',
+      version: '1.0.0',
+      description: 'Test static module for unit testing'
+    };
+    
+    const testModule = TestModule.createInstance(moduleInfo);
+    expect(testModule).toBeInstanceOf(TestModule);
+    expect(testModule.getInfo().id).toBe('test-static-1');
+    
+    // Clean up
+    testModule.destroy();
+  });
+
+  // 12. sendRequest method tests
+  it('should send request and receive response', async () => {
+    // Mock the message center sendRequest method
+    const mockResponse: MessageResponse = {
+      messageId: 'response-1',
+      correlationId: 'corr-1',
+      success: true,
+      data: { message: 'Response received' },
+      timestamp: Date.now()
+    };
+    
+    const messageCenterSpy = jest.spyOn((module as any).messageCenter, 'sendRequest')
+      .mockResolvedValue(mockResponse);
+    
+    const response = await (module as TestModule).sendRequestPublic('test_type', { data: 'test' }, 'target-1');
+    
+    expect(response).toEqual(mockResponse);
+    expect(messageCenterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'test_type',
+        source: 'test-1',
+        target: 'target-1',
+        payload: { data: 'test' }
+      }),
+      undefined
+    );
+    
+    messageCenterSpy.mockRestore();
+  });
+
+  it('should send request with timeout', async () => {
+    // Mock the message center sendRequest method
+    const mockResponse: MessageResponse = {
+      messageId: 'response-1',
+      correlationId: 'corr-1',
+      success: true,
+      data: { message: 'Response received' },
+      timestamp: Date.now()
+    };
+    
+    const messageCenterSpy = jest.spyOn((module as any).messageCenter, 'sendRequest')
+      .mockResolvedValue(mockResponse);
+    
+    const response = await (module as TestModule).sendRequestPublic('test_type', { data: 'test' }, 'target-1', 5000);
+    
+    expect(response).toEqual(mockResponse);
+    expect(messageCenterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'test_type',
+        source: 'test-1',
+        target: 'target-1',
+        payload: { data: 'test' }
+      }),
+      5000
+    );
+    
+    messageCenterSpy.mockRestore();
+  });
+
+  // 13. sendRequestAsync method tests
+  it('should send request async with callback', () => {
+    // Mock the message center sendRequestAsync method
+    const messageCenterSpy = jest.spyOn((module as any).messageCenter, 'sendRequestAsync');
+    
+    const mockCallback = jest.fn();
+    
+    (module as TestModule).sendRequestAsyncPublic('test_type', { data: 'test' }, 'target-1', mockCallback);
+    
+    expect(messageCenterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'test_type',
+        source: 'test-1',
+        target: 'target-1',
+        payload: { data: 'test' }
+      }),
+      mockCallback,
+      undefined
+    );
+    
+    messageCenterSpy.mockRestore();
+  });
+
+  it('should send request async with callback and timeout', () => {
+    // Mock the message center sendRequestAsync method
+    const messageCenterSpy = jest.spyOn((module as any).messageCenter, 'sendRequestAsync');
+    
+    const mockCallback = jest.fn();
+    
+    (module as TestModule).sendRequestAsyncPublic('test_type', { data: 'test' }, 'target-1', mockCallback, 5000);
+    
+    expect(messageCenterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'test_type',
+        source: 'test-1',
+        target: 'target-1',
+        payload: { data: 'test' }
+      }),
+      mockCallback,
+      5000
+    );
+    
+    messageCenterSpy.mockRestore();
+  });
 });

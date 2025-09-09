@@ -50,7 +50,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
         // Store provider pool reference for compatibility but load from separate file
         this.configData.provider_pool = providerPool;
       } catch (error) {
-        console.warn(`Warning: Could not load provider configuration: ${error.message}`);
+        console.warn(`Warning: Could not load provider configuration: ${(error instanceof Error ? error.message : String(error))}`);
         this.configData.provider_pool = [];
       }
 
@@ -123,7 +123,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       await fs.writeFile(this.providerConfigPath, JSON.stringify(config, null, 2), 'utf8');
       console.log(`💾 Provider configuration saved to ${this.providerConfigPath}`);
     } catch (error) {
-      console.error(`❌ Failed to save provider configuration: ${error.message}`);
+      console.error(`❌ Failed to save provider configuration: ${(error instanceof Error ? error.message : String(error))}`);
       throw error;
     }
   }
@@ -140,7 +140,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       await fs.writeFile(exportPath, providerConfig, 'utf8');
       console.log(`📤 Provider configuration exported to ${exportPath}`);
     } catch (error) {
-      console.error(`❌ Failed to export provider configuration: ${error.message}`);
+      console.error(`❌ Failed to export provider configuration: ${(error instanceof Error ? error.message : String(error))}`);
       throw error;
     }
   }
@@ -154,7 +154,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       const providerPool = await this.loadProviderConfiguration();
       this.configData.provider_pool = providerPool;
     } catch (error) {
-      console.warn(`Warning: Could not load provider configuration on update: ${error.message}`);
+      console.warn(`Warning: Could not load provider configuration on update: ${(error instanceof Error ? error.message : String(error))}`);
       if (!this.configData.provider_pool) {
         this.configData.provider_pool = [];
       }
@@ -508,7 +508,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
 
       return { valid: true };
     } catch (error) {
-      return { valid: false, reason: `Validation failed: ${error.message}` };
+      return { valid: false, reason: `Validation failed: ${(error instanceof Error ? error.message : String(error))}` };
     }
   }
 
@@ -677,7 +677,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       );
     } catch (error) {
       return this.createErrorResponse(
-        `Operation failed: ${error.message}`,
+        `Operation failed: ${(error instanceof Error ? error.message : String(error))}`,
         POOL_MANAGER_CONSTANTS.STATUS_CODES.INTERNAL_SERVER_ERROR
       );
     }
@@ -719,7 +719,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       );
     } catch (error) {
       return this.createErrorResponse(
-        `Update failed: ${error.message}`,
+        `Update failed: ${(error instanceof Error ? error.message : String(error))}`,
         POOL_MANAGER_CONSTANTS.STATUS_CODES.INTERNAL_SERVER_ERROR
       );
     }

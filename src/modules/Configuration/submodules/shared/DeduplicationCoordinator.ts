@@ -226,7 +226,7 @@ export class DeduplicationCoordinator implements IDeduplicationCoordinator {
 
       return { duplicatesFound, duplicatesResolved, errors };
     } catch (error) {
-      errors.push(`Deduplication audit failed: ${error.message}`);
+      errors.push(`Deduplication audit failed: ${(error instanceof Error ? error.message : String(error))}`);
       return { duplicatesFound, duplicatesResolved, errors };
     }
   }
@@ -236,7 +236,7 @@ export class DeduplicationCoordinator implements IDeduplicationCoordinator {
       try {
         handler(event);
       } catch (error) {
-        console.error(`Error in deduplication event handler: ${error.message}`);
+        console.error(`Error in deduplication event handler: ${(error instanceof Error ? error.message : String(error))}`);
       }
     });
   }

@@ -106,6 +106,14 @@ export class ModuleRegistry {
   }
   
   /**
+   * Gets all registered module types
+   * @returns Array of registered module type names
+   */
+  public getRegisteredTypes(): string[] {
+    return Array.from(this.moduleTypes.keys());
+  }
+
+  /**
    * Removes a module from the registry
    * @param moduleId - Module ID
    */

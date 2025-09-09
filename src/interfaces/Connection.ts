@@ -25,7 +25,17 @@ export interface ConnectionInfo {
   /**
    * Connection status
    */
-  status: 'pending' | 'connected' | 'disconnected' | 'error';
+  status?: 'pending' | 'connected' | 'disconnected' | 'error';
+  
+  /**
+   * Data type for this connection (single type)
+   */
+  dataType?: string;
+  
+  /**
+   * Data types supported by this connection (multiple types)
+   */
+  dataTypes?: string[];
   
   /**
    * Connection metadata

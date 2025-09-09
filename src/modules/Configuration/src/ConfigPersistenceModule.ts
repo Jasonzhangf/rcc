@@ -236,7 +236,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       }
       
     } catch (error) {
-      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, targetPath, error);
     }
   }
@@ -453,7 +453,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return configData;
       
     } catch (error) {
-      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, targetPath, error);
     }
   }
@@ -525,7 +525,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return result;
       
     } catch (error) {
-      this.recordOperation(operationType, filePath, false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, filePath, false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, filePath, error);
     }
   }
@@ -599,7 +599,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
         issues: [{
           type: IntegrityIssueType.FILE_CORRUPTION,
           severity: IssueSeverity.CRITICAL,
-          description: `Failed to verify integrity: ${error.message}`,
+          description: `Failed to verify integrity: ${(error instanceof Error ? error.message : String(error))}`,
           recommendation: 'Restore from backup'
         }]
       };
@@ -703,7 +703,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return result;
       
     } catch (error) {
-      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, targetPath, error);
     }
   }
@@ -770,7 +770,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return backups;
       
     } catch (error) {
-      throw new Error(`Failed to list backups: ${error.message}`);
+      throw new Error(`Failed to list backups: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
   
@@ -856,7 +856,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return result;
       
     } catch (error) {
-      this.recordOperation(operationType, targetPath || '', false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, targetPath || '', false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, targetPath || '', error);
     }
   }
@@ -912,7 +912,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return result;
       
     } catch (error) {
-      this.recordOperation(operationType, '', false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, '', false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, '', error);
     }
   }
@@ -959,7 +959,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
             reclaimedSpace += backup.fileSize;
             deletedBackups.push(backup.id);
           } catch (error) {
-            errors.push(`Failed to delete backup ${backup.id}: ${error.message}`);
+            errors.push(`Failed to delete backup ${backup.id}: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
         
@@ -981,7 +981,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return result;
       
     } catch (error) {
-      throw new Error(`Backup cleanup failed: ${error.message}`);
+      throw new Error(`Backup cleanup failed: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
   
@@ -1102,7 +1102,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return result;
       
     } catch (error) {
-      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, targetPath, false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, targetPath, error);
     }
   }
@@ -1189,7 +1189,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return result;
       
     } catch (error) {
-      this.recordOperation(operationType, finalTargetPath, false, Date.now() - startTime, error.message);
+      this.recordOperation(operationType, finalTargetPath, false, Date.now() - startTime, (error instanceof Error ? error.message : String(error)));
       throw this.createPersistenceError(operationType, finalTargetPath, error);
     }
   }
@@ -1330,7 +1330,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
         lockedAt: Date.now(),
         owner: CONFIG_PERSISTENCE_CONSTANTS.FILE_LOCKING.PROCESS_ID,
         timeout: lockTimeout,
-        errors: [`Lock acquisition failed: ${error.message}`]
+        errors: [`Lock acquisition failed: ${(error instanceof Error ? error.message : String(error))}`]
       };
     }
   }
@@ -1567,7 +1567,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       };
       
     } catch (error) {
-      throw new Error(`Failed to get storage statistics: ${error.message}`);
+      throw new Error(`Failed to get storage statistics: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
   
@@ -1658,7 +1658,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       return {
         overallHealth: HealthStatus.CRITICAL,
         checks,
-        recommendations: [`Health check failed: ${error.message}`],
+        recommendations: [`Health check failed: ${(error instanceof Error ? error.message : String(error))}`],
         criticalIssues: [{
           type: HealthIssueType.PERFORMANCE_DEGRADATION,
           severity: IssueSeverity.CRITICAL,
@@ -1710,7 +1710,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
           console.warn(`Unknown data transfer type: ${metadata?.type}`);
       }
     } catch (error) {
-      console.error(`Error processing received data: ${error.message}`);
+      console.error(`Error processing received data: ${(error instanceof Error ? error.message : String(error))}`);
       
       // Send error response
       await this.transferData({
@@ -1728,18 +1728,19 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
    * @param connectionInfo - Connection information
    * @returns Whether handshake was successful
    */
-  public async handshake(moduleInfo: ModuleInfo, connectionInfo?: ConnectionInfo): Promise<boolean> {
+  public async handshake(targetModule: BaseModule): Promise<boolean> {
     try {
       // Perform config persistence specific handshake validation
       // Check if target module is compatible
+      const moduleInfo = targetModule.getInfo();
       const compatibleTypes = ['config-validator', 'config-loader', 'config-ui'];
       if (!compatibleTypes.includes(moduleInfo.type)) {
         console.warn(`Handshake warning: Module type '${moduleInfo.type}' may not be fully compatible`);
       }
 
-      return await super.handshake(this as unknown as BaseModule);
+      return await super.handshake(targetModule);
     } catch (error) {
-      console.error(`Handshake failed with module ${moduleInfo.id}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Handshake failed with module ${targetModule.getInfo().id}: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -1754,7 +1755,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
         try {
           await this.releaseFileLock(lockId);
         } catch (error) {
-          console.warn(`Failed to release lock ${lockId} during cleanup: ${error.message}`);
+          console.warn(`Failed to release lock ${lockId} during cleanup: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
       
@@ -1773,7 +1774,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
       console.log(`${CONFIG_PERSISTENCE_CONSTANTS.MODULE_NAME} destroyed successfully`);
       
     } catch (error) {
-      console.error(`Error during module destruction: ${error.message}`);
+      console.error(`Error during module destruction: ${(error instanceof Error ? error.message : String(error))}`);
     } finally {
       await super.destroy();
     }
@@ -1849,7 +1850,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
         try {
           await this.validateStorageHealth();
         } catch (error) {
-          console.error('Health monitoring error:', error.message);
+          console.error('Health monitoring error:', (error instanceof Error ? error.message : String(error)));
         }
       }, CONFIG_PERSISTENCE_CONSTANTS.HEALTH_MONITORING.HEALTH_CHECK_INTERVAL_MS);
     }
@@ -1943,7 +1944,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
         }
       }
     } catch (error) {
-      console.warn(`Failed to cleanup stale locks: ${error.message}`);
+      console.warn(`Failed to cleanup stale locks: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
   
@@ -2101,7 +2102,7 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
     } catch (error) {
       // File might not exist, which is fine
       if (error.code !== 'ENOENT') {
-        console.warn(`Failed to cleanup temp file ${tempPath}: ${error.message}`);
+        console.warn(`Failed to cleanup temp file ${tempPath}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }

@@ -434,7 +434,7 @@ export class ConfigValidatorModule extends BaseModule implements IConfigValidato
           console.warn(`Unknown data transfer type: ${dataTransfer.metadata?.type}`);
       }
     } catch (error) {
-      console.error(`Error processing data transfer: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Error processing data transfer: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
       
       // Send error response
       await this.transferData({
@@ -451,18 +451,19 @@ export class ConfigValidatorModule extends BaseModule implements IConfigValidato
    * @param connectionInfo - Connection information
    * @returns Whether handshake was successful
    */
-  public async handshake(moduleInfo: ModuleInfo, connectionInfo?: ConnectionInfo): Promise<boolean> {
+  public async handshake(targetModule: BaseModule): Promise<boolean> {
     try {
       // Perform config validator specific handshake validation
       // Check if target module is compatible
+      const moduleInfo = targetModule.getInfo();
       const compatibleTypes = ['config-loader', 'config-persistence', 'config-ui'];
       if (!compatibleTypes.includes(moduleInfo.type)) {
         console.warn(`Handshake warning: Module type '${moduleInfo.type}' may not be fully compatible`);
       }
 
-      return await super.handshake(this as unknown as BaseModule);
+      return await super.handshake(targetModule);
     } catch (error) {
-      console.error(`Handshake failed with module ${moduleInfo.id}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Handshake failed with module ${targetModule.getInfo().id}: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -582,7 +583,7 @@ export class ConfigValidatorModule extends BaseModule implements IConfigValidato
       
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Syntax validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(`Syntax validation failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
     }
   }
 

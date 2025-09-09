@@ -262,13 +262,13 @@ export class ConfigurationSystemIntegration {
     try {
       blacklistManager.initialized = integration.getBlacklistManager().isInitialized;
     } catch (error) {
-      blacklistManager.error = error.message;
+      blacklistManager.error = (error instanceof Error ? error.message : String(error));
     }
 
     try {
       poolManager.initialized = integration.getPoolManager().isInitialized;
     } catch (error) {
-      poolManager.error = error.message;
+      poolManager.error = (error instanceof Error ? error.message : String(error));
     }
 
     try {
@@ -276,7 +276,7 @@ export class ConfigurationSystemIntegration {
       deduplication.healthy = stats.duplicatesFound === 0;
       deduplication.stats = stats;
     } catch (error) {
-      deduplication.error = error.message;
+      deduplication.error = (error instanceof Error ? error.message : String(error));
     }
 
     try {
@@ -284,7 +284,7 @@ export class ConfigurationSystemIntegration {
     } catch (error) {
       poolHealth = { 
         healthy: false, 
-        issues: [`Pool health check failed: ${error.message}`], 
+        issues: [`Pool health check failed: ${(error instanceof Error ? error.message : String(error))}`], 
         warnings: [] 
       };
     }

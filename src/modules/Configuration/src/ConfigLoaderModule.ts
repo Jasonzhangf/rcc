@@ -81,7 +81,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
 
       console.log(`${CONFIG_LOADER_CONSTANTS.MODULE_NAME} initialized successfully`);
     } catch (error) {
-      throw new Error(`Failed to initialize ConfigLoaderModule: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to initialize ConfigLoaderModule: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
     }
   }
 
@@ -181,7 +181,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
       // Report error to error handler
       const errorData = {
         code: 'CONFIG_LOAD_ERROR',
-        message: error instanceof Error ? error.message : String(error),
+        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error),
         filePath: filePath,
         timestamp: Date.now()
       };
@@ -219,7 +219,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
         );
 
         watcher.on('error', (error) => {
-          console.error(`File watcher error for ${resolvedPath}: ${error.message}`);
+          console.error(`File watcher error for ${resolvedPath}: ${error instanceof Error ? error.message : String(error)}`);
           this.stopWatching(resolvedPath);
         });
 
@@ -265,7 +265,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
     try {
       return await this.processEnvironmentVariables(config, mergedOptions, processed, 0);
     } catch (error) {
-      throw new Error(`Environment variable interpolation failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Environment variable interpolation failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
     }
   }
 
@@ -376,7 +376,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
           console.warn(`Unknown data type received: ${dataTransfer.data.type}`);
       }
     } catch (error) {
-      console.error(`Error processing received data: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Error processing received data: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
     }
   }
 
@@ -517,7 +517,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
 
     } catch (error) {
       result.errors.push({
-        message: error instanceof Error ? error.message : String(error),
+        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error),
         code: 'PARSE_ERROR',
         severity: 'error'
       });
@@ -777,7 +777,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
       try {
         callback(event);
       } catch (error) {
-        console.error(`Error in file watch callback: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`Error in file watch callback: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
       }
     });
   }
@@ -806,7 +806,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
         await this.transferConfigurationData(reloadedConfig);
       }
     } catch (error) {
-      console.error(`Error handling file change: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Error handling file change: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
     }
   }
 
@@ -917,7 +917,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
     } catch (error) {
       await this.transferErrorData({
         type: 'load-error',
-        message: error instanceof Error ? error.message : String(error),
+        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error),
         timestamp: Date.now()
       });
     }
@@ -943,7 +943,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
     } catch (error) {
       await this.transferErrorData({
         type: 'watch-error',
-        message: error instanceof Error ? error.message : String(error),
+        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error),
         timestamp: Date.now()
       });
     }
@@ -960,7 +960,7 @@ export class ConfigLoaderModule extends BaseModule implements IConfigLoaderModul
     } catch (error) {
       await this.transferErrorData({
         type: 'merge-error',
-        message: error instanceof Error ? error.message : String(error),
+        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error),
         timestamp: Date.now()
       });
     }

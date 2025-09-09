@@ -42,6 +42,11 @@ describe('Error Handling Center Communication Tests', () => {
     
     // Create default handler
     mockModuleHandler = {
+      handleId: 'mock-handler',
+      name: 'Mock Handler',
+      priority: 1,
+      isEnabled: true,
+      conditions: [],
       execute: jest.fn()
     } as jest.Mocked<ResponseHandler>;
     
@@ -152,9 +157,12 @@ describe('Error Handling Center Communication Tests', () => {
       const moduleRegistration: ModuleRegistration = {
         moduleId: 'gateway-queue-module',
         moduleName: 'GatewayQueueModule',
+        moduleType: 'test',
         version: '1.0.0',
+        config: { enableLogging: true },
+        capabilities: ['error-handling'],
         responseHandler: mockModuleHandler
-      } as ModuleRegistration;
+      };
 
       errorInterfaceGateway.registerModule(moduleRegistration);
 
@@ -191,9 +199,12 @@ describe('Error Handling Center Communication Tests', () => {
       const moduleRegistration: ModuleRegistration = {
         moduleId: 'async-communication-module',
         moduleName: 'AsyncCommunicationModule',
+        moduleType: 'test',
         version: '1.0.0',
+        config: { enableLogging: true },
+        capabilities: ['error-handling'],
         responseHandler: mockModuleHandler
-      } as ModuleRegistration;
+      };
 
       errorInterfaceGateway.registerModule(moduleRegistration);
 

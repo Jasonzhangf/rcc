@@ -121,7 +121,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
 
       this.log('ConfigUI module initialized successfully');
     } catch (error) {
-      throw new Error(`Failed to initialize ConfigUI module: ${error.message}`);
+      throw new Error(`Failed to initialize ConfigUI module: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -189,7 +189,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
         try {
           client.close();
         } catch (error) {
-          this.log(`Error closing WebSocket connection: ${error.message}`, 'warn');
+          this.log(`Error closing WebSocket connection: ${(error instanceof Error ? error.message : String(error))}`, 'warn');
         }
       });
       this.websocketClients.clear();
@@ -345,7 +345,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       return response;
 
     } catch (error) {
-      this.log(`Configuration request error: ${error.message}`, 'error');
+      this.log(`Configuration request error: ${(error instanceof Error ? error.message : String(error))}`, 'error');
       return this.createErrorResponse(error.message, startTime);
     }
   }
@@ -430,7 +430,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       }
 
     } catch (error) {
-      this.log(`Error processing received data: ${error.message}`, 'error');
+      this.log(`Error processing received data: ${(error instanceof Error ? error.message : String(error))}`, 'error');
     }
   }
 
@@ -440,18 +440,19 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
    * @param connectionInfo - Connection information
    * @returns Whether handshake was successful
    */
-  public async handshake(moduleInfo: ModuleInfo, connectionInfo?: ConnectionInfo): Promise<boolean> {
+  public async handshake(targetModule: BaseModule): Promise<boolean> {
     try {
       // Perform config UI specific handshake validation
       // Check if target module is compatible
+      const moduleInfo = targetModule.getInfo();
       const compatibleTypes = ['config-validator', 'config-persistence', 'config-loader'];
       if (!compatibleTypes.includes(moduleInfo.type)) {
         this.log(`Handshake warning: Module type '${moduleInfo.type}' may not be fully compatible`, 'warn');
       }
 
-      return await super.handshake(this as unknown as BaseModule);
+      return await super.handshake(targetModule);
     } catch (error) {
-      this.log(`Handshake failed with module ${moduleInfo.id}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      this.log(`Handshake failed with module ${targetModule.getInfo().id}: ${error instanceof Error ? error.message : String(error)}`, 'error');
       return false;
     }
   }
@@ -484,7 +485,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       this.log('ConfigUI module destroyed successfully');
       
     } catch (error) {
-      this.log(`Error during module destruction: ${error.message}`, 'error');
+      this.log(`Error during module destruction: ${(error instanceof Error ? error.message : String(error))}`, 'error');
       throw error;
     }
   }
@@ -932,7 +933,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       };
 
     } catch (error) {
-      return this.createErrorResponse(`Failed to add API key: ${error.message}`, Date.now());
+      return this.createErrorResponse(`Failed to add API key: ${(error instanceof Error ? error.message : String(error))}`, Date.now());
     }
   }
 
@@ -985,7 +986,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       };
 
     } catch (error) {
-      return this.createErrorResponse(`Failed to remove API key: ${error.message}`, Date.now());
+      return this.createErrorResponse(`Failed to remove API key: ${(error instanceof Error ? error.message : String(error))}`, Date.now());
     }
   }
 
@@ -1059,7 +1060,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       return this.createErrorResponse('Invalid key configuration', Date.now());
 
     } catch (error) {
-      return this.createErrorResponse(`Failed to update API key: ${error.message}`, Date.now());
+      return this.createErrorResponse(`Failed to update API key: ${(error instanceof Error ? error.message : String(error))}`, Date.now());
     }
   }
 
@@ -1101,7 +1102,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
         try {
           keyToTest = await this.loadKeyFromFile(keyToTest);
         } catch (error) {
-          return this.createErrorResponse(`Failed to load key file: ${error.message}`, Date.now());
+          return this.createErrorResponse(`Failed to load key file: ${(error instanceof Error ? error.message : String(error))}`, Date.now());
         }
       }
 
@@ -1120,7 +1121,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       };
 
     } catch (error) {
-      return this.createErrorResponse(`Failed to test API key: ${error.message}`, Date.now());
+      return this.createErrorResponse(`Failed to test API key: ${(error instanceof Error ? error.message : String(error))}`, Date.now());
     }
   }
 
@@ -1174,7 +1175,7 @@ export class ConfigUIModule extends BaseModule implements IConfigUIModule {
       };
 
     } catch (error) {
-      return this.createErrorResponse(`Failed to rotate keys: ${error.message}`, Date.now());
+      return this.createErrorResponse(`Failed to rotate keys: ${(error instanceof Error ? error.message : String(error))}`, Date.now());
     }
   }
 

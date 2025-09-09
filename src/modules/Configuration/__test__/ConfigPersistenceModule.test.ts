@@ -70,7 +70,7 @@ describe('ConfigPersistenceModule', () => {
     try {
       await fs.rm(testConfigDir, { recursive: true, force: true });
     } catch (error) {
-      console.warn('Failed to cleanup test directory:', error.message);
+      console.warn('Failed to cleanup test directory:', error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error));
     }
   });
 

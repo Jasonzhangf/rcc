@@ -202,7 +202,7 @@ export class ModelsManager extends BaseModule implements IConfigurationSubmodule
       console.error('Model verification error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error during model verification',
+        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error during model verification',
         statusCode: MODELS_MANAGER_CONSTANTS.HTTP_STATUS.INTERNAL_SERVER_ERROR,
         timestamp: Date.now()
       };
@@ -297,7 +297,7 @@ export class ModelsManager extends BaseModule implements IConfigurationSubmodule
       console.error('Token detection error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error during token detection',
+        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error during token detection',
         statusCode: MODELS_MANAGER_CONSTANTS.HTTP_STATUS.INTERNAL_SERVER_ERROR,
         timestamp: Date.now()
       };
@@ -397,7 +397,7 @@ export class ModelsManager extends BaseModule implements IConfigurationSubmodule
 
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error';
       
       return {
         success: false,
@@ -430,7 +430,7 @@ export class ModelsManager extends BaseModule implements IConfigurationSubmodule
         success: false,
         statusCode: MODELS_MANAGER_CONSTANTS.HTTP_STATUS.INTERNAL_SERVER_ERROR,
         responseTime: 0,
-        message: `Token limit test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `Token limit test failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -541,7 +541,7 @@ export class ModelsManager extends BaseModule implements IConfigurationSubmodule
       };
       
     } catch (error) {
-      console.log(`❌ Token detection exception:`, error instanceof Error ? error.message : 'Unknown error');
+      console.log(`❌ Token detection exception:`, error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error');
       return {
         success: false,
         detectedTokens: null,

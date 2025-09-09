@@ -6,6 +6,10 @@ import { Message, MessageResponse } from '../interfaces/Message';
  * Error handler module for centralized error management
  */
 export class ErrorHandlerModule extends BaseModule {
+  // Override the static createInstance method to fix TypeScript inheritance issue
+  static createInstance<T extends ErrorHandlerModule>(this: new (info: ModuleInfo) => T, info: ModuleInfo): T {
+    return new this(info);
+  }
   private errorLog: any[] = [];
   private alertThreshold: number = 10; // Number of errors before alerting
   private alertRecipients: string[] = [];

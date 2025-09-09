@@ -288,7 +288,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.INVALID_THEME,
-        `Failed to set theme: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to set theme: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { theme, error }
       );
     }
@@ -360,7 +360,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.INVALID_LAYOUT,
-        `Failed to update layout: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to update layout: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { layout, error }
       );
     }
@@ -449,7 +449,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.INVALID_COMPONENT,
-        `Failed to add component: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to add component: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { component, error }
       );
     }
@@ -509,7 +509,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.COMPONENT_NOT_FOUND,
-        `Failed to remove component: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to remove component: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { componentId, error }
       );
     }
@@ -594,7 +594,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.INVALID_COMPONENT,
-        `Failed to update component: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to update component: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { componentId, updates, error }
       );
     }
@@ -692,7 +692,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.PREVIEW_GENERATION_FAILED,
-        `Failed to generate preview: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to generate preview: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { previewConfig, error }
       );
     }
@@ -771,7 +771,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.TEMPLATE_NOT_FOUND,
-        `Failed to apply template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to apply template: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { template, error }
       );
     }
@@ -870,7 +870,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.EXPORT_FAILED,
-        `Failed to export configuration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to export configuration: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { format, error }
       );
     }
@@ -973,7 +973,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.IMPORT_FAILED,
-        `Failed to import configuration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to import configuration: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { data, format, error }
       );
     }
@@ -1023,7 +1023,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
       return this.createErrorOutput(
         operationId,
         STATUS_LINE_CONSTANTS.ERRORS.INVALID_CONFIGURATION,
-        `Failed to reset to defaults: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to reset to defaults: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
         { error }
       );
     }
@@ -1080,7 +1080,7 @@ export class StatusLineModule extends BaseModule implements IStatusLineModule {
     } catch (error) {
       return {
         isValid: false,
-        errors: [`Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        errors: [`Validation failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`],
         warnings,
       };
     }

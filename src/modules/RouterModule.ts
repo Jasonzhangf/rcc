@@ -7,6 +7,10 @@ import { ConnectionInfo, DataTransfer } from '../interfaces/Connection';
  * This module acts as a central hub for directing requests to appropriate modules
  */
 export class RouterModule extends BaseModule {
+  // Override the static createInstance method to fix TypeScript inheritance issue
+  static createInstance<T extends RouterModule>(this: new (info: ModuleInfo) => T, info: ModuleInfo): T {
+    return new this(info);
+  }
   /**
    * Route mappings
    */

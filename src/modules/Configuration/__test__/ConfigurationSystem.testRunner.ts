@@ -412,7 +412,7 @@ export class ConfigurationSystemTestRunner {
           duration: performance.now() - startTime,
           memoryDelta: 0,
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)
         });
       }
     }

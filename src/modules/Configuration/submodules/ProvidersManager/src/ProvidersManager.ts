@@ -323,7 +323,7 @@ export class ProvidersManager extends BaseModule implements IConfigurationSubmod
       return this.createResponse(
         false, 
         null, 
-        `Delete failed: ${error.message}`, 
+        `Delete failed: ${(error instanceof Error ? error.message : String(error))}`, 
         PROVIDERS_MANAGER_CONSTANTS.HTTP_STATUS.INTERNAL_SERVER_ERROR
       );
     }
@@ -1286,7 +1286,7 @@ export class ProvidersManager extends BaseModule implements IConfigurationSubmod
     } catch (error) {
       return {
         success: false,
-        message: `Verification failed: ${error.message}`,
+        message: `Verification failed: ${(error instanceof Error ? error.message : String(error))}`,
         responseTime: Date.now() - startTime
       };
     }
@@ -1401,7 +1401,7 @@ export class ProvidersManager extends BaseModule implements IConfigurationSubmod
     } catch (error) {
       return {
         success: false,
-        message: `Token test error: ${error.message}`
+        message: `Token test error: ${(error instanceof Error ? error.message : String(error))}`
       };
     }
   }

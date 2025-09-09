@@ -6,6 +6,10 @@ import { Message, MessageResponse } from '../interfaces/Message';
  * Test module for demonstrating the messaging system
  */
 export class MessagingTestModule extends BaseModule {
+  // Override the static createInstance method to fix TypeScript inheritance issue
+  static createInstance<T extends MessagingTestModule>(this: new (info: ModuleInfo) => T, info: ModuleInfo): T {
+    return new this(info);
+  }
   private receivedMessages: Message[] = [];
   private receivedResponses: MessageResponse[] = [];
   
@@ -162,14 +166,16 @@ export class MessagingTestModule extends BaseModule {
         id: 'messaging-test-1',
         type: 'messaging_test',
         name: 'Messaging Test Module 1',
-        version: '1.0.0'
+        version: '1.0.0',
+        description: 'First messaging test module for unit testing'
       };
       
       const module2Info: ModuleInfo = {
         id: 'messaging-test-2',
         type: 'messaging_test',
         name: 'Messaging Test Module 2',
-        version: '1.0.0'
+        version: '1.0.0',
+        description: 'Second messaging test module for unit testing'
       };
       
       const module1 = MessagingTestModule.createInstance(module1Info);

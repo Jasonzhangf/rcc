@@ -823,6 +823,77 @@ class IntegratedModularServer {
     this.apiRouter.registerHandler('pool', this.poolManager);
     this.apiRouter.registerHandler('models', this.modelsManager);
     
+    // Register virtual routes handler
+    this.apiRouter.registerHandler('virtual-routes', {
+      handle: async (pathParts, method, body) => {
+        console.log(`🛣️ [VirtualRoutesHandler] ${method} /${pathParts.join('/')}`);
+        
+        try {
+          switch (method) {
+            case 'GET':
+              if (pathParts.length === 1) {
+                // GET /api/virtual-routes - Get all virtual routes
+                return await this.getVirtualRoutes();
+              } else if (pathParts.length === 2 && pathParts[1] === 'available-models') {
+                // GET /api/virtual-routes/available-models - Get available models for routing
+                return await this.getAvailableModelsForRouting();
+              } else if (pathParts.length === 3 && pathParts[1] === 'categories') {
+                // GET /api/virtual-routes/categories - Get route categories
+                return await this.getRouteCategories();
+              }
+              break;
+              
+            case 'POST':
+              if (pathParts.length === 1) {
+                // POST /api/virtual-routes - Create new virtual route
+                const routeData = JSON.parse(body || '{}');
+                return await this.createVirtualRoute(routeData);
+              }
+              break;
+              
+            case 'PUT':
+              if (pathParts.length >= 2) {
+                // PUT /api/virtual-routes/{routeId} - Update virtual route
+                const routeId = pathParts[1];
+                const routeData = JSON.parse(body || '{}');
+                return await this.updateVirtualRoute(routeId, routeData);
+              }
+              break;
+              
+            case 'DELETE':
+              if (pathParts.length >= 2) {
+                // DELETE /api/virtual-routes/{routeId} - Delete virtual route
+                const routeId = pathParts[1];
+                return await this.deleteVirtualRoute(routeId);
+              }
+              break;
+              
+            default:
+              return {
+                success: false,
+                error: 'Method not allowed',
+                statusCode: 405,
+                timestamp: Date.now()
+              };
+          }
+        } catch (error) {
+          return {
+            success: false,
+            error: error.message,
+            statusCode: 500,
+            timestamp: Date.now()
+          };
+        }
+        
+        return {
+          success: false,
+          error: 'Not found',
+          statusCode: 404,
+          timestamp: Date.now()
+        };
+      }
+    });
+    
     console.log('✅ [IntegratedModularServer] All route handlers registered');
   }
 
@@ -1010,6 +1081,416 @@ class IntegratedModularServer {
       console.log('   • Deduplication coordination active');
       console.log('='.repeat(80));
     });
+  }
+
+  // Virtual Routes Management Methods
+  async getVirtualRoutes() {
+    // Always return all virtual model categories (never empty)
+    // Only overlay actual route data when config exists - virtual models are always available
+    const virtualModelCategories = this.getBuiltInVirtualModels();
+    
+    try {
+      // Try to load actual route configuration to overlay on virtual models
+      const config = await this.configManager.loadConfig();
+      const configRoutes = config.virtual_routes || {};
+      
+      // Overlay config route data on built-in virtual models (if available)
+      for (const categoryName in virtualModelCategories) {
+        if (configRoutes[categoryName] && configRoutes[categoryName].routes) {
+          // Only overlay routes data - keep built-in metadata like name, display_name
+          virtualModelCategories[categoryName].routes = configRoutes[categoryName].routes;
+          
+          // Overlay additional config properties if they exist
+          if (configRoutes[categoryName].load_balancing) {
+            virtualModelCategories[categoryName].load_balancing = configRoutes[categoryName].load_balancing;
+          }
+          if (configRoutes[categoryName].created_at) {
+            virtualModelCategories[categoryName].created_at = configRoutes[categoryName].created_at;
+          }
+          if (configRoutes[categoryName].updated_at) {
+            virtualModelCategories[categoryName].updated_at = configRoutes[categoryName].updated_at;
+          }
+        }
+        // If no config data exists for this category, keep empty routes array (built-in default)
+      }
+      
+      console.log('🎯 [VirtualRoutesHandler] Always showing all virtual models with config overlay');
+      return {
+        success: true,
+        data: virtualModelCategories,
+        statusCode: 200,
+        timestamp: Date.now(),
+        message: `Retrieved ${Object.keys(virtualModelCategories).length} virtual model categories (always available)`
+      };
+    } catch (error) {
+      console.warn('⚠️ [VirtualRoutesHandler] Config load failed, showing virtual models with empty routes:', error.message);
+      
+      // Always return built-in virtual models even if config fails
+      console.log('🎯 [VirtualRoutesHandler] Always showing all virtual models (config independent)');
+      return {
+        success: true,
+        data: virtualModelCategories,
+        statusCode: 200,
+        timestamp: Date.now(),
+        message: `Retrieved ${Object.keys(virtualModelCategories).length} virtual model categories (config independent)`
+      };
+    }
+  }
+
+  getBuiltInVirtualModels() {
+    // Fixed virtual model categories for routing table - virtual model to target model mapping
+    // These are permanent and never undefined - complete list as user requested
+    return {
+      'default': {
+        name: 'default',
+        display_name: 'Default Models',
+        description: 'General-purpose models for most tasks',
+        routes: [],
+        status: 'active'
+      },
+      'coding': {
+        name: 'coding', 
+        display_name: 'Coding Models',
+        description: 'Models specialized for programming and code generation',
+        routes: [],
+        status: 'active'
+      },
+      'longcontext': {
+        name: 'longcontext',
+        display_name: 'Long Context Models', 
+        description: 'Models with large context windows for long documents',
+        routes: [],
+        status: 'active'
+      },
+      'reasoning': {
+        name: 'reasoning',
+        display_name: 'Reasoning Models',
+        description: 'Models specialized for logical reasoning and analysis', 
+        routes: [],
+        status: 'active'
+      },
+      'websearch': {
+        name: 'websearch',
+        display_name: 'Web Search Models',
+        description: 'Models with web search capabilities',
+        routes: [],
+        status: 'active'
+      },
+      'vision': {
+        name: 'vision',
+        display_name: 'Vision Models',
+        description: 'Models with image processing and vision capabilities',
+        routes: [],
+        status: 'active'
+      },
+      'background': {
+        name: 'background',
+        display_name: 'Background Models',
+        description: 'Models for background processing tasks',
+        routes: [],
+        status: 'active'
+      }
+    };
+  }
+
+  async getAvailableModelsForRouting() {
+    try {
+      const config = await this.configManager.loadConfig();
+      const providers = config.providers || [];
+      const availableModels = [];
+      
+      for (const provider of providers) {
+        if (provider.models && provider.models.length > 0) {
+          provider.models.forEach(model => {
+            if (!model.blacklisted && model.status !== 'inactive') {
+              availableModels.push({
+                provider_id: provider.id,
+                provider_name: provider.name,
+                model_id: model.id,
+                model_name: model.name,
+                protocol: provider.protocol,
+                max_tokens: model.max_tokens || 4096,
+                category: provider.protocol || 'openai'
+              });
+            }
+          });
+        }
+      }
+      
+      // If no models from providers, return mock models for routing
+      if (availableModels.length === 0) {
+        const mockModels = [
+          {
+            provider_id: 'default-openai',
+            provider_name: 'Default OpenAI',
+            model_id: 'gpt-4',
+            model_name: 'gpt-4',
+            protocol: 'openai',
+            max_tokens: 8192,
+            category: 'openai'
+          },
+          {
+            provider_id: 'default-openai',
+            provider_name: 'Default OpenAI', 
+            model_id: 'gpt-3.5-turbo',
+            model_name: 'gpt-3.5-turbo',
+            protocol: 'openai',
+            max_tokens: 4096,
+            category: 'openai'
+          },
+          {
+            provider_id: 'default-anthropic',
+            provider_name: 'Default Anthropic',
+            model_id: 'claude-3-haiku-20240307',
+            model_name: 'claude-3-haiku-20240307',
+            protocol: 'anthropic',
+            max_tokens: 200000,
+            category: 'anthropic'
+          },
+          {
+            provider_id: 'default-gemini',
+            provider_name: 'Default Gemini',
+            model_id: 'gemini-pro',
+            model_name: 'gemini-pro',
+            protocol: 'gemini',
+            max_tokens: 30720,
+            category: 'gemini'
+          }
+        ];
+        return {
+          success: true,
+          data: mockModels,
+          statusCode: 200,
+          timestamp: Date.now(),
+          message: `Retrieved ${mockModels.length} default available models for routing`
+        };
+      }
+      
+      return {
+        success: true,
+        data: availableModels,
+        statusCode: 200,
+        timestamp: Date.now(),
+        message: `Retrieved ${availableModels.length} available models for routing`
+      };
+    } catch (error) {
+      console.error('❌ [VirtualRoutesHandler] Error getting available models:', error);
+      return {
+        success: false,
+        error: error.message,
+        statusCode: 500,
+        timestamp: Date.now()
+      };
+    }
+  }
+
+  async getRouteCategories() {
+    try {
+      const categories = [
+        {
+          id: 'openai',
+          name: 'OpenAI',
+          description: 'OpenAI API compatible models',
+          color: '#00a67e',
+          icon: 'openai'
+        },
+        {
+          id: 'anthropic',
+          name: 'Anthropic',
+          description: 'Claude models from Anthropic',
+          color: '#d97941',
+          icon: 'anthropic'
+        },
+        {
+          id: 'gemini',
+          name: 'Google Gemini',
+          description: 'Google Gemini AI models',
+          color: '#4285f4',
+          icon: 'google'
+        },
+        {
+          id: 'custom',
+          name: 'Custom',
+          description: 'Custom provider models',
+          color: '#6366f1',
+          icon: 'custom'
+        }
+      ];
+      
+      return {
+        success: true,
+        data: categories,
+        statusCode: 200,
+        timestamp: Date.now(),
+        message: `Retrieved ${categories.length} route categories`
+      };
+    } catch (error) {
+      console.error('❌ [VirtualRoutesHandler] Error getting route categories:', error);
+      return {
+        success: false,
+        error: error.message,
+        statusCode: 500,
+        timestamp: Date.now()
+      };
+    }
+  }
+
+  async createVirtualRoute(routeData) {
+    try {
+      const config = await this.configManager.loadConfig();
+      const routes = config.routes || [];
+      
+      // Create new route with generated ID
+      const newRoute = {
+        id: routeData.id || `route-${Date.now()}`,
+        virtual_name: routeData.virtual_name,
+        description: routeData.description || '',
+        target_model: routeData.target_model,
+        provider_id: routeData.provider_id,
+        active: routeData.active !== false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        category: routeData.category || 'custom',
+        priority: routeData.priority || routes.length + 1,
+        ...routeData
+      };
+      
+      routes.push(newRoute);
+      config.routes = routes;
+      await this.configManager.saveConfig(config);
+      
+      console.log(`✅ [VirtualRoutesHandler] Created virtual route: ${newRoute.virtual_name}`);
+      
+      return {
+        success: true,
+        data: newRoute,
+        statusCode: 201,
+        timestamp: Date.now(),
+        message: `Virtual route '${newRoute.virtual_name}' created successfully`
+      };
+    } catch (error) {
+      console.error('❌ [VirtualRoutesHandler] Error creating virtual route:', error);
+      return {
+        success: false,
+        error: error.message,
+        statusCode: 500,
+        timestamp: Date.now()
+      };
+    }
+  }
+
+  async updateVirtualRoute(routeId, routeData) {
+    try {
+      // Check if this is a built-in route (cannot be modified)
+      const builtInRoutes = this.getBuiltInVirtualModels();
+      const isBuiltIn = builtInRoutes.some(r => r.id === routeId);
+      
+      if (isBuiltIn) {
+        return {
+          success: false,
+          error: `Built-in virtual route '${routeId}' cannot be modified`,
+          statusCode: 403,
+          timestamp: Date.now()
+        };
+      }
+      
+      const config = await this.configManager.loadConfig();
+      const routes = config.routes || [];
+      const routeIndex = routes.findIndex(r => r.id === routeId);
+      
+      if (routeIndex === -1) {
+        return {
+          success: false,
+          error: `Virtual route '${routeId}' not found`,
+          statusCode: 404,
+          timestamp: Date.now()
+        };
+      }
+      
+      // Update route (only custom routes can be modified)
+      routes[routeIndex] = {
+        ...routes[routeIndex],
+        ...routeData,
+        id: routeId, // Preserve original ID
+        built_in: false, // Ensure custom routes are not marked as built-in
+        immutable: false,
+        updated_at: new Date().toISOString()
+      };
+      
+      config.routes = routes;
+      await this.configManager.saveConfig(config);
+      
+      console.log(`✅ [VirtualRoutesHandler] Updated custom virtual route: ${routeId}`);
+      
+      return {
+        success: true,
+        data: routes[routeIndex],
+        statusCode: 200,
+        timestamp: Date.now(),
+        message: `Custom virtual route '${routeId}' updated successfully`
+      };
+    } catch (error) {
+      console.error('❌ [VirtualRoutesHandler] Error updating virtual route:', error);
+      return {
+        success: false,
+        error: error.message,
+        statusCode: 500,
+        timestamp: Date.now()
+      };
+    }
+  }
+
+  async deleteVirtualRoute(routeId) {
+    try {
+      // Check if this is a built-in route (cannot be deleted)
+      const builtInRoutes = this.getBuiltInVirtualModels();
+      const isBuiltIn = builtInRoutes.some(r => r.id === routeId);
+      
+      if (isBuiltIn) {
+        return {
+          success: false,
+          error: `Built-in virtual route '${routeId}' cannot be deleted`,
+          statusCode: 403,
+          timestamp: Date.now()
+        };
+      }
+      
+      const config = await this.configManager.loadConfig();
+      const routes = config.routes || [];
+      const routeIndex = routes.findIndex(r => r.id === routeId);
+      
+      if (routeIndex === -1) {
+        return {
+          success: false,
+          error: `Virtual route '${routeId}' not found`,
+          statusCode: 404,
+          timestamp: Date.now()
+        };
+      }
+      
+      // Remove custom route only
+      const deletedRoute = routes.splice(routeIndex, 1)[0];
+      config.routes = routes;
+      await this.configManager.saveConfig(config);
+      
+      console.log(`✅ [VirtualRoutesHandler] Deleted custom virtual route: ${routeId}`);
+      
+      return {
+        success: true,
+        data: deletedRoute,
+        statusCode: 200,
+        timestamp: Date.now(),
+        message: `Custom virtual route '${routeId}' deleted successfully`
+      };
+    } catch (error) {
+      console.error('❌ [VirtualRoutesHandler] Error deleting virtual route:', error);
+      return {
+        success: false,
+        error: error.message,
+        statusCode: 500,
+        timestamp: Date.now()
+      };
+    }
   }
 
   async stop() {

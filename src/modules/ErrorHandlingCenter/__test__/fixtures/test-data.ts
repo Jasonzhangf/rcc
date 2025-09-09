@@ -12,7 +12,7 @@ import {
   PolicyType,
   ResponseStatus,
   ActionType
-} from '../types/ErrorHandlingCenter.types';
+} from '../../../../interfaces/SharedTypes';
 
 // Test module sources
 export const TEST_MODULE_SOURCES: ModuleSource[] = [

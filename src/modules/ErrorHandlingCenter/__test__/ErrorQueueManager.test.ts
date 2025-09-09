@@ -296,7 +296,11 @@ describe('ErrorQueueManager', () => {
         expect(status.size).toBe(0);
         expect(status.priorityCounts).toBeDefined();
         if (status.priorityCounts) {
-          expect(Object.keys(status.priorityCounts)).toHaveLength(0);
+          // All priority queues should exist but have 0 count
+          expect(status.priorityCounts.critical).toBe(0);
+          expect(status.priorityCounts.high).toBe(0);
+          expect(status.priorityCounts.medium).toBe(0);
+          expect(status.priorityCounts.low).toBe(0);
         }
       });
     });
@@ -317,7 +321,11 @@ describe('ErrorQueueManager', () => {
       test('should return empty counts for empty queue', () => {
         const counts = errorQueueManager.getPriorityCounts();
         
-        expect(Object.keys(counts)).toHaveLength(0);
+        // All priority queues should exist but have 0 count
+        expect(counts.critical).toBe(0);
+        expect(counts.high).toBe(0);
+        expect(counts.medium).toBe(0);
+        expect(counts.low).toBe(0);
       });
     });
   });
@@ -352,6 +360,9 @@ describe('ErrorQueueManager', () => {
       
       // Mock to track processing state
       const flushPromise = errorQueueManager.flush();
+      
+      // Add a small delay to let the async operation start
+      await new Promise(resolve => setTimeout(resolve, 10));
       const status = errorQueueManager.getQueueStatus();
       
       expect(status.Processing).toBe(true);

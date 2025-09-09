@@ -242,6 +242,44 @@ export class ConfigPersistenceModule extends BaseModule implements IConfigPersis
   }
   
   /**
+   * Saves provider configuration to separate provider.json file
+   * @param providerConfig - Provider configuration data to save
+   * @returns Promise resolving to persistence result
+   */
+  public async saveProviderConfiguration(providerConfig: any): Promise<PersistenceResult> {
+    const providerConfigPath = path.join(
+      CONFIG_PERSISTENCE_CONSTANTS.FILE_SYSTEM.DEFAULT_CONFIG_DIR,
+      CONFIG_PERSISTENCE_CONSTANTS.FILE_SYSTEM.PROVIDER_CONFIG_FILENAME
+    );
+    
+    return this.saveConfiguration(providerConfig, providerConfigPath);
+  }
+  
+  /**
+   * Loads provider configuration from separate provider.json file
+   * @returns Promise resolving to provider configuration data
+   */
+  public async loadProviderConfiguration(): Promise<ConfigurationData> {
+    const providerConfigPath = path.join(
+      CONFIG_PERSISTENCE_CONSTANTS.FILE_SYSTEM.DEFAULT_CONFIG_DIR,
+      CONFIG_PERSISTENCE_CONSTANTS.FILE_SYSTEM.PROVIDER_CONFIG_FILENAME
+    );
+    
+    return this.loadConfiguration(providerConfigPath);
+  }
+  
+  /**
+   * Exports provider configuration to specified format and location
+   * @param exportPath - Target export path
+   * @param format - Export format (defaults to JSON)
+   * @returns Promise resolving to export result
+   */
+  public async exportProviderConfiguration(exportPath: string, format: ExportFormat = 'json'): Promise<ExportResult> {
+    const providerConfig = await this.loadProviderConfiguration();
+    return this.exportConfiguration(providerConfig.parsed, exportPath, format);
+  }
+  
+  /**
    * Performs atomic configuration save operation
    * @param config - Configuration data
    * @param filePath - Target file path

@@ -523,26 +523,28 @@ describe('ErrorClassifier', () => {
 });
 
 describe('Utility Methods', () => {
+  let localErrorClassifier: ErrorClassifier;
+  
   beforeEach(async () => {
-    errorClassifier = new ErrorClassifier();
-    await errorClassifier.initialize();
+    localErrorClassifier = new ErrorClassifier();
+    await localErrorClassifier.initialize();
   });
 
   test('should enable and disable metrics collection', () => {
-    const statusBefore = errorClassifier.getStatus();
+    const statusBefore = localErrorClassifier.getStatus();
     expect(statusBefore.enableMetrics).toBe(true);
     
-    errorClassifier.setMetricsEnabled(false);
-    const statusAfter = errorClassifier.getStatus();
+    localErrorClassifier.setMetricsEnabled(false);
+    const statusAfter = localErrorClassifier.getStatus();
     expect(statusAfter.enableMetrics).toBe(false);
     
-    errorClassifier.setMetricsEnabled(true);
-    const statusFinal = errorClassifier.getStatus();
+    localErrorClassifier.setMetricsEnabled(true);
+    const statusFinal = localErrorClassifier.getStatus();
     expect(statusFinal.enableMetrics).toBe(true);
   });
 
   test('should get classifier status', () => {
-    const status = errorClassifier.getStatus();
+    const status = localErrorClassifier.getStatus();
     
     expect(status).toBeDefined();
     expect(typeof status.isInitialized).toBe('boolean');
@@ -555,10 +557,13 @@ describe('Utility Methods', () => {
 });
 
 describe('Shutdown', () => {
+  let shutdownErrorClassifier: ErrorClassifier;
+  let shutdownMockModuleSource: ModuleSource;
+  
   beforeEach(async () => {
-    errorClassifier = new ErrorClassifier();
-    await errorClassifier.initialize();
-    mockModuleSource = TEST_MODULE_SOURCES[0];
+    shutdownErrorClassifier = new ErrorClassifier();
+    await shutdownErrorClassifier.initialize();
+    shutdownMockModuleSource = TEST_MODULE_SOURCES[0];
   });
 
   test('should shutdown successfully and clear rules', async () => {
@@ -572,12 +577,12 @@ describe('Shutdown', () => {
       result: {}
     };
     
-    errorClassifier.registerClassificationRule(rule as any);
-    expect(errorClassifier.getClassificationRules().length).toBeGreaterThan(0);
+    shutdownErrorClassifier.registerClassificationRule(rule as any);
+    expect(shutdownErrorClassifier.getClassificationRules().length).toBeGreaterThan(0);
     
-    await errorClassifier.shutdown();
+    await shutdownErrorClassifier.shutdown();
     
-    const status = errorClassifier.getStatus();
+    const status = shutdownErrorClassifier.getStatus();
     expect(status.isInitialized).toBe(false);
     // Rules should be cleared on shutdown
     expect(status.classificationRulesCount).toBe(0);
@@ -585,11 +590,11 @@ describe('Shutdown', () => {
 
   test('should handle shutdown errors gracefully', async () => {
     // Mock clearRules to throw
-    jest.spyOn(errorClassifier, 'clearRules').mockImplementationOnce(() => {
+    jest.spyOn(shutdownErrorClassifier, 'clearRules').mockImplementationOnce(() => {
       throw new Error('Clear rules failed');
     });
     
-    await expect(errorClassifier.shutdown()).rejects.toThrow('Clear rules failed');
+    await expect(shutdownErrorClassifier.shutdown()).rejects.toThrow('Clear rules failed');
   });
 
   test('should not shutdown when not initialized', async () => {
@@ -600,15 +605,18 @@ describe('Shutdown', () => {
 });
 
 describe('Edge Cases', () => {
+  let edgeErrorClassifier: ErrorClassifier;
+  let edgeMockModuleSource: ModuleSource;
+  
   beforeEach(async () => {
-    errorClassifier = new ErrorClassifier();
-    await errorClassifier.initialize();
-    mockModuleSource = TEST_MODULE_SOURCES[0];
+    edgeErrorClassifier = new ErrorClassifier();
+    await edgeErrorClassifier.initialize();
+    edgeMockModuleSource = TEST_MODULE_SOURCES[0];
   });
 
   test('should handle error with empty message', async () => {
     const emptyError = new Error('');
-    const classification = await errorClassifier.classify(emptyError, mockModuleSource);
+    const classification = await edgeErrorClassifier.classify(emptyError, edgeMockModuleSource);
     
     // Should still classify with defaults
     expect(classification).toBeDefined();
@@ -618,7 +626,7 @@ describe('Edge Cases', () => {
   test('should handle error with very long message', async () => {
     const longMessage = 'A'.repeat(10000); // 10KB message
     const longError = new Error(longMessage);
-    const classification = await errorClassifier.classify(longError, mockModuleSource);
+    const classification = await edgeErrorClassifier.classify(longError, edgeMockModuleSource);
     
     expect(classification).toBeDefined();
   });
@@ -631,7 +639,7 @@ describe('Edge Cases', () => {
     } as ModuleSource;
     
     const error = new Error('Error with incomplete source');
-    const classification = await errorClassifier.classify(error, incompleteSource);
+    const classification = await edgeErrorClassifier.classify(error, incompleteSource);
     
     expect(classification).toBeDefined();
   });
@@ -658,15 +666,15 @@ describe('Edge Cases', () => {
         }
       };
       
-      errorClassifier.registerClassificationRule(rule as any);
+      edgeErrorClassifier.registerClassificationRule(rule as any);
     }
     
-    expect(errorClassifier.getClassificationRules().length).toBeGreaterThanOrEqual(100);
+    expect(edgeErrorClassifier.getClassificationRules().length).toBeGreaterThanOrEqual(100);
     
     // Should still perform classification reasonably fast
     const startTime = Date.now();
     const error = new Error('Performance test error');
-    const classification = await errorClassifier.classify(error, mockModuleSource);
+    const classification = await edgeErrorClassifier.classify(error, edgeMockModuleSource);
     const endTime = Date.now();
     
     expect(classification).toBeDefined();

@@ -24,6 +24,7 @@ export const CONFIG_PERSISTENCE_CONSTANTS = {
   // File and Path Configuration
   FILE_SYSTEM: {
     DEFAULT_CONFIG_FILENAME: 'config.json',
+    PROVIDER_CONFIG_FILENAME: 'provider.json',
     DEFAULT_CONFIG_DIR: './config',
     BACKUP_DIR: './config/backups',
     TEMP_DIR: './config/temp',

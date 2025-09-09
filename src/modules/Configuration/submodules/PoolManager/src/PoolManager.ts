@@ -16,6 +16,7 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
   private configManager: IConfigManager | null = null;
   private configData: IConfigData | null = null;
   private deduplicationCoordinator: IDeduplicationCoordinator | null = null;
+  private providerConfigPath: string = './config/provider.json';
 
   constructor() {
     super();
@@ -27,8 +28,8 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       type: 'configuration-submodule',
       metadata: {
         routes: [POOL_MANAGER_CONSTANTS.API_ROUTES.POOL],
-        capabilities: ['pool_management', 'deduplication', 'api_routing', 'validation', 'metrics'],
-        dependencies: ['ConfigManager']
+        capabilities: ['pool_management', 'deduplication', 'api_routing', 'validation', 'metrics', 'separate_provider_config'],
+        dependencies: ['ConfigManager', 'ConfigPersistenceModule']
       }
     };
   }
@@ -43,13 +44,18 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       this.configManager = data.configManager;
       this.configData = await this.configManager.loadConfig();
 
-      // Initialize provider pool array if it doesn't exist
-      if (!this.configData.provider_pool) {
+      // Load provider pool from separate configuration file
+      try {
+        const providerPool = await this.loadProviderConfiguration();
+        // Store provider pool reference for compatibility but load from separate file
+        this.configData.provider_pool = providerPool;
+      } catch (error) {
+        console.warn(`Warning: Could not load provider configuration: ${error.message}`);
         this.configData.provider_pool = [];
       }
 
       this.isInitialized = true;
-      console.log(`✅ ${POOL_MANAGER_CONSTANTS.MODULE_NAME} initialized successfully`);
+      console.log(`✅ ${POOL_MANAGER_CONSTANTS.MODULE_NAME} initialized successfully with separate provider config`);
     } catch (error) {
       const errorMsg = `${POOL_MANAGER_CONSTANTS.ERROR_MESSAGES.INITIALIZATION_FAILED}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
@@ -70,16 +76,91 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
     console.log(`🧹 ${POOL_MANAGER_CONSTANTS.MODULE_NAME} destroyed`);
   }
 
+  /**
+   * Loads provider configuration from separate provider.json file
+   * @returns Promise resolving to provider pool data
+   */
+  async loadProviderConfiguration(): Promise<any> {
+    try {
+      const fs = await import('fs/promises');
+      const configContent = await fs.readFile(this.providerConfigPath, 'utf8');
+      const providerConfig = JSON.parse(configContent);
+      return providerConfig.provider_pool || [];
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        // Create default provider config file if it doesn't exist
+        const defaultConfig = {
+          version: '2.0.0',
+          provider_pool: [],
+          last_updated: new Date().toISOString()
+        };
+        await this.saveProviderConfiguration(defaultConfig);
+        return defaultConfig.provider_pool;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Saves provider configuration to separate provider.json file
+   * @param providerPool - Provider pool data to save
+   * @returns Promise resolving to save result
+   */
+  async saveProviderConfiguration(config: any): Promise<void> {
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      
+      // Ensure directory exists
+      const configDir = path.dirname(this.providerConfigPath);
+      await fs.mkdir(configDir, { recursive: true });
+      
+      // Update timestamp
+      if (typeof config === 'object' && config !== null) {
+        config.last_updated = new Date().toISOString();
+      }
+      
+      await fs.writeFile(this.providerConfigPath, JSON.stringify(config, null, 2), 'utf8');
+      console.log(`💾 Provider configuration saved to ${this.providerConfigPath}`);
+    } catch (error) {
+      console.error(`❌ Failed to save provider configuration: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Exports provider configuration to specified path
+   * @param exportPath - Target export path
+   * @returns Promise resolving to export result
+   */
+  async exportProviderConfiguration(exportPath: string): Promise<void> {
+    try {
+      const fs = await import('fs/promises');
+      const providerConfig = await fs.readFile(this.providerConfigPath, 'utf8');
+      await fs.writeFile(exportPath, providerConfig, 'utf8');
+      console.log(`📤 Provider configuration exported to ${exportPath}`);
+    } catch (error) {
+      console.error(`❌ Failed to export provider configuration: ${error.message}`);
+      throw error;
+    }
+  }
+
   // IConfigurationSubmodule implementation
   async onConfigUpdate(configData: IConfigData): Promise<void> {
     this.configData = configData;
     
-    // Initialize provider pool array if it doesn't exist
-    if (!this.configData.provider_pool) {
-      this.configData.provider_pool = [];
+    // Load provider pool from separate configuration file on config update
+    try {
+      const providerPool = await this.loadProviderConfiguration();
+      this.configData.provider_pool = providerPool;
+    } catch (error) {
+      console.warn(`Warning: Could not load provider configuration on update: ${error.message}`);
+      if (!this.configData.provider_pool) {
+        this.configData.provider_pool = [];
+      }
     }
 
-    console.log(`📝 ${POOL_MANAGER_CONSTANTS.MODULE_NAME} received config update`);
+    console.log(`📝 ${POOL_MANAGER_CONSTANTS.MODULE_NAME} received config update with separate provider config`);
   }
 
   validateConfig(configData: IConfigData): boolean {
@@ -123,6 +204,12 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       switch (method) {
         case POOL_MANAGER_CONSTANTS.HTTP_METHODS.GET:
           return await this.handleGetRequest(action);
+        
+        case POOL_MANAGER_CONSTANTS.HTTP_METHODS.POST:
+          return await this.handlePostRequest(action, body);
+          
+        case POOL_MANAGER_CONSTANTS.HTTP_METHODS.PUT:
+          return await this.handlePutRequest(action, body);
         
         case POOL_MANAGER_CONSTANTS.HTTP_METHODS.DELETE:
           return await this.handleDeleteRequest(action);
@@ -547,6 +634,95 @@ export class PoolManager extends BaseModule implements IConfigurationSubmodule, 
       POOL_MANAGER_CONSTANTS.ERROR_MESSAGES.BAD_REQUEST,
       POOL_MANAGER_CONSTANTS.STATUS_CODES.BAD_REQUEST
     );
+  }
+
+  private async handlePostRequest(action?: string, body?: string): Promise<IApiResponse> {
+    try {
+      if (action === 'save') {
+        // POST /api/pool/save - Save provider configuration
+        const providerConfig = {
+          version: '2.0.0',
+          provider_pool: this.configData?.provider_pool || [],
+          last_updated: new Date().toISOString()
+        };
+        
+        await this.saveProviderConfiguration(providerConfig);
+        
+        return {
+          success: true,
+          data: { saved: true, path: this.providerConfigPath },
+          statusCode: POOL_MANAGER_CONSTANTS.STATUS_CODES.SUCCESS,
+          timestamp: Date.now(),
+          message: 'Provider configuration saved successfully'
+        };
+      } else if (action === 'export') {
+        // POST /api/pool/export - Export provider configuration
+        const requestData = body ? JSON.parse(body) : {};
+        const exportPath = requestData.path || './exported-provider-config.json';
+        
+        await this.exportProviderConfiguration(exportPath);
+        
+        return {
+          success: true,
+          data: { exported: true, path: exportPath },
+          statusCode: POOL_MANAGER_CONSTANTS.STATUS_CODES.SUCCESS,
+          timestamp: Date.now(),
+          message: 'Provider configuration exported successfully'
+        };
+      }
+      
+      return this.createErrorResponse(
+        POOL_MANAGER_CONSTANTS.ERROR_MESSAGES.BAD_REQUEST,
+        POOL_MANAGER_CONSTANTS.STATUS_CODES.BAD_REQUEST
+      );
+    } catch (error) {
+      return this.createErrorResponse(
+        `Operation failed: ${error.message}`,
+        POOL_MANAGER_CONSTANTS.STATUS_CODES.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  private async handlePutRequest(action?: string, body?: string): Promise<IApiResponse> {
+    try {
+      if (action === 'update') {
+        // PUT /api/pool/update - Update provider configuration
+        const requestData = body ? JSON.parse(body) : {};
+        
+        if (requestData.provider_pool) {
+          const providerConfig = {
+            version: '2.0.0',
+            provider_pool: requestData.provider_pool,
+            last_updated: new Date().toISOString()
+          };
+          
+          await this.saveProviderConfiguration(providerConfig);
+          
+          // Update local cache
+          if (this.configData) {
+            this.configData.provider_pool = requestData.provider_pool;
+          }
+          
+          return {
+            success: true,
+            data: { updated: true, provider_pool: requestData.provider_pool },
+            statusCode: POOL_MANAGER_CONSTANTS.STATUS_CODES.SUCCESS,
+            timestamp: Date.now(),
+            message: 'Provider configuration updated successfully'
+          };
+        }
+      }
+      
+      return this.createErrorResponse(
+        POOL_MANAGER_CONSTANTS.ERROR_MESSAGES.BAD_REQUEST,
+        POOL_MANAGER_CONSTANTS.STATUS_CODES.BAD_REQUEST
+      );
+    } catch (error) {
+      return this.createErrorResponse(
+        `Update failed: ${error.message}`,
+        POOL_MANAGER_CONSTANTS.STATUS_CODES.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   private findProvider(providerId: string): IProvider | null {

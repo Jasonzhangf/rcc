@@ -71,22 +71,28 @@ export class ErrorQueueManager implements IErrorQueueManager {
     this.ensureInitialized();
     
     try {
-      // Check queue capacity
+      // Check queue capacity and make room if needed
       if (this.queue.length >= this.maxQueueSize) {
         this.evictLowPriorityErrors();
       }
       
-      // Add to appropriate priority queue
-      const priority = this.getPriorityKey(error.classification.severity);
-      const priorityQueue = this.priorityQueue.get(priority);
-      if (priorityQueue) {
-        priorityQueue.push(error);
+      // Ensure we have space (should be true after eviction)
+      if (this.queue.length < this.maxQueueSize) {
+        // Add to appropriate priority queue
+        const priority = this.getPriorityKey(error.classification.severity);
+        const priorityQueue = this.priorityQueue.get(priority);
+        if (priorityQueue) {
+          priorityQueue.push(error);
+        }
+        
+        // Add to main queue
+        this.queue.push(error);
+        
+        console.log(`Error ${error.errorId} enqueued with priority ${priority}`);
+      } else {
+        // If still no space, don't add the error
+        console.warn(`Error ${error.errorId} not enqueued - queue still full after eviction`);
       }
-      
-      // Add to main queue
-      this.queue.push(error);
-      
-      console.log(`Error ${error.errorId} enqueued with priority ${priority}`);
     } catch (error) {
       const errorObj = error as Error;
       console.error(`Failed to enqueue error:`, errorObj);
@@ -342,7 +348,7 @@ export class ErrorQueueManager implements IErrorQueueManager {
    * Evict low priority errors when queue is full
    */
   private evictLowPriorityErrors(): void {
-    const toEvict = Math.floor(this.queue.length * 0.1); // Evict 10%
+    const toEvict = Math.max(1, Math.floor(this.queue.length * 0.1)); // Evict at least 1, or 10%
     let evictedCount = 0;
     
     // Evict from low to high priority

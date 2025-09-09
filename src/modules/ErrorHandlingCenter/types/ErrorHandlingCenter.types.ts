@@ -16,8 +16,32 @@ import {
   RuleType, 
   ConditionOperator, 
   LogicalOperator,
-  ResponsePriority
+  ResponsePriority,
+  ErrorSource,
+  ErrorImpact,
+  ErrorRecoverability
 } from '../../../interfaces/SharedTypes';
+
+// Re-export all the imported types to ensure they're available
+export {
+  ModuleSource, 
+  ErrorClassification, 
+  ErrorContext, 
+  ResponseHandler, 
+  ErrorType, 
+  ErrorSeverity, 
+  ErrorResponse, 
+  ModuleRegistration, 
+  PolicyType, 
+  Action, 
+  RuleType, 
+  ConditionOperator, 
+  LogicalOperator,
+  ResponsePriority,
+  ErrorSource,
+  ErrorImpact,
+  ErrorRecoverability
+};
 
 // Additional Error Handling Center specific types
 export type ErrorHandlingCenterTypes = {

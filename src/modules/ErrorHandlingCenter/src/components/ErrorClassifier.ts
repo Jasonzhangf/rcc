@@ -40,7 +40,7 @@ export class ErrorClassifier implements IErrorClassifier {
     }
 
     try {
-      // Register default classification rules
+      // Register default classification rules (before setting isInitialized)
       this.registerDefaultClassificationRules();
       
       this.isInitialized = true;
@@ -92,13 +92,16 @@ export class ErrorClassifier implements IErrorClassifier {
    * @param rule - Classification rule to register
    */
   public registerClassificationRule(rule: ClassificationRule): void {
-    this.ensureInitialized();
+    // Allow registration during initialization
+    if (this.isInitialized) {
+      this.ensureInitialized();
+    }
     
     try {
       this.validateClassificationRule(rule);
       this.classificationRules.push(rule);
       
-      if (this.enableMetrics) {
+      if (this.enableMetrics && this.isInitialized) {
         console.log(`Classification rule ${rule.name} registered successfully`);
       }
     } catch (error) {
@@ -112,13 +115,16 @@ export class ErrorClassifier implements IErrorClassifier {
    * @param rule - Severity rule to register
    */
   public registerSeverityRule(rule: SeverityRule): void {
-    this.ensureInitialized();
+    // Allow registration during initialization
+    if (this.isInitialized) {
+      this.ensureInitialized();
+    }
     
     try {
       this.validateSeverityRule(rule);
       this.severityRules.push(rule);
       
-      if (this.enableMetrics) {
+      if (this.enableMetrics && this.isInitialized) {
         console.log(`Severity rule ${rule.name} registered successfully`);
       }
     } catch (error) {
@@ -132,13 +138,16 @@ export class ErrorClassifier implements IErrorClassifier {
    * @param rule - Impact rule to register
    */
   public registerImpactRule(rule: ImpactRule): void {
-    this.ensureInitialized();
+    // Allow registration during initialization
+    if (this.isInitialized) {
+      this.ensureInitialized();
+    }
     
     try {
       this.validateImpactRule(rule);
       this.impactRules.push(rule);
       
-      if (this.enableMetrics) {
+      if (this.enableMetrics && this.isInitialized) {
         console.log(`Impact rule ${rule.name} registered successfully`);
       }
     } catch (error) {
@@ -152,13 +161,16 @@ export class ErrorClassifier implements IErrorClassifier {
    * @param rule - Recoverability rule to register
    */
   public registerRecoverabilityRule(rule: RecoverabilityRule): void {
-    this.ensureInitialized();
+    // Allow registration during initialization
+    if (this.isInitialized) {
+      this.ensureInitialized();
+    }
     
     try {
       this.validateRecoverabilityRule(rule);
       this.recoverabilityRules.push(rule);
       
-      if (this.enableMetrics) {
+      if (this.enableMetrics && this.isInitialized) {
         console.log(`Recoverability rule ${rule.name} registered successfully`);
       }
     } catch (error) {

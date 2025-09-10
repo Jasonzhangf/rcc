@@ -41,6 +41,8 @@ export interface StreamConversionNeeds {
   sourceFormat: 'stream' | 'non-stream' | 'none';
   /** Target format */
   targetFormat: 'stream' | 'non-stream' | 'none';
+  /** Conversion mode */
+  conversionMode: 'stream-to-non-stream' | 'non-stream-to-stream' | 'none';
 }
 
 /**
@@ -80,7 +82,7 @@ export interface StreamProcessingContext {
 }
 
 export class WorkflowModule extends BasePipelineModule {
-  protected config: WorkflowConfig = {} as WorkflowConfig;
+  protected override config: WorkflowConfig = {} as WorkflowConfig;
   private activeStreams: Map<string, StreamProcessingContext> = new Map();
 
   constructor(info: ModuleInfo) {
@@ -92,7 +94,7 @@ export class WorkflowModule extends BasePipelineModule {
    * Configure the Workflow module
    * @param config - Configuration object
    */
-  async configure(config: WorkflowConfig): Promise<void> {
+  override async configure(config: WorkflowConfig): Promise<void> {
     this.logInfo('Configuring WorkflowModule', config, 'configure');
     
     this.config = config;
@@ -109,7 +111,7 @@ export class WorkflowModule extends BasePipelineModule {
    * @param request - Input request data
    * @returns Promise<any> - Converted request data
    */
-  async process(request: any): Promise<any> {
+  override async process(request: any): Promise<any> {
     this.logInfo('Processing WorkflowModule request', {
       conversionMode: this.config?.conversionMode,
       enableStreamProcessing: this.config?.enableStreamProcessing,
@@ -155,7 +157,7 @@ export class WorkflowModule extends BasePipelineModule {
    * @param response - Input response data
    * @returns Promise<any> - Converted response data
    */
-  async processResponse(response: any): Promise<any> {
+  override async processResponse(response: any): Promise<any> {
     this.logInfo('Processing WorkflowModule response', {
       conversionMode: this.config?.conversionMode,
       enableStreamProcessing: this.config?.enableStreamProcessing,
@@ -227,14 +229,16 @@ export class WorkflowModule extends BasePipelineModule {
         return {
           requiresConversion: this.isStreamData(data),
           sourceFormat: this.isStreamData(data) ? 'stream' : 'non-stream',
-          targetFormat: 'non-stream'
+          targetFormat: 'non-stream',
+          conversionMode: 'stream-to-non-stream'
         };
       
       case 'non-stream-to-stream':
         return {
           requiresConversion: !this.isStreamData(data),
           sourceFormat: this.isStreamData(data) ? 'stream' : 'non-stream',
-          targetFormat: 'stream'
+          targetFormat: 'stream',
+          conversionMode: 'non-stream-to-stream'
         };
       
       case 'none':
@@ -242,7 +246,8 @@ export class WorkflowModule extends BasePipelineModule {
         return {
           requiresConversion: false,
           sourceFormat: this.isStreamData(data) ? 'stream' : 'non-stream',
-          targetFormat: this.isStreamData(data) ? 'stream' : 'non-stream'
+          targetFormat: this.isStreamData(data) ? 'stream' : 'non-stream',
+          conversionMode: 'none'
         };
     }
   }

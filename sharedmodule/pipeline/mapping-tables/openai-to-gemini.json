@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "description": "OpenAI to Gemini protocol conversion",
+  "protocols": {
+    "input": "openai",
+    "output": "gemini"
+  },
+  "requestMappings": {
+    "model": {
+      "field": "model",
+      "transform": "mapOpenAIModelToGemini"
+    },
+    "messages": {
+      "field": "contents",
+      "transform": "convertOpenAIMessagesToGemini"
+    },
+    "max_tokens": {
+      "field": "generationConfig.maxOutputTokens"
+    },
+    "temperature": {
+      "field": "generationConfig.temperature"
+    },
+    "top_p": {
+      "field": "generationConfig.topP"
+    },
+    "top_k": {
+      "field": "generationConfig.topK"
+    },
+    "stop": {
+      "field": "generationConfig.stopSequences",
+      "transform": "convertStopToArray"
+    }
+  },
+  "responseMappings": {
+    "choices[0].message.content": {
+      "field": "candidates[0].content.parts[0].text"
+    },
+    "choices[0].message.role": {
+      "field": "candidates[0].content.role",
+      "transform": "mapRoleToGemini"
+    },
+    "usage.prompt_tokens": {
+      "field": "usageMetadata.promptTokenCount"
+    },
+    "usage.completion_tokens": {
+      "field": "usageMetadata.candidatesTokenCount"
+    },
+    "usage.total_tokens": {
+      "field": "usageMetadata.totalTokenCount"
+    }
+  },
+  "validation": {
+    "required": ["model", "messages"],
+    "types": {
+      "model": "string",
+      "messages": "array",
+      "max_tokens": "number",
+      "temperature": "number",
+      "top_p": "number"
+    },
+    "ranges": {
+      "temperature": { "min": 0, "max": 2 },
+      "top_p": { "min": 0, "max": 1 },
+      "max_tokens": { "min": 1, "max": 8192 }
+    }
+  },
+  "transformFunctions": {
+    "mapOpenAIModelToGemini": {
+      "type": "mapping",
+      "mappings": {
+        "gpt-4": "gemini-1.5-pro-latest",
+        "gpt-4-turbo": "gemini-1.5-flash-latest",
+        "gpt-3.5-turbo": "gemini-1.5-flash-latest"
+      },
+      "defaultValue": "gemini-1.5-pro-latest"
+    },
+    "convertOpenAIMessagesToGemini": {
+      "type": "array_transform",
+      "elementTransform": {
+        "role": {
+          "mapping": {
+            "user": "user",
+            "assistant": "model",
+            "tool": "function"
+          }
+        },
+        "content": {
+          "field": "parts",
+          "transform": "convertContentToGeminiParts"
+        }
+      }
+    },
+    "convertContentToGeminiParts": {
+      "type": "transform",
+      "operation": "convertContentToParts"
+    },
+    "mapRoleToGemini": {
+      "type": "mapping",
+      "mappings": {
+        "assistant": "model"
+      },
+      "defaultValue": "model"
+    },
+    "convertStopToArray": {
+      "type": "transform",
+      "operation": "stringToArray"
+    }
+  }
+}

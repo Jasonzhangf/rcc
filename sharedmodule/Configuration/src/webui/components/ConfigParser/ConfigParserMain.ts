@@ -9,7 +9,6 @@ import {
   UIComponent, 
   ConfigParserOptions, 
   UserConfig, 
-  PipelineConfig, 
   ParseResult 
 } from '../../types/ui.types';
 
@@ -18,7 +17,6 @@ import {
  */
 export class ConfigParserMain implements UIComponent {
   private container: HTMLElement | null = null;
-  private options: ConfigParserOptions;
   private parserService: any;
   private storageService: any;
   
@@ -29,7 +27,6 @@ export class ConfigParserMain implements UIComponent {
   private parseHistory: ParseResult[] = [];
 
   constructor() {
-    this.options = {} as ConfigParserOptions;
     this.parserService = null;
     this.storageService = null;
   }
@@ -39,7 +36,6 @@ export class ConfigParserMain implements UIComponent {
    */
   public async initialize(options: ConfigParserOptions): Promise<void> {
     try {
-      this.options = options;
       this.parserService = options.parserService;
       this.storageService = options.storageService;
 
@@ -358,11 +354,12 @@ export class ConfigParserMain implements UIComponent {
       uploadArea.classList.remove('drag-over');
     });
 
-    uploadArea.addEventListener('drop', (event) => {
+    uploadArea.addEventListener('drop', (event: Event) => {
       event.preventDefault();
       uploadArea.classList.remove('drag-over');
       
-      const file = event.dataTransfer?.files[0];
+      const dragEvent = event as DragEvent;
+      const file = dragEvent.dataTransfer?.files[0];
       if (file) {
         this.handleFileSelected(file);
       }
@@ -394,7 +391,7 @@ export class ConfigParserMain implements UIComponent {
         const targetStep = steps[stepIndex];
         
         // 只允许跳转到已完成的步骤或当前步骤
-        if (this.canNavigateToStep(targetStep)) {
+        if (targetStep && this.canNavigateToStep(targetStep)) {
           this.navigateToStep(targetStep as 'upload' | 'parse' | 'result');
         }
       }
@@ -410,7 +407,7 @@ export class ConfigParserMain implements UIComponent {
     const targetIndex = steps.indexOf(targetStep);
     
     // 允许跳转到当前步骤或之前的步骤
-    return targetIndex <= currentIndex || (targetStep === 'result' && this.parseResult);
+    return targetIndex <= currentIndex || (targetStep === 'result' && !!this.parseResult);
   }
 
   /**
@@ -470,11 +467,11 @@ export class ConfigParserMain implements UIComponent {
           <div class="dialog-content">
             <h3>解析历史记录</h3>
             <div class="history-list">
-              ${this.parseHistory.length === 0 ? '
+              ${this.parseHistory.length === 0 ? `
                 <div class="empty-state">
                   <p>暂无历史记录</p>
                 </div>
-              ' : this.parseHistory.map((result, index) => `
+              ` : this.parseHistory.map((result, index) => `
                 <div class="history-item" data-index="${index}">
                   <div class="history-info">
                     <div class="history-title">解析结果 #${index + 1}</div>
@@ -612,12 +609,6 @@ export class ConfigParserMain implements UIComponent {
     }
   }
 
-  /**
-   * 处理文件上传
-   */
-  private async handleFileUploaded(file: File, content: string): Promise<void> {
-    await this.handleFileSelected(file);
-  }
 
   /**
    * 处理解析完成

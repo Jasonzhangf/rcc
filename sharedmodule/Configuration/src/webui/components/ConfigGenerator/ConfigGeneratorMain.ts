@@ -9,7 +9,6 @@ import {
   UIComponent, 
   ConfigGeneratorOptions, 
   ProviderConfig, 
-  ModelConfig, 
   VirtualModelConfig, 
   RouteConfig 
 } from '../../types/ui.types';
@@ -19,9 +18,14 @@ import {
  */
 export class ConfigGeneratorMain implements UIComponent {
   private container: HTMLElement | null = null;
-  private options: ConfigGeneratorOptions;
   private configService: any;
   private storageService: any;
+  
+  // 子组件引用
+  private providerForm: any = null;
+  private modelForm: any = null;
+  private virtualModelForm: any = null;
+  private configPreview: any = null;
   
   // 数据状态
   private providers: ProviderConfig[] = [];
@@ -31,7 +35,6 @@ export class ConfigGeneratorMain implements UIComponent {
   private activeTab: string = 'providers';
 
   constructor() {
-    this.options = {} as ConfigGeneratorOptions;
     this.configService = null;
     this.storageService = null;
   }
@@ -41,7 +44,6 @@ export class ConfigGeneratorMain implements UIComponent {
    */
   public async initialize(options: ConfigGeneratorOptions): Promise<void> {
     try {
-      this.options = options;
       this.configService = options.configService;
       this.storageService = options.storageService;
 
@@ -111,6 +113,9 @@ export class ConfigGeneratorMain implements UIComponent {
               <button class="tab-btn ${this.activeTab === 'routes' ? 'active' : ''}" data-tab="routes">
                 路由配置
               </button>
+              <button class="tab-btn ${this.activeTab === 'pool' ? 'active' : ''}" data-tab="pool">
+                模型池配置
+              </button>
             </div>
 
             <!-- 选项卡内容 -->
@@ -126,6 +131,9 @@ export class ConfigGeneratorMain implements UIComponent {
               </div>
               <div id="routes-tab" class="tab-panel ${this.activeTab === 'routes' ? 'active' : ''}">
                 <div id="routes-form-container"></div>
+              </div>
+              <div id="pool-tab" class="tab-panel ${this.activeTab === 'pool' ? 'active' : ''}">
+                <div id="pool-form-container"></div>
               </div>
             </div>
           </div>
@@ -156,6 +164,8 @@ export class ConfigGeneratorMain implements UIComponent {
     this.renderProviderForm();
     this.renderModelForm();
     this.renderVirtualModelForm();
+    this.renderRoutesForm();
+    this.renderPoolForm();
     this.renderConfigPreview();
   }
 
@@ -214,27 +224,101 @@ export class ConfigGeneratorMain implements UIComponent {
     const container = this.container?.querySelector('#virtual-model-form-container');
     if (!container) return;
 
+    // 固定的虚拟路由列表（从实际配置中提取）
+    const fixedVirtualRoutes = [
+      { id: 'default', name: '通用模型', displayName: 'General Models', description: 'General-purpose models suitable for most tasks' },
+      { id: 'coding', name: '代码助手', displayName: 'Code Generation', description: 'Models specialized for code generation tasks' },
+      { id: 'longtext', name: '长文本', displayName: 'Long Text Processing', description: 'Models specialized for long text processing' },
+      { id: 'reasoning', name: '推理分析', displayName: 'Reasoning & Analysis', description: 'Models specialized for logical reasoning and analysis' }
+    ];
+
     container.innerHTML = `
       <div class="form-section">
         <h3>虚拟模型配置</h3>
+        <div class="alert alert-info">
+          <strong>说明:</strong> 以下是系统预定义的虚拟模型路由，您可以为每个路由选择相应的提供商和模型。
+        </div>
         <div class="virtual-model-list">
-          ${this.virtualModels.map((vm, index) => `
-            <div class="virtual-model-item" data-index="${index}">
+          ${fixedVirtualRoutes.map((vm) => `
+            <div class="virtual-model-item" data-id="${vm.id}">
               <div class="vm-header">
-                <h4>${vm.name}</h4>
-                <button class="btn-remove" data-action="remove-vm" data-index="${index}">删除</button>
+                <h4>🤖 ${vm.name} (${vm.id})</h4>
               </div>
               <div class="vm-details">
-                <p>目标提供商: ${vm.targetProvider}</p>
-                <p>目标模型: ${vm.targetModel}</p>
-                <p>权重: ${vm.weight || 1}</p>
+                <p><strong>描述:</strong> ${vm.description}</p>
+                <div class="form-group">
+                  <label class="form-label">映射模型</label>
+                  <select class="form-control" data-vm="${vm.id}" data-field="model">
+                    <option value="">请选择模型</option>
+                    ${this.getAvailableModels().map(model => `
+                      <option value="${model.providerId}.${model.modelId}">
+                        ${model.providerName} / ${model.modelName}
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="${vm.id}-enabled" checked>
+                  <label class="form-check-label" for="${vm.id}-enabled">启用此虚拟路由</label>
+                </div>
               </div>
             </div>
           `).join('')}
         </div>
-        <button class="btn btn-primary" data-action="add-vm">添加虚拟模型</button>
       </div>
     `;
+  }
+
+  /**
+   * 渲染路由表单
+   */
+  private renderRoutesForm(): void {
+    const container = this.container?.querySelector('#routes-form-container');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="form-section">
+        <h3>路由配置</h3>
+        <div class="routes-summary">
+          <p>路由配置用于定义请求如何被路由到不同的模型。</p>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * 渲染模型池表单
+   */
+  private renderPoolForm(): void {
+    const container = this.container?.querySelector('#pool-form-container');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="form-section">
+        <h3>模型池配置</h3>
+        <div class="pool-summary">
+          <p>模型池配置用于管理可用模型的池化。</p>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * 获取可用模型列表
+   */
+  private getAvailableModels(): any[] {
+    const models: any[] = [];
+    this.providers.forEach(provider => {
+      provider.models.forEach(model => {
+        models.push({
+          providerId: provider.id,
+          providerName: provider.name,
+          modelId: model.id,
+          modelName: model.name
+        });
+      });
+    });
+    return models;
   }
 
   /**
@@ -441,31 +525,6 @@ export class ConfigGeneratorMain implements UIComponent {
     }
   }
 
-  /**
-   * 处理供应商变化
-   */
-  private async handleProviderChange(providers: ProviderConfig[]): Promise<void> {
-    this.providers = providers;
-    await this.generateConfiguration();
-    await this.saveData();
-  }
-
-  /**
-   * 处理模型变化
-   */
-  private async handleModelChange(): Promise<void> {
-    await this.generateConfiguration();
-    await this.saveData();
-  }
-
-  /**
-   * 处理虚拟模型变化
-   */
-  private async handleVirtualModelChange(virtualModels: VirtualModelConfig[]): Promise<void> {
-    this.virtualModels = virtualModels;
-    await this.generateConfiguration();
-    await this.saveData();
-  }
 
   /**
    * 加载保存的数据
@@ -781,16 +840,90 @@ export class ConfigGeneratorMain implements UIComponent {
         margin: 0.25rem 0;
       }
 
-      .model-summary {
+      .model-summary,
+      .routes-summary,
+      .pool-summary {
         padding: 1rem;
         background: var(--bg-primary, #f8f9fa);
         border-radius: 0.5rem;
         margin-bottom: 1rem;
       }
 
-      .model-summary p {
+      .model-summary p,
+      .routes-summary p,
+      .pool-summary p {
         margin: 0;
         color: var(--text-secondary, #6c757d);
+      }
+
+      /* 表单控件样式 */
+      .form-group {
+        margin-bottom: 1rem;
+      }
+
+      .form-label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary, #6c757d);
+      }
+
+      .form-control {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--text-primary, #212529);
+        background-color: var(--bg-secondary, #ffffff);
+        background-clip: padding-box;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 0.375rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+      }
+
+      .form-control:focus {
+        color: var(--text-primary, #212529);
+        background-color: var(--bg-secondary, #ffffff);
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+      }
+
+      .form-check {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+
+      .form-check-input {
+        margin-right: 0.5rem;
+      }
+
+      .form-check-label {
+        color: var(--text-secondary, #6c757d);
+        font-size: 0.875rem;
+      }
+
+      /* 警告框样式 */
+      .alert {
+        position: relative;
+        padding: 1rem 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+        border-radius: 0.375rem;
+      }
+
+      .alert-info {
+        color: #055160;
+        background-color: #cff4fc;
+        border-color: #b6effb;
+      }
+
+      .alert-info strong {
+        color: #055160;
       }
 
       /* 预览样式 */

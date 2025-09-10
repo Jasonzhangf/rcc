@@ -1,5 +1,7 @@
 import { ModuleInfo, ValidationRule } from 'rcc-basemodule';
 import { BasePipelineModule } from './BasePipelineModule';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Compatibility Module Configuration
@@ -79,6 +81,8 @@ export interface MappingTable {
     source: string;
     target: string;
   };
+  /** Transform functions */
+  transformFunctions?: Record<string, any>;
 }
 
 /**
@@ -110,10 +114,9 @@ export interface ValidationResult {
 }
 
 export class CompatibilityModule extends BasePipelineModule {
-  protected config: CompatibilityConfig = {} as CompatibilityConfig;
+  protected override config: CompatibilityConfig = {} as CompatibilityConfig;
   private mappingTable: MappingTable | null = null;
   private fieldMappings: Record<string, FieldMapping> = {};
-  protected validationRules: ValidationRule[] = [];
   private mappingValidationRules: MappingTable['validationRules'] = {};
 
   constructor(info: ModuleInfo) {
@@ -125,7 +128,7 @@ export class CompatibilityModule extends BasePipelineModule {
    * Configure the Compatibility module
    * @param config - Configuration object
    */
-  async configure(config: CompatibilityConfig): Promise<void> {
+  override async configure(config: CompatibilityConfig): Promise<void> {
     this.logInfo('Configuring CompatibilityModule', config, 'configure');
     
     this.config = config;
@@ -148,7 +151,7 @@ export class CompatibilityModule extends BasePipelineModule {
    * @param request - Input request data
    * @returns Promise<any> - Mapped and validated request data
    */
-  async process(request: any): Promise<any> {
+  override async process(request: any): Promise<any> {
     this.logInfo('Processing CompatibilityModule request', {
       mappingTable: this.config?.mappingTable,
       strictMapping: this.config?.strictMapping,
@@ -178,11 +181,11 @@ export class CompatibilityModule extends BasePipelineModule {
       // Log output data at output port
       this.logOutputPort(finalRequest, 'compatibility-output', 'next-module');
       
-      this.logProcessingComplete('CompatibilityModule request', finalRequest, Date.now() - startTime, 'process');
+      this.debug('debug', 'CompatibilityModule request processing complete', { data: finalRequest, processingTime: Date.now() - startTime }, 'process');
       
       return finalRequest;
     } catch (error) {
-      this.logError(error as Error, { operation: 'process' }, 'process');
+      this.error('Error processing request', { error: error as Error, operation: 'process' }, 'process');
       throw error;
     }
   }
@@ -192,7 +195,7 @@ export class CompatibilityModule extends BasePipelineModule {
    * @param response - Input response data
    * @returns Promise<any> - Mapped and validated response data
    */
-  async processResponse(response: any): Promise<any> {
+  override async processResponse(response: any): Promise<any> {
     this.logInfo('Processing CompatibilityModule response', {
       mappingTable: this.config?.mappingTable,
       strictMapping: this.config?.strictMapping,
@@ -222,11 +225,11 @@ export class CompatibilityModule extends BasePipelineModule {
       // Log output data at output port
       this.logOutputPort(finalResponse, 'compatibility-response-output', 'next-module');
       
-      this.logProcessingComplete('CompatibilityModule response', finalResponse, Date.now() - startTime, 'processResponse');
+      this.debug('debug', 'CompatibilityModule response processing complete', { data: finalResponse, processingTime: Date.now() - startTime }, 'processResponse');
       
       return finalResponse;
     } catch (error) {
-      this.logError(error as Error, { operation: 'processResponse' }, 'processResponse');
+      this.error('Error processing response', { error: error as Error, operation: 'processResponse' }, 'processResponse');
       throw error;
     }
   }
@@ -267,81 +270,40 @@ export class CompatibilityModule extends BasePipelineModule {
         fieldCount: Object.keys(this.mappingTable.fieldMappings).length
       }, 'loadMappingTable');
     } catch (error) {
-      this.logError(error as Error, { tableName }, 'loadMappingTable');
+      this.error('Error loading mapping table', { error: error as Error, tableName }, 'loadMappingTable');
       throw error;
     }
   }
 
   /**
-   * Get mapping table by name (mock implementation)
+   * Get mapping table by name from JSON file
    * @param tableName - Name of the mapping table
    * @returns Promise<MappingTable> - Mapping table
    */
   private async getMappingTable(tableName: string): Promise<MappingTable> {
-    // This would typically load from a file or database
-    // Mock implementation for demonstration
-    const mockTables: Record<string, MappingTable> = {
-      'openai-to-anthropic': {
-        version: '1.0.0',
-        description: 'OpenAI to Anthropic compatibility mapping',
-        formats: {
-          source: 'openai',
-          target: 'anthropic'
-        },
-        fieldMappings: {
-          'model': 'model',
-          'messages': {
-            targetField: 'messages',
-            transform: (messages: any[]) => {
-              return messages.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'assistant',
-                content: msg.content
-              }));
-            }
-          },
-          'max_tokens': 'max_tokens',
-          'temperature': 'temperature',
-          'top_p': 'top_p',
-          'frequency_penalty': {
-            targetField: 'frequency_penalty',
-            transform: (value: number) => {
-              // Scale 0-2 to -2-2 range for Anthropic
-              return value > 1 ? (value - 1) * 2 : value * 2;
-            }
-          },
-          'presence_penalty': {
-            targetField: 'presence_penalty',
-            transform: (value: number) => {
-              // Scale 0-2 to -2-2 range for Anthropic
-              return value > 1 ? (value - 1) * 2 : value * 2;
-            }
-          },
-          'stop': 'stop_sequences'
-        },
-        validationRules: {
-          required: ['model', 'messages'],
-          types: {
-            model: 'string',
-            messages: 'array',
-            max_tokens: 'number',
-            temperature: 'number',
-            top_p: 'number'
-          },
-          constraints: {
-            max_tokens: { min: 1, max: 200000 },
-            temperature: { min: 0, max: 1 },
-            top_p: { min: 0, max: 1 }
-          }
-        }
+    try {
+      // Construct path to mapping table file
+      const mappingTablePath = path.join(__dirname, '..', '..', '..', 'mapping-tables', `${tableName}.json`);
+      
+      this.logInfo(`Loading mapping table from file: ${mappingTablePath}`, {}, 'getMappingTable');
+      
+      // Check if file exists
+      if (!fs.existsSync(mappingTablePath)) {
+        throw new Error(`Mapping table file not found: ${mappingTablePath}`);
       }
-    };
-    
-    const table = mockTables[tableName];
-    if (!table) {
-      throw new Error(`Mapping table not found: ${tableName}`);
+      
+      // Read and parse JSON file
+      const fileContent = fs.readFileSync(mappingTablePath, 'utf-8');
+      const mappingTable = JSON.parse(fileContent) as MappingTable;
+      
+      // Validate mapping table structure
+      this.validateMappingTableStructure(mappingTable, tableName);
+      
+      return mappingTable;
+    } catch (error) {
+      this.logError(`Failed to load mapping table: ${tableName}`, error, 'getMappingTable');
+      throw error;
     }
-    
-    return table;
   }
 
   /**
@@ -400,8 +362,15 @@ export class CompatibilityModule extends BasePipelineModule {
         // Apply transformation if specified
         let transformedValue = sourceValue;
         if (mapping.transform) {
-          const transformContext = { sourceField, data, mapping };
-          transformedValue = await mapping.transform(sourceValue, transformContext);
+          if (typeof mapping.transform === 'function') {
+            // Legacy function transform
+            const transformContext = { sourceField, data, mapping };
+            transformedValue = await mapping.transform(sourceValue, transformContext);
+          } else if (typeof mapping.transform === 'string') {
+            // JSON-based transform function reference
+            const transformContext = { sourceField, data, mapping };
+            transformedValue = await this.resolveTransformFunction(mapping.transform, sourceValue, transformContext);
+          }
           this.debug('debug', `Applied transform for field: ${sourceField}`, {
             fromValue: sourceValue,
             toValue: transformedValue
@@ -692,6 +661,172 @@ export class CompatibilityModule extends BasePipelineModule {
         result.isValid = false;
       }
     }
+  }
+
+  /**
+   * Validate mapping table structure
+   * @param mappingTable - Mapping table to validate
+   * @param tableName - Table name for error messages
+   */
+  private validateMappingTableStructure(mappingTable: MappingTable, tableName: string): void {
+    if (!mappingTable.version) {
+      throw new Error(`Mapping table ${tableName} missing required field: version`);
+    }
+    
+    if (!mappingTable.description) {
+      throw new Error(`Mapping table ${tableName} missing required field: description`);
+    }
+    
+    if (!mappingTable.fieldMappings || typeof mappingTable.fieldMappings !== 'object') {
+      throw new Error(`Mapping table ${tableName} missing required field: fieldMappings`);
+    }
+    
+    // Validate field mappings structure
+    for (const [sourceField, mapping] of Object.entries(mappingTable.fieldMappings)) {
+      if (typeof mapping === 'string') {
+        // Simple string mapping is valid
+        continue;
+      }
+      
+      if (typeof mapping === 'object' && mapping !== null) {
+        if (!mapping.targetField) {
+          throw new Error(`Field mapping ${sourceField} in ${tableName} missing required field: targetField`);
+        }
+      } else {
+        throw new Error(`Invalid field mapping for ${sourceField} in ${tableName}: must be string or object`);
+      }
+    }
+    
+    this.logInfo(`Mapping table structure validated: ${tableName}`, {
+      version: mappingTable.version,
+      fieldCount: Object.keys(mappingTable.fieldMappings).length,
+      hasValidationRules: !!mappingTable.validationRules
+    }, 'validateMappingTableStructure');
+  }
+
+  /**
+   * Resolve transform function from mapping table
+   * @param transformRef - Transform function reference
+   * @param value - Value to transform
+   * @param context - Transform context
+   * @returns Promise<any> - Transformed value
+   */
+  private async resolveTransformFunction(transformRef: string, value: any, context: any): Promise<any> {
+    if (!this.mappingTable?.transformFunctions) {
+      throw new Error(`No transform functions defined in mapping table`);
+    }
+
+    const transformConfig = this.mappingTable.transformFunctions[transformRef];
+    if (!transformConfig) {
+      throw new Error(`Transform function not found: ${transformRef}`);
+    }
+
+    switch (transformConfig.type) {
+      case 'mapping':
+        return this.applyMappingTransform(value, transformConfig);
+      
+      case 'transform':
+        return this.applyGenericTransform(value, transformConfig);
+      
+      case 'array_transform':
+        return this.applyArrayTransform(value, transformConfig);
+      
+      case 'function':
+        return this.applyFunctionTransform(value, transformConfig);
+      
+      default:
+        throw new Error(`Unknown transform function type: ${transformConfig.type}`);
+    }
+  }
+
+  /**
+   * Apply mapping transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyMappingTransform(value: any, config: any): any {
+    if (!config.mapping || typeof config.mapping !== 'object') {
+      return value;
+    }
+    
+    return config.mapping[value] || value;
+  }
+
+  /**
+   * Apply generic transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyGenericTransform(value: any, config: any): any {
+    // Apply various generic transformations based on config
+    if (config.operation === 'scale') {
+      if (typeof value === 'number' && config.factor !== undefined) {
+        return value * config.factor;
+      }
+    }
+    
+    if (config.operation === 'offset') {
+      if (typeof value === 'number' && config.offset !== undefined) {
+        return value + config.offset;
+      }
+    }
+    
+    if (config.operation === 'clamp') {
+      if (typeof value === 'number') {
+        let result = value;
+        if (config.min !== undefined) result = Math.max(result, config.min);
+        if (config.max !== undefined) result = Math.min(result, config.max);
+        return result;
+      }
+    }
+    
+    return value;
+  }
+
+  /**
+   * Apply array transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyArrayTransform(value: any, config: any): any {
+    if (!Array.isArray(value)) {
+      return value;
+    }
+    
+    if (config.operation === 'map') {
+      return value.map((item: any) => {
+        if (config.itemMapping) {
+          return this.applyMappingTransform(item, config.itemMapping);
+        }
+        return item;
+      });
+    }
+    
+    if (config.operation === 'filter') {
+      return value.filter((item: any) => {
+        if (config.filterField) {
+          return item[config.filterField] !== undefined;
+        }
+        return true;
+      });
+    }
+    
+    return value;
+  }
+
+  /**
+   * Apply function transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyFunctionTransform(value: any, config: any): any {
+    // For complex functions, we might need to implement specific logic
+    // For now, return the value as-is
+    return value;
   }
 
   /**

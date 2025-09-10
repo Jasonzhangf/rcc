@@ -278,7 +278,7 @@ export class ParserService implements UIService {
               }],
               auth: {
                 type: 'api-key',
-                keys: [modelConfig.keys[keyIndex]]
+                keys: [modelConfig.keys?.[keyIndex] ?? '']
               },
               enabled: true
             }
@@ -361,7 +361,7 @@ export class ParserService implements UIService {
   /**
    * 检测供应商类型
    */
-  private detectProviderType(providerId: string): string {
+  private detectProviderType(providerId: string): 'openai' | 'anthropic' | 'google' | 'local' | 'custom' {
     const lowerProvider = providerId.toLowerCase();
     
     if (lowerProvider.includes('openai') || lowerProvider.includes('gpt')) {
@@ -402,7 +402,7 @@ export class ParserService implements UIService {
    */
   private generateStatistics(
     pipelines: PipelineConfig[],
-    userConfig: UserConfig
+    _userConfig: UserConfig
   ): {
     totalPipelines: number;
     totalProviders: number;
@@ -524,10 +524,10 @@ export class ParserService implements UIService {
     }
     
     // 合并同组流水线
-    for (const [groupKey, groupPipelines] of pipelineGroups) {
-      if (groupPipelines.length === 1) {
+    for (const [_groupKey, groupPipelines] of pipelineGroups) {
+      if (groupPipelines.length === 1 && groupPipelines[0]) {
         optimized.push(groupPipelines[0]);
-      } else {
+      } else if (groupPipelines.length > 1) {
         // 合并多个流水线
         const mergedPipeline = this.mergePipelines(groupPipelines);
         optimized.push(mergedPipeline);
@@ -542,10 +542,16 @@ export class ParserService implements UIService {
    */
   private mergePipelines(pipelines: PipelineConfig[]): PipelineConfig {
     const firstPipeline = pipelines[0];
+    if (!firstPipeline) {
+      throw new Error('No pipelines to merge');
+    }
+    
     const mergedPipeline: PipelineConfig = {
-      ...firstPipeline,
       id: `${firstPipeline.llmswitch.provider}.${firstPipeline.llmswitch.model}.merged`,
       virtualModels: [],
+      llmswitch: { ...firstPipeline.llmswitch },
+      workflow: { ...firstPipeline.workflow },
+      compatibility: { ...firstPipeline.compatibility },
       provider: {
         ...firstPipeline.provider,
         auth: {

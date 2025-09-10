@@ -1,0 +1,3814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RCC 配置中心 - 完整WebUI设计</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --secondary-color: #64748b;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --info-color: #06b6d4;
+      --light-color: #f8fafc;
+      --dark-color: #1e293b;
+      --sidebar-width: 280px;
+      --header-height: 60px;
+      --card-bg: #ffffff;
+      --sidebar-bg: #1e293b;
+      --sidebar-hover: #334155;
+      --border-color: #e2e8f0;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --bg-primary: #f8fafc;
+      --bg-secondary: #f1f5f9;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-400: #94a3b8;
+      --gray-500: #64748b;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --gray-800: #1e293b;
+      --gray-900: #0f172a;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    /* 布局结构 */
+    .app-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-header h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .sidebar-header p {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      margin: 0;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 1rem 0;
+    }
+
+    .nav-item {
+      display: block;
+      padding: 0.75rem 1.5rem;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+      background-color: var(--sidebar-hover);
+      color: white;
+    }
+
+    .nav-item.active {
+      background-color: var(--sidebar-hover);
+      color: white;
+      border-left-color: var(--primary-color);
+    }
+
+    .nav-item i {
+      margin-right: 0.75rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    /* 主内容区域 */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 顶部导航栏 */
+    .header {
+      height: var(--header-height);
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* 内容区域 */
+    .content {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    /* 卡片样式 */
+    .card {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+      background: var(--card-bg);
+    }
+
+    .card-header {
+      background: var(--sidebar-bg);
+      color: white;
+      border-radius: 12px 12px 0 0 !important;
+      padding: 1.25rem;
+      border: none;
+    }
+
+    .card-header h5 {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    /* 表单样式 */
+    .form-label {
+      font-weight: 500;
+      color: var(--dark-color);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      padding: 0.75rem;
+      transition: all 0.3s ease;
+      background: var(--card-bg);
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+    }
+
+    /* 按钮样式 */
+    .btn {
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      border: none;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    /* 供应商配置池 */
+    .pool-provider-item {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+      height: 100%;
+    }
+
+    .pool-provider-item:hover {
+      border-color: var(--primary-color);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .pool-provider-item h6 {
+      color: var(--text-primary);
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .pool-provider-item p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .pool-provider-item small {
+      font-size: 0.75rem;
+    }
+
+    .pool-provider-item .btn {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    /* 配置文件自动加载 */
+    .config-file-info {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+    }
+
+    .config-file-info .file-path {
+      font-family: 'Courier New', monospace;
+      background: var(--card-bg);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      font-size: 0.875rem;
+      color: var(--primary-color);
+    }
+
+    .config-file-info .file-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .file-status.loaded {
+      background-color: var(--gray-100);
+      color: var(--gray-700);
+      border: 1px solid var(--gray-200);
+    }
+
+    .file-status.error {
+      background-color: var(--gray-100);
+      color: var(--danger-color);
+      border: 1px solid var(--gray-200);
+    }
+
+    .file-status.loading {
+      background-color: var(--gray-100);
+      color: var(--gray-600);
+      border: 1px solid var(--gray-200);
+    }
+
+    /* 自动加载状态指示器 */
+    .auto-load-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .auto-load-indicator .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--bg-secondary);
+      border-top: 2px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    /* 供应商管理 */
+    .provider-item {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .provider-item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    .provider-status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-active {
+      background-color: var(--gray-100);
+      color: var(--gray-700);
+      border: 1px solid var(--gray-200);
+    }
+
+    .status-inactive {
+      background-color: var(--gray-100);
+      color: var(--gray-500);
+      border: 1px solid var(--gray-200);
+    }
+
+    /* 模型配置 */
+    .model-item {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    /* 路由配置 */
+    .route-item {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .route-priority {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: var(--gray-200);
+      color: var(--gray-700);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    /* 配置预览 */
+    .config-preview {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+    }
+
+    /* 文件上传区域 */
+    .upload-area {
+      border: 2px dashed var(--border-color);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: var(--bg-secondary);
+    }
+
+    .upload-area:hover {
+      border-color: var(--primary-color);
+      background-color: rgba(37, 99, 235, 0.05);
+    }
+
+    .upload-area.dragover {
+      border-color: var(--primary-color);
+      background-color: rgba(37, 99, 235, 0.1);
+    }
+
+    /* 流水线展示 */
+    .pipeline-item {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--success-color);
+    }
+
+    .pipeline-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: var(--gray-400);
+    }
+
+    .status-indicator.active {
+      background-color: var(--gray-600);
+    }
+
+    /* 历史记录 */
+    .history-item {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-time {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: -100%;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s ease;
+      }
+
+      .sidebar.active {
+        left: 0;
+      }
+
+      .main-content {
+        width: 100%;
+      }
+
+      .content {
+        padding: 1rem;
+      }
+    }
+
+    /* 动画效果 */
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 加载动画 */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--secondary-color);
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-right: 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 标签样式 */
+    .badge {
+      border-radius: 6px;
+      padding: 0.4rem 0.8rem;
+      font-weight: 500;
+    }
+
+    /* 进度条 */
+    .progress {
+      height: 8px;
+      border-radius: 4px;
+      background-color: var(--bg-secondary);
+    }
+
+    .progress-bar {
+      border-radius: 4px;
+      background: var(--gray-400);
+    }
+
+    /* 流水线配置解析样式 */
+    .config-parse-status {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .config-parse-status .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--bg-secondary);
+      border-top: 2px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .config-parse-status.success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .config-parse-status.error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    /* 元数据样式 */
+    .metadata-item {
+      margin-bottom: 1rem;
+    }
+
+    .metadata-value {
+      background: var(--bg-secondary);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      min-height: 2rem;
+      display: flex;
+      align-items: center;
+    }
+
+    /* 路由规则样式 */
+    .routing-rule-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .routing-rule-item .rule-priority {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: var(--gray-200);
+      color: var(--gray-700);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .routing-rule-item .rule-conditions {
+      background: var(--bg-secondary);
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin: 0.5rem 0;
+      font-size: 0.875rem;
+    }
+
+    /* 流水线模板样式 */
+    .pipeline-template-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .pipeline-template-item .template-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .pipeline-template-item .template-modules {
+      background: var(--bg-secondary);
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin: 0.5rem 0;
+      font-size: 0.875rem;
+    }
+
+    /* 模块注册表样式 */
+    .module-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      transition: all 0.3s ease;
+    }
+
+    .module-item:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transform: translateY(-1px);
+    }
+
+    .module-item .module-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .module-item .module-type {
+      background: var(--gray-200);
+      color: var(--gray-700);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .module-item .module-capabilities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .module-item .capability-tag {
+      background: var(--bg-secondary);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      border: 1px solid var(--border-color);
+    }
+
+    /* 调度器配置样式 */
+    .config-section {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .config-section h6 {
+      color: var(--text-primary);
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .config-item {
+      margin-bottom: 0.75rem;
+    }
+
+    .config-value {
+      background: var(--card-bg);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      min-height: 2rem;
+      display: flex;
+      align-items: center;
+    }
+
+    /* 标签页样式 */
+    .nav-tabs {
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-tabs .nav-link {
+      color: var(--text-secondary);
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      padding: 0.75rem 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+      color: var(--text-primary);
+      border-bottom-color: var(--gray-300);
+      background: transparent;
+    }
+
+    .nav-tabs .nav-link.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+      background: transparent;
+    }
+
+    .tab-content {
+      background: transparent;
+    }
+
+    /* 工具提示 */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: #555;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 0.5rem;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2><i class="bi bi-gear-fill"></i> RCC 配置中心</h2>
+        <p>统一配置管理平台</p>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#config-generator" class="nav-item active" data-section="config-generator">
+          <i class="bi bi-plus-circle-fill"></i> 配置生成器
+        </a>
+        <a href="#config-parser" class="nav-item" data-section="config-parser">
+          <i class="bi bi-file-earmark-text-fill"></i> 配置解析器
+        </a>
+        <a href="#data-persistence" class="nav-item" data-section="data-persistence">
+          <i class="bi bi-database-fill"></i> 数据持久化
+        </a>
+        <a href="#settings" class="nav-item" data-section="settings">
+          <i class="bi bi-sliders-fill"></i> 设置
+        </a>
+      </nav>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="main-content">
+      <!-- 顶部导航栏 -->
+      <header class="header">
+        <div class="header-title">
+          <span id="current-section-title">配置生成器</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-question-circle"></i> 帮助
+          </button>
+          <button class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-gear"></i> 设置
+          </button>
+        </div>
+      </header>
+
+      <!-- 内容区域 -->
+      <div class="content">
+        <!-- 配置生成器 -->
+        <div id="config-generator" class="content-section">
+          <div class="row">
+            <div class="col-lg-8">
+              <!-- 供应商配置管理 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-building"></i> 供应商配置管理</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">供应商名称</label>
+                      <input type="text" class="form-control" placeholder="输入供应商名称">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">协议类型</label>
+                      <select class="form-select">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="gemini">Gemini</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">API 基础URL</label>
+                      <input type="url" class="form-control" placeholder="https://api.example.com">
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-8">
+                      <label class="form-label">API 密钥</label>
+                      <input type="password" class="form-control" placeholder="输入API密钥">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">认证类型</label>
+                      <select class="form-select">
+                        <option value="api_key">API Key</option>
+                        <option value="bearer">Bearer Token</option>
+                        <option value="oauth">OAuth</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-primary">
+                      <i class="bi bi-plus-lg"></i> 添加供应商
+                    </button>
+                    <button class="btn btn-outline-secondary">
+                      <i class="bi bi-arrow-clockwise"></i> 测试连接
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 供应商列表 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-list-ul"></i> 已配置供应商</h5>
+                </div>
+                <div class="card-body">
+                  <div class="provider-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h6>OpenAI 官方</h6>
+                        <p class="text-muted mb-2">https://api.openai.com</p>
+                        <div class="d-flex gap-2">
+                          <span class="badge bg-primary">OpenAI</span>
+                          <span class="provider-status status-active">活跃</span>
+                        </div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="provider-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h6>Anthropic Claude</h6>
+                        <p class="text-muted mb-2">https://api.anthropic.com</p>
+                        <div class="d-flex gap-2">
+                          <span class="badge bg-warning">Anthropic</span>
+                          <span class="provider-status status-active">活跃</span>
+                        </div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 本地供应商配置池 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-collection"></i> 本地供应商配置池</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">快速添加预设供应商</label>
+                      <select class="form-select" id="preset-provider-select">
+                        <option value="">选择预设供应商...</option>
+                        <option value="openai-official">OpenAI 官方</option>
+                        <option value="anthropic-official">Anthropic 官方</option>
+                        <option value="gemini-official">Google Gemini 官方</option>
+                        <option value="azure-openai">Azure OpenAI</option>
+                        <option value="custom-openai">自定义 OpenAI 兼容</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">操作</label>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="addPresetProvider()">
+                          <i class="bi bi-plus-lg"></i> 添加到配置
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="refreshPresetProviders()">
+                          <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i> 
+                    <strong>供应商配置池说明：</strong>预设供应商配置可以快速添加到您的配置中。选择后点击"添加到配置"即可自动加入配置文件的provider部分。
+                  </div>
+                  
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <div class="pool-provider-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div>
+                            <h6>OpenAI 官方</h6>
+                            <p class="text-muted mb-1">https://api.openai.com</p>
+                            <small class="text-success">• 支持GPT-4、GPT-3.5等模型</small>
+                          </div>
+                          <button class="btn btn-sm btn-outline-primary" onclick="quickAddProvider('openai-official')">
+                            <i class="bi bi-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <div class="pool-provider-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div>
+                            <h6>Anthropic 官方</h6>
+                            <p class="text-muted mb-1">https://api.anthropic.com</p>
+                            <small class="text-success">• 支持Claude-3系列模型</small>
+                          </div>
+                          <button class="btn btn-sm btn-outline-primary" onclick="quickAddProvider('anthropic-official')">
+                            <i class="bi bi-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <div class="pool-provider-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div>
+                            <h6>Google Gemini 官方</h6>
+                            <p class="text-muted mb-1">https://generativelanguage.googleapis.com</p>
+                            <small class="text-success">• 支持Gemini Pro系列模型</small>
+                          </div>
+                          <button class="btn btn-sm btn-outline-primary" onclick="quickAddProvider('gemini-official')">
+                            <i class="bi bi-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <div class="pool-provider-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div>
+                            <h6>Azure OpenAI</h6>
+                            <p class="text-muted mb-1">自定义Azure端点</p>
+                            <small class="text-warning">• 需要配置API密钥和端点</small>
+                          </div>
+                          <button class="btn btn-sm btn-outline-primary" onclick="quickAddProvider('azure-openai')">
+                            <i class="bi bi-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 模型配置管理 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-cpu"></i> 模型配置管理</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">选择供应商</label>
+                      <select class="form-select">
+                        <option>OpenAI 官方</option>
+                        <option>Anthropic Claude</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">获取模型列表</label>
+                      <button class="btn btn-outline-primary w-100">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新模型
+                      </button>
+                    </div>
+                  </div>
+                  <div class="model-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h6>GPT-4</h6>
+                        <p class="text-muted mb-0">最大令牌: 8192</p>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="model-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h6>GPT-3.5 Turbo</h6>
+                        <p class="text-muted mb-0">最大令牌: 4096</p>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 路由规则配置 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-diagram-3"></i> 路由规则配置</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">虚拟模型名称</label>
+                      <select class="form-select" id="virtual-model-select">
+                        <option value="default">default - 默认模型</option>
+                        <option value="coding">coding - 编程专用</option>
+                        <option value="longcontext">longcontext - 长上下文</option>
+                        <option value="reasoning">reasoning - 推理分析</option>
+                        <option value="websearch">websearch - 网络搜索</option>
+                        <option value="vision">vision - 视觉识别</option>
+                        <option value="background">background - 后台任务</option>
+                      </select>
+                      <small class="text-muted">选择预设的虚拟模型类别</small>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">选择供应商</label>
+                      <select class="form-select" id="route-provider-select" onchange="updateProviderModels()">
+                        <option value="">请先选择供应商</option>
+                        <option value="openai-official">OpenAI 官方</option>
+                        <option value="anthropic-official">Anthropic 官方</option>
+                        <option value="gemini-official">Google Gemini 官方</option>
+                      </select>
+                      <small class="text-muted">从已配置的供应商中选择</small>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">目标模型</label>
+                      <select class="form-select" id="target-model-select">
+                        <option value="">请先选择供应商</option>
+                      </select>
+                      <small class="text-muted">选择该供应商下的具体模型</small>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">优先级</label>
+                      <input type="number" class="form-control" id="route-priority-input" placeholder="1" min="1" value="1">
+                      <small class="text-muted">数字越小优先级越高</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">负载均衡策略</label>
+                      <select class="form-select">
+                        <option value="round-robin">轮询</option>
+                        <option value="weighted">加权</option>
+                        <option value="least-active">最少活跃</option>
+                        <option value="fastest">最快响应</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-primary" onclick="addRouteRule()">
+                      <i class="bi bi-plus-lg"></i> 添加路由规则
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="testRouteRule()">
+                      <i class="bi bi-play-circle"></i> 测试路由
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 路由规则列表 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-list-ul"></i> 已配置路由规则</h5>
+                </div>
+                <div class="card-body">
+                  <div class="route-item">
+                    <div class="route-priority">优先级: 1</div>
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h6>default</h6>
+                        <p class="text-muted mb-2">默认路由到 GPT-4 (OpenAI 官方)</p>
+                        <div class="d-flex gap-2 mb-2">
+                          <span class="badge bg-success">活跃</span>
+                          <span class="badge bg-primary">OpenAI</span>
+                          <span class="badge bg-info">轮询</span>
+                        </div>
+                        <small class="text-muted">
+                          <i class="bi bi-info-circle"></i> 
+                          处理通用请求，默认使用最高性能模型
+                        </small>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editRouteRule('default')">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="toggleRouteRule('default')">
+                          <i class="bi bi-pause"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRouteRule('default')">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="route-item">
+                    <div class="route-priority">优先级: 2</div>
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h6>coding</h6>
+                        <p class="text-muted mb-2">编程任务路由到 GPT-3.5 Turbo (OpenAI 官方)</p>
+                        <div class="d-flex gap-2 mb-2">
+                          <span class="badge bg-success">活跃</span>
+                          <span class="badge bg-primary">OpenAI</span>
+                          <span class="badge bg-info">轮询</span>
+                        </div>
+                        <small class="text-muted">
+                          <i class="bi bi-info-circle"></i> 
+                          专门处理编程相关任务，优化代码生成和调试
+                        </small>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editRouteRule('coding')">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="toggleRouteRule('coding')">
+                          <i class="bi bi-pause"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRouteRule('coding')">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="route-item">
+                    <div class="route-priority">优先级: 3</div>
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h6>longcontext</h6>
+                        <p class="text-muted mb-2">长文档处理路由到 Claude-3 Sonnet (Anthropic 官方)</p>
+                        <div class="d-flex gap-2 mb-2">
+                          <span class="badge bg-success">活跃</span>
+                          <span class="badge bg-warning">Anthropic</span>
+                          <span class="badge bg-info">轮询</span>
+                        </div>
+                        <small class="text-muted">
+                          <i class="bi bi-info-circle"></i> 
+                          处理长文档和复杂上下文任务，支持200K上下文
+                        </small>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editRouteRule('longcontext')">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="toggleRouteRule('longcontext')">
+                          <i class="bi bi-pause"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRouteRule('longcontext')">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="alert alert-info mt-3">
+                    <i class="bi bi-lightbulb"></i>
+                    <strong>路由提示：</strong>虚拟模型名称会作为路由标识，在请求时使用。系统会根据优先级和负载均衡策略自动选择合适的供应商和模型。
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <!-- 实时配置预览 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-eye"></i> 实时配置预览</h5>
+                </div>
+                <div class="card-body">
+                  <div class="config-preview">
+                    <pre>{
+  "version": "2.0.0",
+  "providers": [
+    {
+      "id": "provider_1",
+      "name": "OpenAI 官方",
+      "protocol": "openai",
+      "api_base_url": "https://api.openai.com",
+      "api_key": ["sk-***"],
+      "auth_type": "api_key",
+      "models": [
+        {"id": "gpt-4", "name": "GPT-4"},
+        {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo"}
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "virtual_name": "default",
+      "target_model": "gpt-4",
+      "priority": 1,
+      "active": true
+    }
+  ],
+  "model_blacklist": [],
+  "last_updated": "2025-09-10T10:40:50.063Z"
+}</pre>
+                  </div>
+                  <div class="d-grid gap-2 mt-3">
+                    <button class="btn btn-primary">
+                      <i class="bi bi-download"></i> 导出配置
+                    </button>
+                    <button class="btn btn-outline-secondary">
+                      <i class="bi bi-clipboard"></i> 复制配置
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 配置验证 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-check-circle"></i> 配置验证</h5>
+                </div>
+                <div class="card-body">
+                  <div class="d-flex align-items-center mb-3">
+                    <div class="spinner"></div>
+                    <span>正在验证配置...</span>
+                  </div>
+                  <div class="progress mb-3">
+                    <div class="progress-bar" style="width: 75%"></div>
+                  </div>
+                  <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill"></i> 配置验证通过
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 配置解析器 -->
+        <div id="config-parser" class="content-section" style="display: none;">
+          <div class="row">
+            <div class="col-lg-8">
+              <!-- 自动加载配置文件 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-file-earmark-code"></i> 自动加载配置文件</h5>
+                </div>
+                <div class="card-body">
+                  <div class="config-file-info">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                      <div>
+                        <h6>当前配置文件</h6>
+                        <div class="auto-load-indicator">
+                          <div class="spinner"></div>
+                          <span>正在加载配置文件...</span>
+                        </div>
+                      </div>
+                      <div class="text-end">
+                        <span class="file-path">~/.rcc/config.json</span>
+                        <div class="mt-2">
+                          <span class="file-status loading">
+                            <i class="bi bi-hourglass-split"></i>
+                            加载中
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-8">
+                        <label class="form-label">配置文件路径</label>
+                        <input type="text" class="form-control" value="~/.rcc/config.json" readonly>
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">操作</label>
+                        <div class="d-flex gap-2">
+                          <button class="btn btn-primary" onclick="reloadConfigFile()">
+                            <i class="bi bi-arrow-clockwise"></i> 重新加载
+                          </button>
+                          <button class="btn btn-outline-secondary" onclick="changeConfigFile()">
+                            <i class="bi bi-folder"></i> 更换文件
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="alert alert-success mt-3" id="config-loaded-success" style="display: none;">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <strong>配置文件加载成功！</strong>
+                    <p class="mb-0 mt-2">已成功解析配置文件，包含 <strong id="config-provider-count">0</strong> 个供应商，<strong id="config-model-count">0</strong> 个模型，<strong id="config-route-count">0</strong> 条路由规则。</p>
+                  </div>
+                  
+                  <div class="alert alert-danger mt-3" id="config-loaded-error" style="display: none;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>配置文件加载失败！</strong>
+                    <p class="mb-0 mt-2">请检查文件路径和格式是否正确。</p>
+                  </div>
+                  
+                  <!-- 配置文件内容展示 -->
+                  <div class="mt-4" id="config-content-display" style="display: none;">
+                    <h6>配置文件内容</h6>
+                    <div class="config-preview">
+                      <pre id="config-file-content">加载中...</pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 文件上传和解析 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-upload"></i> 文件上传和解析</h5>
+                </div>
+                <div class="card-body">
+                  <div class="upload-area" id="upload-area">
+                    <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;"></i>
+                    <h6>拖拽配置文件到此处或点击上传</h6>
+                    <p class="text-muted">支持 .json, .yaml, .yml 格式</p>
+                    <input type="file" id="file-input" accept=".json,.yaml,.yml" style="display: none;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- 配置验证和错误检测 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-shield-check"></i> 配置验证和错误检测</h5>
+                </div>
+                <div class="card-body">
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i> 请先上传配置文件进行验证
+                  </div>
+                  <div id="validation-results" style="display: none;">
+                    <div class="mb-3">
+                      <h6>验证结果</h6>
+                      <div class="progress">
+                        <div class="progress-bar bg-success" style="width: 85%"></div>
+                      </div>
+                      <small class="text-muted">85% 通过验证</small>
+                    </div>
+                    <div class="alert alert-warning">
+                      <i class="bi bi-exclamation-triangle-fill"></i> 发现 2 个警告
+                    </div>
+                    <ul class="list-unstyled">
+                      <li class="text-warning">• 某些供应商缺少API密钥</li>
+                      <li class="text-warning">• 路由规则优先级可能存在冲突</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 流水线配置解析和展示 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-diagram-3"></i> 流水线配置解析和展示</h5>
+                </div>
+                <div class="card-body">
+                  <!-- 配置类型选择 -->
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">配置类型</label>
+                      <select class="form-select" id="config-type-select" onchange="updateConfigDisplay()">
+                        <option value="pipeline">流水线配置 (CompletePipelineConfig)</option>
+                        <option value="scheduler">调度器配置 (CompleteSchedulerConfig)</option>
+                        <option value="validation">配置验证报告</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">操作</label>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="parsePipelineConfig()">
+                          <i class="bi bi-play-circle"></i> 解析配置
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="refreshPipelineConfig()">
+                          <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 配置解析状态 -->
+                  <div class="config-parse-status mb-3" id="config-parse-status">
+                    <div class="d-flex align-items-center">
+                      <div class="spinner"></div>
+                      <span>正在解析流水线配置...</span>
+                    </div>
+                  </div>
+                  
+                  <!-- 配置内容标签页 -->
+                  <ul class="nav nav-tabs" id="config-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active" id="metadata-tab" data-bs-toggle="tab" data-bs-target="#metadata" type="button" role="tab">
+                        <i class="bi bi-info-circle"></i> 元数据
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="routing-tab" data-bs-toggle="tab" data-bs-target="#routing" type="button" role="tab">
+                        <i class="bi bi-diagram-2"></i> 路由规则
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates" type="button" role="tab">
+                        <i class="bi bi-grid-3x3"></i> 流水线模板
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="modules-tab" data-bs-toggle="tab" data-bs-target="#modules" type="button" role="tab">
+                        <i class="bi bi-puzzle"></i> 模块注册表
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="scheduler-tab" data-bs-toggle="tab" data-bs-target="#scheduler" type="button" role="tab">
+                        <i class="bi bi-gear"></i> 调度器配置
+                      </button>
+                    </li>
+                  </ul>
+                  
+                  <!-- 标签页内容 -->
+                  <div class="tab-content mt-3" id="config-tab-content">
+                    <!-- 元数据标签页 -->
+                    <div class="tab-pane fade show active" id="metadata" role="tabpanel">
+                      <div class="config-metadata" id="config-metadata">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="metadata-item">
+                              <label class="form-label">版本</label>
+                              <div class="metadata-value" id="metadata-version">加载中...</div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="metadata-item">
+                              <label class="form-label">创建时间</label>
+                              <div class="metadata-value" id="metadata-created">加载中...</div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="metadata-item">
+                              <label class="form-label">更新时间</label>
+                              <div class="metadata-value" id="metadata-updated">加载中...</div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="metadata-item">
+                              <label class="form-label">作者</label>
+                              <div class="metadata-value" id="metadata-author">加载中...</div>
+                            </div>
+                          </div>
+                          <div class="col-12">
+                            <div class="metadata-item">
+                              <label class="form-label">描述</label>
+                              <div class="metadata-value" id="metadata-description">加载中...</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 路由规则标签页 -->
+                    <div class="tab-pane fade" id="routing" role="tabpanel">
+                      <div class="routing-rules" id="routing-rules">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                          <h6>路由规则列表</h6>
+                          <button class="btn btn-sm btn-outline-primary" onclick="addRoutingRule()">
+                            <i class="bi bi-plus"></i> 添加规则
+                          </button>
+                        </div>
+                        <div id="routing-rules-list">
+                          <!-- 路由规则将在这里动态生成 -->
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 流水线模板标签页 -->
+                    <div class="tab-pane fade" id="templates" role="tabpanel">
+                      <div class="pipeline-templates" id="pipeline-templates">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                          <h6>流水线模板</h6>
+                          <button class="btn btn-sm btn-outline-primary" onclick="addPipelineTemplate()">
+                            <i class="bi bi-plus"></i> 添加模板
+                          </button>
+                        </div>
+                        <div id="pipeline-templates-list">
+                          <!-- 流水线模板将在这里动态生成 -->
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 模块注册表标签页 -->
+                    <div class="tab-pane fade" id="modules" role="tabpanel">
+                      <div class="module-registry" id="module-registry">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                          <h6>模块注册表</h6>
+                          <div class="d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm" placeholder="搜索模块..." id="module-search">
+                            <button class="btn btn-sm btn-outline-primary" onclick="searchModules()">
+                              <i class="bi bi-search"></i>
+                            </button>
+                          </div>
+                        </div>
+                        <div id="modules-list">
+                          <!-- 模块列表将在这里动态生成 -->
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 调度器配置标签页 -->
+                    <div class="tab-pane fade" id="scheduler" role="tabpanel">
+                      <div class="scheduler-config" id="scheduler-config">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="config-section">
+                              <h6>负载均衡</h6>
+                              <div class="config-item">
+                                <label class="form-label">策略</label>
+                                <div class="config-value" id="lb-strategy">加载中...</div>
+                              </div>
+                              <div class="config-item">
+                                <label class="form-label">权重配置</label>
+                                <div class="config-value" id="lb-weights">加载中...</div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="config-section">
+                              <h6>健康检查</h6>
+                              <div class="config-item">
+                                <label class="form-label">策略</label>
+                                <div class="config-value" id="hc-strategy">加载中...</div>
+                              </div>
+                              <div class="config-item">
+                                <label class="form-label">检查间隔</label>
+                                <div class="config-value" id="hc-interval">加载中...</div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="config-section">
+                              <h6>性能配置</h6>
+                              <div class="config-item">
+                                <label class="form-label">并发数</label>
+                                <div class="config-value" id="perf-concurrency">加载中...</div>
+                              </div>
+                              <div class="config-item">
+                                <label class="form-label">超时设置</label>
+                                <div class="config-value" id="perf-timeout">加载中...</div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="config-section">
+                              <h6>监控配置</h6>
+                              <div class="config-item">
+                                <label class="form-label">指标收集</label>
+                                <div class="config-value" id="mon-metrics">加载中...</div>
+                              </div>
+                              <div class="config-item">
+                                <label class="form-label">日志级别</label>
+                                <div class="config-value" id="mon-logging">加载中...</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <!-- 解析结果导出 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-download"></i> 解析结果导出</h5>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label">导出格式</label>
+                    <select class="form-select">
+                      <option>JSON</option>
+                      <option>YAML</option>
+                      <option>Markdown</option>
+                      <option>HTML 报告</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">包含内容</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" checked>
+                      <label class="form-check-label">配置摘要</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" checked>
+                      <label class="form-check-label">验证结果</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox">
+                      <label class="form-check-label">流水线详情</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox">
+                      <label class="form-check-label">性能统计</label>
+                    </div>
+                  </div>
+                  <div class="d-grid gap-2">
+                    <button class="btn btn-primary">
+                      <i class="bi bi-download"></i> 导出报告
+                    </button>
+                    <button class="btn btn-outline-secondary">
+                      <i class="bi bi-share"></i> 分享链接
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 解析统计 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-bar-chart"></i> 解析统计</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row text-center">
+                    <div class="col-6 mb-3">
+                      <div class="h3 text-primary">4</div>
+                      <div class="text-muted">供应商</div>
+                    </div>
+                    <div class="col-6 mb-3">
+                      <div class="h3 text-success">12</div>
+                      <div class="text-muted">模型</div>
+                    </div>
+                    <div class="col-6 mb-3">
+                      <div class="h3 text-warning">7</div>
+                      <div class="text-muted">路由规则</div>
+                    </div>
+                    <div class="col-6 mb-3">
+                      <div class="h3 text-info">2</div>
+                      <div class="text-muted">警告</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据持久化 -->
+        <div id="data-persistence" class="content-section" style="display: none;">
+          <div class="row">
+            <div class="col-lg-8">
+              <!-- 本地存储配置 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-hdd"></i> 本地存储配置</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">存储位置</label>
+                      <select class="form-select">
+                        <option>浏览器本地存储</option>
+                        <option>文件系统</option>
+                        <option>云存储</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">自动保存</label>
+                      <select class="form-select">
+                        <option>每次更改后保存</option>
+                        <option>每5分钟保存</option>
+                        <option>手动保存</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">数据加密</label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked>
+                        <label class="form-check-label">启用加密</label>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">压缩存储</label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox">
+                        <label class="form-check-label">启用压缩</label>
+                      </div>
+                    </div>
+                  </div>
+                  <button class="btn btn-primary">
+                    <i class="bi bi-save"></i> 保存设置
+                  </button>
+                </div>
+              </div>
+
+              <!-- 配置导入/导出 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-arrow-left-right"></i> 配置导入/导出</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <h6>导出配置</h6>
+                      <p class="text-muted">将当前配置导出为文件</p>
+                      <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary">
+                          <i class="bi bi-download"></i> 导出为 JSON
+                        </button>
+                        <button class="btn btn-outline-primary">
+                          <i class="bi bi-download"></i> 导出为 YAML
+                        </button>
+                        <button class="btn btn-outline-primary">
+                          <i class="bi bi-download"></i> 导出完整备份
+                        </button>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <h6>导入配置</h6>
+                      <p class="text-muted">从文件导入配置</p>
+                      <div class="upload-area" style="min-height: 120px; padding: 1rem;">
+                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #dee2e6; margin-bottom: 0.5rem;"></i>
+                        <p class="mb-0">点击或拖拽文件到此处</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 历史记录管理 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-clock-history"></i> 历史记录管理</h5>
+                </div>
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>配置历史</h6>
+                    <button class="btn btn-outline-danger btn-sm">
+                      <i class="bi bi-trash"></i> 清空历史
+                    </button>
+                  </div>
+                  <div class="history-item">
+                    <div>
+                      <strong>配置更新</strong>
+                      <p class="text-muted mb-0">添加了新的供应商配置</p>
+                    </div>
+                    <div class="text-end">
+                      <div class="history-time">2025-09-10 14:30</div>
+                      <button class="btn btn-sm btn-outline-primary">恢复</button>
+                    </div>
+                  </div>
+                  <div class="history-item">
+                    <div>
+                      <strong>路由规则修改</strong>
+                      <p class="text-muted mb-0">调整了路由优先级</p>
+                    </div>
+                    <div class="text-end">
+                      <div class="history-time">2025-09-10 13:45</div>
+                      <button class="btn btn-sm btn-outline-primary">恢复</button>
+                    </div>
+                  </div>
+                  <div class="history-item">
+                    <div>
+                      <strong>初始配置</strong>
+                      <p class="text-muted mb-0">创建了基础配置</p>
+                    </div>
+                    <div class="text-end">
+                      <div class="history-time">2025-09-10 10:15</div>
+                      <button class="btn btn-sm btn-outline-primary">恢复</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <!-- 存储统计 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-pie-chart"></i> 存储统计</h5>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>已使用空间</span>
+                      <span>2.3 MB / 10 MB</span>
+                    </div>
+                    <div class="progress">
+                      <div class="progress-bar" style="width: 23%"></div>
+                    </div>
+                  </div>
+                  <div class="row text-center">
+                    <div class="col-6 mb-3">
+                      <div class="h4 text-primary">15</div>
+                      <div class="text-muted">配置版本</div>
+                    </div>
+                    <div class="col-6 mb-3">
+                      <div class="h4 text-success">3</div>
+                      <div class="text-muted">备份文件</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 快速操作 -->
+              <div class="card fade-in">
+                <div class="card-header">
+                  <h5><i class="bi bi-lightning"></i> 快速操作</h5>
+                </div>
+                <div class="card-body">
+                  <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary">
+                      <i class="bi bi-arrow-repeat"></i> 同步配置
+                    </button>
+                    <button class="btn btn-outline-warning">
+                      <i class="bi bi-arrow-counterclockwise"></i> 重置为默认
+                    </button>
+                    <button class="btn btn-outline-info">
+                      <i class="bi bi-gear"></i> 高级设置
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // 导航切换功能
+    document.addEventListener('DOMContentLoaded', function() {
+      const navItems = document.querySelectorAll('.nav-item');
+      const contentSections = document.querySelectorAll('.content-section');
+      const currentSectionTitle = document.getElementById('current-section-title');
+
+      navItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // 移除所有活动状态
+          navItems.forEach(nav => nav.classList.remove('active'));
+          contentSections.forEach(section => section.style.display = 'none');
+          
+          // 添加当前活动状态
+          this.classList.add('active');
+          const targetSection = this.getAttribute('data-section');
+          const sectionElement = document.getElementById(targetSection);
+          
+          if (sectionElement) {
+            sectionElement.style.display = 'block';
+            
+            // 更新标题
+            const titles = {
+              'config-generator': '配置生成器',
+              'config-parser': '配置解析器',
+              'data-persistence': '数据持久化',
+              'settings': '设置'
+            };
+            currentSectionTitle.textContent = titles[targetSection] || '配置中心';
+            
+            // 如果切换到配置解析器，自动加载配置文件
+            if (targetSection === 'config-parser') {
+              autoLoadConfigFile();
+            }
+          }
+        });
+      });
+
+      // 文件上传功能
+      const uploadArea = document.getElementById('upload-area');
+      const fileInput = document.getElementById('file-input');
+
+      if (uploadArea) {
+        uploadArea.addEventListener('click', () => {
+          if (fileInput) fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+          uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+          e.preventDefault();
+          uploadArea.classList.remove('dragover');
+          // 处理文件上传逻辑
+          console.log('文件上传:', e.dataTransfer.files);
+        });
+      }
+
+      // 添加淡入动画
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('fade-in');
+          }
+        });
+      }, observerOptions);
+
+      document.querySelectorAll('.card').forEach(card => {
+        observer.observe(card);
+      });
+    });
+
+    // 预设供应商配置
+    const presetProviders = {
+      'openai-official': {
+        name: 'OpenAI 官方',
+        protocol: 'openai',
+        api_base_url: 'https://api.openai.com',
+        auth_type: 'api_key',
+        models: ['gpt-4', 'gpt-3.5-turbo', 'text-davinci-003']
+      },
+      'anthropic-official': {
+        name: 'Anthropic 官方',
+        protocol: 'anthropic',
+        api_base_url: 'https://api.anthropic.com',
+        auth_type: 'api_key',
+        models: ['claude-3-haiku-20240307', 'claude-3-sonnet-20240229', 'claude-3-opus-20240229']
+      },
+      'gemini-official': {
+        name: 'Google Gemini 官方',
+        protocol: 'gemini',
+        api_base_url: 'https://generativelanguage.googleapis.com',
+        auth_type: 'api_key',
+        models: ['gemini-pro', 'gemini-pro-vision']
+      },
+      'azure-openai': {
+        name: 'Azure OpenAI',
+        protocol: 'openai',
+        api_base_url: '', // 需要用户填写
+        auth_type: 'api_key',
+        models: ['gpt-4', 'gpt-3.5-turbo']
+      },
+      'custom-openai': {
+        name: '自定义 OpenAI 兼容',
+        protocol: 'openai',
+        api_base_url: '', // 需要用户填写
+        auth_type: 'api_key',
+        models: [] // 需要用户获取
+      }
+    };
+
+    // 添加预设供应商到配置
+    function addPresetProvider() {
+      const select = document.getElementById('preset-provider-select');
+      const selectedProvider = select.value;
+      
+      if (!selectedProvider) {
+        alert('请选择一个预设供应商');
+        return;
+      }
+      
+      const providerConfig = presetProviders[selectedProvider];
+      if (providerConfig) {
+        // 这里应该调用实际的添加供应商逻辑
+        console.log('添加预设供应商:', providerConfig);
+        
+        // 模拟添加成功
+        alert(`成功添加预设供应商: ${providerConfig.name}`);
+        
+        // 重置选择
+        select.value = '';
+      }
+    }
+
+    // 快速添加供应商
+    function quickAddProvider(providerKey) {
+      const providerConfig = presetProviders[providerKey];
+      if (providerConfig) {
+        console.log('快速添加供应商:', providerConfig);
+        
+        // 模拟添加成功
+        alert(`成功添加供应商: ${providerConfig.name}`);
+      }
+    }
+
+    // 刷新预设供应商列表
+    function refreshPresetProviders() {
+      console.log('刷新预设供应商列表');
+      // 这里可以添加从服务器获取最新预设供应商的逻辑
+      alert('预设供应商列表已刷新');
+    }
+
+    // 自动加载配置文件
+    function autoLoadConfigFile() {
+      console.log('自动加载配置文件: ~/.rcc/config.json');
+      
+      // 模拟加载过程
+      setTimeout(() => {
+        // 模拟从~/.rcc/config.json读取配置
+        const mockConfig = {
+          version: "2.0.0",
+          providers: [
+            {
+              id: "provider_1",
+              name: "OpenAI 官方",
+              protocol: "openai",
+              api_base_url: "https://api.openai.com",
+              api_key: ["sk-***"],
+              auth_type: "api_key",
+              models: [
+                {id: "gpt-4", name: "GPT-4"},
+                {id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo"}
+              ]
+            },
+            {
+              id: "provider_2", 
+              name: "Anthropic 官方",
+              protocol: "anthropic",
+              api_base_url: "https://api.anthropic.com",
+              api_key: ["sk-ant-***"],
+              auth_type: "api_key",
+              models: [
+                {id: "claude-3-haiku-20240307", name: "Claude 3 Haiku"},
+                {id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet"}
+              ]
+            }
+          ],
+          routes: [
+            {
+              virtual_name: "default",
+              target_model: "gpt-4",
+              priority: 1,
+              active: true
+            },
+            {
+              virtual_name: "coding",
+              target_model: "gpt-3.5-turbo",
+              priority: 2,
+              active: true
+            }
+          ],
+          model_blacklist: [],
+          last_updated: "2025-09-10T10:40:50.063Z"
+        };
+        
+        // 隐藏加载状态，显示成功状态
+        const loadingIndicator = document.querySelector('.auto-load-indicator');
+        const fileStatus = document.querySelector('.file-status');
+        const successAlert = document.getElementById('config-loaded-success');
+        const errorAlert = document.getElementById('config-loaded-error');
+        const configContentDisplay = document.getElementById('config-content-display');
+        
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (fileStatus) {
+          fileStatus.className = 'file-status loaded';
+          fileStatus.innerHTML = '<i class="bi bi-check-circle-fill"></i> 已加载';
+        }
+        if (successAlert) successAlert.style.display = 'block';
+        if (errorAlert) errorAlert.style.display = 'none';
+        if (configContentDisplay) configContentDisplay.style.display = 'block';
+        
+        // 更新配置统计信息
+        const providerCount = mockConfig.providers ? mockConfig.providers.length : 0;
+        const modelCount = mockConfig.providers ? 
+          mockConfig.providers.reduce((total, provider) => total + (provider.models ? provider.models.length : 0), 0) : 0;
+        const routeCount = mockConfig.routes ? mockConfig.routes.length : 0;
+        
+        document.getElementById('config-provider-count').textContent = providerCount;
+        document.getElementById('config-model-count').textContent = modelCount;
+        document.getElementById('config-route-count').textContent = routeCount;
+        
+        // 显示配置文件内容
+        const configContent = document.getElementById('config-file-content');
+        if (configContent) {
+          configContent.textContent = JSON.stringify(mockConfig, null, 2);
+        }
+        
+        // 触发配置解析和验证
+        validateConfig();
+        
+        // 更新供应商列表（如果有的话）
+        updateProviderListFromConfig(mockConfig.providers);
+        
+      }, 2000);
+    }
+
+    // 重新加载配置文件
+    function reloadConfigFile() {
+      console.log('重新加载配置文件');
+      
+      // 重置状态
+      const loadingIndicator = document.querySelector('.auto-load-indicator');
+      const fileStatus = document.querySelector('.file-status');
+      const successAlert = document.getElementById('config-loaded-success');
+      const errorAlert = document.getElementById('config-loaded-error');
+      
+      if (loadingIndicator) loadingIndicator.style.display = 'flex';
+      if (fileStatus) {
+        fileStatus.className = 'file-status loading';
+        fileStatus.innerHTML = '<i class="bi bi-hourglass-split"></i> 加载中';
+      }
+      if (successAlert) successAlert.style.display = 'none';
+      if (errorAlert) errorAlert.style.display = 'none';
+      
+      // 重新加载
+      autoLoadConfigFile();
+    }
+
+    // 更换配置文件
+    function changeConfigFile() {
+      console.log('更换配置文件');
+      
+      // 创建文件选择对话框
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,.yaml,.yml';
+      
+      input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          // 更新文件路径显示
+          const filePathInput = document.querySelector('input[readonly]');
+          if (filePathInput) {
+            filePathInput.value = file.name;
+          }
+          
+          // 读取文件内容
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            try {
+              const content = e.target.result;
+              let config;
+              
+              if (file.name.endsWith('.json')) {
+                config = JSON.parse(content);
+              } else {
+                // 简单的YAML解析（实际项目中应使用专门的YAML解析器）
+                console.log('YAML文件解析需要专门的解析器');
+                return;
+              }
+              
+              // 显示新配置内容
+              displayNewConfig(config);
+              
+            } catch (error) {
+              console.error('文件解析失败:', error);
+              alert('配置文件格式错误，请检查文件内容');
+            }
+          };
+          reader.readAsText(file);
+        }
+      };
+      
+      input.click();
+    }
+    
+    // 显示新配置内容
+    function displayNewConfig(config) {
+      const loadingIndicator = document.querySelector('.auto-load-indicator');
+      const fileStatus = document.querySelector('.file-status');
+      const successAlert = document.getElementById('config-loaded-success');
+      const errorAlert = document.getElementById('config-loaded-error');
+      const configContentDisplay = document.getElementById('config-content-display');
+      
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (fileStatus) {
+        fileStatus.className = 'file-status loaded';
+        fileStatus.innerHTML = '<i class="bi bi-check-circle-fill"></i> 已加载';
+      }
+      if (successAlert) successAlert.style.display = 'block';
+      if (errorAlert) errorAlert.style.display = 'none';
+      if (configContentDisplay) configContentDisplay.style.display = 'block';
+      
+      // 更新配置统计信息
+      const providerCount = config.providers ? config.providers.length : 0;
+      const modelCount = config.providers ? 
+        config.providers.reduce((total, provider) => total + (provider.models ? provider.models.length : 0), 0) : 0;
+      const routeCount = config.routes ? config.routes.length : 0;
+      
+      document.getElementById('config-provider-count').textContent = providerCount;
+      document.getElementById('config-model-count').textContent = modelCount;
+      document.getElementById('config-route-count').textContent = routeCount;
+      
+      // 显示配置文件内容
+      const configContent = document.getElementById('config-file-content');
+      if (configContent) {
+        configContent.textContent = JSON.stringify(config, null, 2);
+      }
+      
+      // 更新供应商列表
+      updateProviderListFromConfig(config.providers);
+      
+      // 触发配置验证
+      validateConfig();
+    }
+    
+    // 从配置更新供应商列表
+    function updateProviderListFromConfig(providers) {
+      if (!providers || providers.length === 0) return;
+      
+      // 更新路由配置中的供应商选择器
+      const routeProviderSelect = document.getElementById('route-provider-select');
+      if (routeProviderSelect) {
+        // 保留当前选项，清空其他选项
+        const currentValue = routeProviderSelect.value;
+        routeProviderSelect.innerHTML = '<option value="">请先选择供应商</option>';
+        
+        providers.forEach(provider => {
+          const option = document.createElement('option');
+          option.value = provider.id;
+          option.textContent = provider.name;
+          routeProviderSelect.appendChild(option);
+        });
+        
+        // 恢复之前的选择
+        if (currentValue) {
+          routeProviderSelect.value = currentValue;
+        }
+      }
+      
+      // 更新供应商模型映射
+      providers.forEach(provider => {
+        if (provider.models && provider.models.length > 0) {
+          providerModels[provider.id] = provider.models.map(model => model.id || model.name);
+        }
+      });
+    }
+
+    // 供应商模型映射
+    const providerModels = {
+      'openai-official': ['gpt-4', 'gpt-3.5-turbo', 'text-davinci-003'],
+      'anthropic-official': ['claude-3-haiku-20240307', 'claude-3-sonnet-20240229', 'claude-3-opus-20240229'],
+      'gemini-official': ['gemini-pro', 'gemini-pro-vision']
+    };
+
+    // 虚拟模型描述
+    const virtualModelDescriptions = {
+      'default': '默认模型 - 处理通用请求',
+      'coding': '编程专用 - 代码生成和调试',
+      'longcontext': '长上下文 - 处理长文档',
+      'reasoning': '推理分析 - 逻辑推理任务',
+      'websearch': '网络搜索 - 带网络功能的任务',
+      'vision': '视觉识别 - 图像处理任务',
+      'background': '后台任务 - 后台处理任务'
+    };
+
+    // 更新供应商模型列表
+    function updateProviderModels() {
+      const providerSelect = document.getElementById('route-provider-select');
+      const modelSelect = document.getElementById('target-model-select');
+      const selectedProvider = providerSelect.value;
+      
+      // 清空模型选择
+      modelSelect.innerHTML = '<option value="">请选择目标模型</option>';
+      
+      if (selectedProvider && providerModels[selectedProvider]) {
+        providerModels[selectedProvider].forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model;
+          modelSelect.appendChild(option);
+        });
+      }
+    }
+
+    // 添加路由规则
+    function addRouteRule() {
+      const virtualModel = document.getElementById('virtual-model-select').value;
+      const provider = document.getElementById('route-provider-select').value;
+      const targetModel = document.getElementById('target-model-select').value;
+      const priority = document.getElementById('route-priority-input').value;
+      
+      if (!virtualModel || !provider || !targetModel) {
+        alert('请填写完整的路由规则信息');
+        return;
+      }
+      
+      // 模拟添加路由规则
+      console.log('添加路由规则:', {
+        virtualModel,
+        provider,
+        targetModel,
+        priority
+      });
+      
+      alert(`成功添加路由规则: ${virtualModel} -> ${targetModel}`);
+      
+      // 重置表单
+      document.getElementById('route-provider-select').value = '';
+      document.getElementById('target-model-select').innerHTML = '<option value="">请先选择供应商</option>';
+      document.getElementById('route-priority-input').value = '1';
+    }
+
+    // 测试路由规则
+    function testRouteRule() {
+      const virtualModel = document.getElementById('virtual-model-select').value;
+      const provider = document.getElementById('route-provider-select').value;
+      const targetModel = document.getElementById('target-model-select').value;
+      
+      if (!virtualModel || !provider || !targetModel) {
+        alert('请先填写完整的路由规则信息');
+        return;
+      }
+      
+      // 模拟测试路由规则
+      console.log('测试路由规则:', {
+        virtualModel,
+        provider,
+        targetModel
+      });
+      
+      alert(`路由规则测试成功: ${virtualModel} 将路由到 ${targetModel}`);
+    }
+
+    // 编辑路由规则
+    function editRouteRule(routeName) {
+      console.log('编辑路由规则:', routeName);
+      alert(`编辑路由规则: ${routeName}`);
+    }
+
+    // 切换路由规则状态
+    function toggleRouteRule(routeName) {
+      console.log('切换路由规则状态:', routeName);
+      alert(`切换路由规则状态: ${routeName}`);
+    }
+
+    // 删除路由规则
+    function deleteRouteRule(routeName) {
+      if (confirm(`确定要删除路由规则 "${routeName}" 吗？`)) {
+        console.log('删除路由规则:', routeName);
+        alert(`已删除路由规则: ${routeName}`);
+      }
+    }
+
+    // 显示加载的配置
+    function displayLoadedConfig(config) {
+      const loadingIndicator = document.querySelector('.auto-load-indicator');
+      const fileStatus = document.querySelector('.file-status');
+      const successAlert = document.getElementById('config-loaded-success');
+      const errorAlert = document.getElementById('config-loaded-error');
+      const configContentDisplay = document.getElementById('config-content-display');
+      
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (fileStatus) {
+        fileStatus.className = 'file-status loaded';
+        fileStatus.innerHTML = '<i class="bi bi-check-circle-fill"></i> 已加载';
+      }
+      if (successAlert) successAlert.style.display = 'block';
+      if (errorAlert) errorAlert.style.display = 'none';
+      if (configContentDisplay) configContentDisplay.style.display = 'block';
+      
+      // 更新配置统计信息
+      const providerCount = config.providers ? config.providers.length : 0;
+      const modelCount = config.providers ? 
+        config.providers.reduce((total, provider) => total + (provider.models ? provider.models.length : 0), 0) : 0;
+      const routeCount = config.routes ? config.routes.length : 0;
+      
+      document.getElementById('config-provider-count').textContent = providerCount;
+      document.getElementById('config-model-count').textContent = modelCount;
+      document.getElementById('config-route-count').textContent = routeCount;
+      
+      // 显示配置文件内容
+      const configContent = document.getElementById('config-file-content');
+      if (configContent) {
+        configContent.textContent = JSON.stringify(config, null, 2);
+      }
+      
+      // 更新供应商列表
+      updateProviderList(config.providers);
+      
+      // 更新路由规则列表
+      updateRouteList(config.routes);
+      
+      // 触发配置验证
+      validateConfig();
+    }
+    
+    // 显示配置错误
+    function showConfigError(message) {
+      const loadingIndicator = document.querySelector('.auto-load-indicator');
+      const fileStatus = document.querySelector('.file-status');
+      const successAlert = document.getElementById('config-loaded-success');
+      const errorAlert = document.getElementById('config-loaded-error');
+      const configContentDisplay = document.getElementById('config-content-display');
+      
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (fileStatus) {
+        fileStatus.className = 'file-status error';
+        fileStatus.innerHTML = '<i class="bi bi-x-circle-fill"></i> 加载失败';
+      }
+      if (successAlert) successAlert.style.display = 'none';
+      if (errorAlert) {
+        errorAlert.style.display = 'block';
+        errorAlert.querySelector('p').textContent = message;
+      }
+      if (configContentDisplay) configContentDisplay.style.display = 'none';
+    }
+    
+    // 更新供应商列表显示
+    function updateProviderList(providers) {
+      if (!providers) return;
+      
+      // 这里可以更新配置生成器中的供应商列表
+      console.log('更新供应商列表:', providers);
+    }
+    
+    // 更新路由规则列表显示
+    function updateRouteList(routes) {
+      if (!routes) return;
+      
+      // 这里可以更新配置生成器中的路由规则列表
+      console.log('更新路由规则列表:', routes);
+    }
+    
+    // 生成流水线
+    function generatePipeline() {
+      const pipelineResults = document.getElementById('pipeline-results');
+      if (!pipelineResults) return;
+      
+      // 模拟流水线步骤
+      const pipelineSteps = [
+        { name: '请求预处理', status: 'completed', description: '验证请求格式，提取必要参数' },
+        { name: '路由匹配', status: 'completed', description: '根据虚拟模型名称匹配目标模型' },
+        { name: '供应商选择', status: 'processing', description: '根据负载均衡选择最优供应商' },
+        { name: '请求转发', status: 'pending', description: '转发请求到选定的供应商' },
+        { name: '响应处理', status: 'pending', description: '处理并返回供应商响应' }
+      ];
+      
+      pipelineResults.innerHTML = '';
+      
+      pipelineSteps.forEach((step, index) => {
+        const stepElement = document.createElement('div');
+        stepElement.className = 'pipeline-item';
+        
+        const statusClass = {
+          'completed': 'bg-success',
+          'processing': 'bg-warning', 
+          'pending': 'bg-secondary'
+        }[step.status];
+        
+        const statusText = {
+          'completed': '已完成',
+          'processing': '处理中',
+          'pending': '待处理'
+        }[step.status];
+        
+        const indicatorColor = step.status === 'completed' ? 'var(--gray-600)' : 
+                               step.status === 'processing' ? 'var(--warning-color)' : 'var(--gray-400)';
+        
+        stepElement.innerHTML = `
+          <div class="pipeline-status">
+            <div class="status-indicator ${step.status === 'completed' ? 'active' : ''}" style="background-color: ${indicatorColor};"></div>
+            <strong>${step.name}</strong>
+            <span class="badge ${statusClass}">${statusText}</span>
+          </div>
+          <p class="text-muted mb-0">${step.description}</p>
+        `;
+        
+        pipelineResults.appendChild(stepElement);
+      });
+    }
+
+    // 流水线配置解析和展示
+    let currentPipelineConfig = null;
+    let currentSchedulerConfig = null;
+    
+    // 模拟流水线配置数据
+    const mockPipelineConfig = {
+      metadata: {
+        version: "1.0.0",
+        createdAt: "2025-09-10T10:40:50.063Z",
+        updatedAt: "2025-09-10T15:30:25.123Z",
+        description: "LLM聊天流水线配置，包含完整的请求路由和模块组装",
+        author: "Pipeline System Team"
+      },
+      routingRules: [
+        {
+          ruleId: "llm-chat-routing",
+          name: "LLM聊天路由",
+          priority: 1,
+          conditions: [
+            { field: "requestType", operator: "equals", value: "chat" },
+            { field: "model", operator: "in", value: ["gpt-4", "gpt-3.5-turbo", "claude-3"] }
+          ],
+          pipelineSelection: {
+            strategy: "template",
+            templateId: "llm-chat-primary"
+          }
+        },
+        {
+          ruleId: "code-generation-routing",
+          name: "代码生成路由",
+          priority: 2,
+          conditions: [
+            { field: "requestType", operator: "equals", value: "code" },
+            { field: "language", operator: "in", value: ["python", "javascript", "java"] }
+          ],
+          pipelineSelection: {
+            strategy: "template",
+            templateId: "code-generation-pipeline"
+          }
+        }
+      ],
+      pipelineTemplates: [
+        {
+          templateId: "llm-chat-primary",
+          baseConfig: {
+            timeout: 30000,
+            retryCount: 3,
+            cacheEnabled: true
+          },
+          moduleAssembly: [
+            { moduleId: "request-validator", position: 0, config: {} },
+            { moduleId: "llm-switch-module", position: 1, config: { strategy: "weighted" } },
+            { moduleId: "response-formatter", position: 2, config: {} }
+          ],
+          executionStrategy: {
+            type: "sequential",
+            parallel: false
+          }
+        },
+        {
+          templateId: "code-generation-pipeline",
+          baseConfig: {
+            timeout: 45000,
+            retryCount: 2,
+            cacheEnabled: false
+          },
+          moduleAssembly: [
+            { moduleId: "code-analyzer", position: 0, config: {} },
+            { moduleId: "language-detector", position: 1, config: {} },
+            { moduleId: "llm-switch-module", position: 2, config: { strategy: "specialized" } },
+            { moduleId: "code-validator", position: 3, config: {} }
+          ],
+          executionStrategy: {
+            type: "sequential",
+            parallel: false
+          }
+        }
+      ],
+      moduleRegistry: [
+        {
+          moduleId: "llm-switch-module",
+          type: "model-selector",
+          capabilities: ["model-routing", "load-balancing", "failover"],
+          configSchema: {
+            strategy: { type: "string", enum: ["weighted", "roundrobin", "specialized"] },
+            weights: { type: "object", additionalProperties: { type: "number" } }
+          }
+        },
+        {
+          moduleId: "request-validator",
+          type: "protocol-adapter",
+          capabilities: ["request-validation", "schema-checking", "sanitization"],
+          configSchema: {
+            strictMode: { type: "boolean" },
+            allowedFields: { type: "array", items: { type: "string" } }
+          }
+        },
+        {
+          moduleId: "response-formatter",
+          type: "protocol-adapter",
+          capabilities: ["response-formatting", "error-handling", "compression"],
+          configSchema: {
+            format: { type: "string", enum: ["json", "xml", "text"] },
+            compress: { type: "boolean" }
+          }
+        }
+      ]
+    };
+    
+    // 模拟调度器配置数据
+    const mockSchedulerConfig = {
+      loadBalancing: {
+        strategy: "weighted",
+        strategyConfig: {
+          weighted: {
+            weights: {
+              "gpt-4": 40,
+              "gpt-3.5-turbo": 35,
+              "claude-3": 25
+            }
+          }
+        },
+        failover: {
+          enabled: true,
+          maxRetries: 3,
+          backoffStrategy: "exponential"
+        }
+      },
+      healthCheck: {
+        strategy: "hybrid",
+        intervals: {
+          active: 30000,
+          passive: 60000
+        },
+        thresholds: {
+          responseTime: 5000,
+          errorRate: 0.05,
+          successRate: 0.95
+        }
+      },
+      performance: {
+        concurrency: {
+          maxConcurrent: 100,
+          perModel: {
+            "gpt-4": 20,
+            "gpt-3.5-turbo": 50,
+            "claude-3": 30
+          }
+        },
+        timeouts: {
+          connect: 5000,
+          read: 30000,
+          write: 10000
+        },
+        caching: {
+          enabled: true,
+          ttl: 300000,
+          maxSize: 1000
+        }
+      },
+      monitoring: {
+        metrics: {
+          enabled: true,
+          interval: 10000,
+          metrics: ["requestCount", "responseTime", "errorRate", "throughput"]
+        },
+        logging: {
+          level: "info",
+          format: "json",
+          outputs: ["console", "file"]
+        },
+        tracing: {
+          enabled: true,
+          sampleRate: 0.1
+        }
+      }
+    };
+    
+    // 解析流水线配置
+    function parsePipelineConfig() {
+      console.log('解析流水线配置');
+      
+      const parseStatus = document.getElementById('config-parse-status');
+      const configType = document.getElementById('config-type-select').value;
+      
+      // 显示解析状态
+      parseStatus.className = 'config-parse-status';
+      parseStatus.innerHTML = `
+        <div class="spinner"></div>
+        <span>正在解析${configType === 'pipeline' ? '流水线' : configType === 'scheduler' ? '调度器' : '验证'}配置...</span>
+      `;
+      
+      // 模拟解析过程
+      setTimeout(() => {
+        parseStatus.className = 'config-parse-status success';
+        parseStatus.innerHTML = `
+          <i class="bi bi-check-circle-fill text-success"></i>
+          <span>配置解析成功</span>
+        `;
+        
+        // 根据配置类型更新显示
+        if (configType === 'pipeline') {
+          currentPipelineConfig = mockPipelineConfig;
+          updatePipelineConfigDisplay();
+        } else if (configType === 'scheduler') {
+          currentSchedulerConfig = mockSchedulerConfig;
+          updateSchedulerConfigDisplay();
+        } else if (configType === 'validation') {
+          updateValidationConfigDisplay();
+        }
+        
+      }, 1500);
+    }
+    
+    // 更新配置显示
+    function updateConfigDisplay() {
+      const configType = document.getElementById('config-type-select').value;
+      
+      if (configType === 'pipeline') {
+        updatePipelineConfigDisplay();
+      } else if (configType === 'scheduler') {
+        updateSchedulerConfigDisplay();
+      } else if (configType === 'validation') {
+        updateValidationConfigDisplay();
+      }
+    }
+    
+    // 更新流水线配置显示
+    function updatePipelineConfigDisplay() {
+      if (!currentPipelineConfig) return;
+      
+      // 更新元数据
+      document.getElementById('metadata-version').textContent = currentPipelineConfig.metadata.version;
+      document.getElementById('metadata-created').textContent = new Date(currentPipelineConfig.metadata.createdAt).toLocaleString();
+      document.getElementById('metadata-updated').textContent = new Date(currentPipelineConfig.metadata.updatedAt).toLocaleString();
+      document.getElementById('metadata-author').textContent = currentPipelineConfig.metadata.author;
+      document.getElementById('metadata-description').textContent = currentPipelineConfig.metadata.description;
+      
+      // 更新路由规则
+      updateRoutingRulesDisplay();
+      
+      // 更新流水线模板
+      updatePipelineTemplatesDisplay();
+      
+      // 更新模块注册表
+      updateModuleRegistryDisplay();
+    }
+    
+    // 更新路由规则显示
+    function updateRoutingRulesDisplay() {
+      const rulesList = document.getElementById('routing-rules-list');
+      if (!rulesList || !currentPipelineConfig) return;
+      
+      rulesList.innerHTML = '';
+      
+      currentPipelineConfig.routingRules.forEach(rule => {
+        const ruleElement = document.createElement('div');
+        ruleElement.className = 'routing-rule-item';
+        
+        const conditionsText = rule.conditions.map(cond => 
+          `${cond.field} ${cond.operator} ${Array.isArray(cond.value) ? cond.value.join(', ') : cond.value}`
+        ).join(' AND ');
+        
+        ruleElement.innerHTML = `
+          <div class="rule-priority">优先级: ${rule.priority}</div>
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6>${rule.name}</h6>
+              <p class="text-muted mb-2">规则ID: ${rule.ruleId}</p>
+              <div class="rule-conditions">
+                <strong>条件:</strong> ${conditionsText}
+              </div>
+              <div class="mt-2">
+                <small class="text-muted">
+                  <i class="bi bi-diagram-2"></i> 
+                  策略: ${rule.pipelineSelection.strategy} | 
+                  模板: ${rule.pipelineSelection.templateId}
+                </small>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="editRoutingRule('${rule.ruleId}')">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteRoutingRule('${rule.ruleId}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        
+        rulesList.appendChild(ruleElement);
+      });
+    }
+    
+    // 更新流水线模板显示
+    function updatePipelineTemplatesDisplay() {
+      const templatesList = document.getElementById('pipeline-templates-list');
+      if (!templatesList || !currentPipelineConfig) return;
+      
+      templatesList.innerHTML = '';
+      
+      currentPipelineConfig.pipelineTemplates.forEach(template => {
+        const templateElement = document.createElement('div');
+        templateElement.className = 'pipeline-template-item';
+        
+        const modulesText = template.moduleAssembly.map(module => 
+          `${module.moduleId} (位置: ${module.position})`
+        ).join(' → ');
+        
+        templateElement.innerHTML = `
+          <div class="template-header">
+            <h6>${template.templateId}</h6>
+            <div class="d-flex gap-2">
+              <span class="badge bg-secondary">${template.executionStrategy.type}</span>
+              <span class="badge bg-info">超时: ${template.baseConfig.timeout}ms</span>
+            </div>
+          </div>
+          <div class="template-modules">
+            <strong>模块组装:</strong> ${modulesText}
+          </div>
+          <div class="mt-2">
+            <small class="text-muted">
+              <i class="bi bi-gear"></i> 
+              重试: ${template.baseConfig.retryCount}次 | 
+              缓存: ${template.baseConfig.cacheEnabled ? '启用' : '禁用'}
+            </small>
+          </div>
+        `;
+        
+        templatesList.appendChild(templateElement);
+      });
+    }
+    
+    // 更新模块注册表显示
+    function updateModuleRegistryDisplay() {
+      const modulesList = document.getElementById('modules-list');
+      if (!modulesList || !currentPipelineConfig) return;
+      
+      modulesList.innerHTML = '';
+      
+      currentPipelineConfig.moduleRegistry.forEach(module => {
+        const moduleElement = document.createElement('div');
+        moduleElement.className = 'module-item';
+        
+        const capabilitiesTags = module.capabilities.map(capability => 
+          `<span class="capability-tag">${capability}</span>`
+        ).join('');
+        
+        moduleElement.innerHTML = `
+          <div class="module-header">
+            <h6>${module.moduleId}</h6>
+            <span class="module-type">${module.type}</span>
+          </div>
+          <div class="module-capabilities">
+            ${capabilitiesTags}
+          </div>
+          <div class="mt-2">
+            <small class="text-muted">
+              <i class="bi bi-puzzle"></i> 
+              配置模式: ${Object.keys(module.configSchema).join(', ')}
+            </small>
+          </div>
+        `;
+        
+        modulesList.appendChild(moduleElement);
+      });
+    }
+    
+    // 更新调度器配置显示
+    function updateSchedulerConfigDisplay() {
+      if (!currentSchedulerConfig) return;
+      
+      // 更新负载均衡配置
+      document.getElementById('lb-strategy').textContent = currentSchedulerConfig.loadBalancing.strategy;
+      document.getElementById('lb-weights').textContent = JSON.stringify(currentSchedulerConfig.loadBalancing.strategyConfig.weighted.weights, null, 2);
+      
+      // 更新健康检查配置
+      document.getElementById('hc-strategy').textContent = currentSchedulerConfig.healthCheck.strategy;
+      document.getElementById('hc-interval').textContent = `主动: ${currentSchedulerConfig.healthCheck.intervals.active}ms, 被动: ${currentSchedulerConfig.healthCheck.intervals.passive}ms`;
+      
+      // 更新性能配置
+      document.getElementById('perf-concurrency').textContent = `最大: ${currentSchedulerConfig.performance.concurrency.maxConcurrent}`;
+      document.getElementById('perf-timeout').textContent = `连接: ${currentSchedulerConfig.performance.timeouts.connect}ms, 读取: ${currentSchedulerConfig.performance.timeouts.read}ms`;
+      
+      // 更新监控配置
+      document.getElementById('mon-metrics').textContent = currentSchedulerConfig.monitoring.metrics.enabled ? '启用' : '禁用';
+      document.getElementById('mon-logging').textContent = currentSchedulerConfig.monitoring.logging.level;
+    }
+    
+    // 更新验证配置显示
+    function updateValidationConfigDisplay() {
+      // 模拟验证报告显示
+      const validationResults = document.getElementById('validation-results');
+      if (validationResults) {
+        validationResults.style.display = 'block';
+        
+        const progressBar = validationResults.querySelector('.progress-bar');
+        const statusText = validationResults.querySelector('small');
+        
+        if (progressBar) {
+          progressBar.style.width = '95%';
+          progressBar.className = 'progress-bar';
+        }
+        if (statusText) statusText.textContent = '95% 通过验证';
+      }
+    }
+    
+    // 刷新流水线配置
+    function refreshPipelineConfig() {
+      console.log('刷新流水线配置');
+      parsePipelineConfig();
+    }
+    
+    // 添加路由规则
+    function addRoutingRule() {
+      console.log('添加路由规则');
+      alert('添加路由规则功能开发中');
+    }
+    
+    // 编辑路由规则
+    function editRoutingRule(ruleId) {
+      console.log('编辑路由规则:', ruleId);
+      alert(`编辑路由规则: ${ruleId}`);
+    }
+    
+    // 删除路由规则
+    function deleteRoutingRule(ruleId) {
+      if (confirm(`确定要删除路由规则 "${ruleId}" 吗？`)) {
+        console.log('删除路由规则:', ruleId);
+        alert(`已删除路由规则: ${ruleId}`);
+      }
+    }
+    
+    // 添加流水线模板
+    function addPipelineTemplate() {
+      console.log('添加流水线模板');
+      alert('添加流水线模板功能开发中');
+    }
+    
+    // 搜索模块
+    function searchModules() {
+      const searchTerm = document.getElementById('module-search').value;
+      console.log('搜索模块:', searchTerm);
+      alert(`搜索模块: ${searchTerm}`);
+    }
+
+    // 验证配置
+    function validateConfig() {
+      console.log('验证配置');
+      
+      // 模拟验证过程
+      setTimeout(() => {
+        const validationResults = document.getElementById('validation-results');
+        const infoAlert = document.querySelector('.alert-info');
+        
+        if (validationResults) validationResults.style.display = 'block';
+        if (infoAlert) infoAlert.style.display = 'none';
+        
+        // 模拟验证结果
+        const validationScore = 85; // 85% 通过验证
+        const warnings = [
+          '某些供应商缺少API密钥',
+          '路由规则优先级可能存在冲突'
+        ];
+        const errors = [];
+        
+        // 更新验证结果
+        const progressBar = validationResults.querySelector('.progress-bar');
+        const statusText = validationResults.querySelector('small');
+        const warningAlert = validationResults.querySelector('.alert-warning');
+        const warningList = validationResults.querySelector('ul');
+        
+        if (progressBar) {
+          progressBar.style.width = validationScore + '%';
+          if (validationScore >= 90) {
+            progressBar.className = 'progress-bar';
+          } else if (validationScore >= 70) {
+            progressBar.className = 'progress-bar bg-warning';
+          } else {
+            progressBar.className = 'progress-bar bg-danger';
+          }
+        }
+        
+        if (statusText) {
+          statusText.textContent = validationScore + '% 通过验证';
+        }
+        
+        // 显示警告和错误
+        if (warningAlert && warningList) {
+          if (warnings.length > 0) {
+            warningAlert.style.display = 'block';
+            warningAlert.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> 发现 ' + warnings.length + ' 个警告';
+            
+            warningList.innerHTML = '';
+            warnings.forEach(warning => {
+              const li = document.createElement('li');
+              li.className = 'text-warning';
+              li.textContent = '• ' + warning;
+              warningList.appendChild(li);
+            });
+          } else {
+            warningAlert.style.display = 'none';
+          }
+        }
+        
+        // 如果有错误，显示错误信息
+        if (errors.length > 0) {
+          const errorAlert = validationResults.querySelector('.alert-danger');
+          const errorList = validationResults.querySelector('.text-danger');
+          
+          if (errorAlert && errorList) {
+            errorAlert.style.display = 'block';
+            errorAlert.innerHTML = '<i class="bi bi-x-circle-fill"></i> 发现 ' + errors.length + ' 个错误';
+            
+            errorList.innerHTML = '';
+            errors.forEach(error => {
+              const li = document.createElement('li');
+              li.className = 'text-danger';
+              li.textContent = '• ' + error;
+              errorList.appendChild(li);
+            });
+          }
+        }
+        
+        // 显示加载的配置
+    function displayLoadedConfig(config) {
+      const loadingIndicator = document.querySelector('.auto-load-indicator');
+      const fileStatus = document.querySelector('.file-status');
+      const successAlert = document.getElementById('config-loaded-success');
+      const errorAlert = document.getElementById('config-loaded-error');
+      const configContentDisplay = document.getElementById('config-content-display');
+      
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (fileStatus) {
+        fileStatus.className = 'file-status loaded';
+        fileStatus.innerHTML = '<i class="bi bi-check-circle-fill"></i> 已加载';
+      }
+      if (successAlert) successAlert.style.display = 'block';
+      if (errorAlert) errorAlert.style.display = 'none';
+      if (configContentDisplay) configContentDisplay.style.display = 'block';
+      
+      // 更新配置统计信息
+      const providerCount = config.providers ? config.providers.length : 0;
+      const modelCount = config.providers ? 
+        config.providers.reduce((total, provider) => total + (provider.models ? provider.models.length : 0), 0) : 0;
+      const routeCount = config.routes ? config.routes.length : 0;
+      
+      document.getElementById('config-provider-count').textContent = providerCount;
+      document.getElementById('config-model-count').textContent = modelCount;
+      document.getElementById('config-route-count').textContent = routeCount;
+      
+      // 显示配置文件内容
+      const configContent = document.getElementById('config-file-content');
+      if (configContent) {
+        configContent.textContent = JSON.stringify(config, null, 2);
+      }
+      
+      // 更新供应商列表
+      updateProviderList(config.providers);
+      
+      // 更新路由规则显示
+      updateRouteList(config.routes);
+      
+      // 触发配置验证
+      validateConfig();
+    }
+    
+    // 显示配置错误
+    function showConfigError(errorMessage) {
+      const loadingIndicator = document.querySelector('.auto-load-indicator');
+      const fileStatus = document.querySelector('.file-status');
+      const successAlert = document.getElementById('config-loaded-success');
+      const errorAlert = document.getElementById('config-loaded-error');
+      const configContentDisplay = document.getElementById('config-content-display');
+      
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (fileStatus) {
+        fileStatus.className = 'file-status error';
+        fileStatus.innerHTML = '<i class="bi bi-x-circle-fill"></i> 加载失败';
+      }
+      if (successAlert) successAlert.style.display = 'none';
+      if (errorAlert) {
+        errorAlert.style.display = 'block';
+        errorAlert.querySelector('p').textContent = errorMessage;
+      }
+      if (configContentDisplay) configContentDisplay.style.display = 'none';
+    }
+    
+    // 更新供应商列表显示
+    function updateProviderList(providers) {
+      if (!providers) return;
+      
+      // 更新路由配置中的供应商选择器
+      const routeProviderSelect = document.getElementById('route-provider-select');
+      if (routeProviderSelect) {
+        const currentValue = routeProviderSelect.value;
+        routeProviderSelect.innerHTML = '<option value="">请先选择供应商</option>';
+        
+        providers.forEach(provider => {
+          const option = document.createElement('option');
+          option.value = provider.id;
+          option.textContent = provider.name;
+          routeProviderSelect.appendChild(option);
+        });
+        
+        if (currentValue) {
+          routeProviderSelect.value = currentValue;
+        }
+      }
+      
+      // 更新供应商模型映射
+      providers.forEach(provider => {
+        if (provider.models && provider.models.length > 0) {
+          providerModels[provider.id] = provider.models.map(model => model.id || model.name);
+        }
+      });
+    }
+    
+    // 更新路由规则显示
+    function updateRouteList(routes) {
+      if (!routes) return;
+      
+      // 这里可以更新路由规则列表的显示
+      // 由于当前是静态示例，暂时不实现动态更新
+      console.log('更新路由规则显示:', routes);
+    }
+    
+    // 生成流水线
+        generatePipeline();
+        
+      }, 1000);
+    }
+    
+    // 生成流水线
+    function generatePipeline() {
+      const pipelineResults = document.getElementById('pipeline-results');
+      if (!pipelineResults) return;
+      
+      // 模拟流水线步骤
+      const pipelineSteps = [
+        { name: '请求预处理', status: 'completed', description: '验证请求格式，提取必要参数' },
+        { name: '路由匹配', status: 'completed', description: '根据虚拟模型名称匹配目标模型' },
+        { name: '供应商选择', status: 'processing', description: '根据负载均衡选择最优供应商' },
+        { name: '请求转发', status: 'pending', description: '转发请求到选定的供应商' },
+        { name: '响应处理', status: 'pending', description: '处理并返回供应商响应' }
+      ];
+      
+      pipelineResults.innerHTML = '';
+      
+      pipelineSteps.forEach((step, index) => {
+        const stepElement = document.createElement('div');
+        stepElement.className = 'pipeline-item';
+        
+        const statusClass = {
+          'completed': 'bg-success',
+          'processing': 'bg-warning', 
+          'pending': 'bg-secondary'
+        }[step.status];
+        
+        const statusText = {
+          'completed': '已完成',
+          'processing': '处理中',
+          'pending': '待处理'
+        }[step.status];
+        
+        const indicatorColor = step.status === 'completed' ? 'var(--gray-600)' : 
+                               step.status === 'processing' ? 'var(--warning-color)' : 'var(--gray-400)';
+        
+        stepElement.innerHTML = `
+          <div class="pipeline-status">
+            <div class="status-indicator ${step.status === 'completed' ? 'active' : ''}" style="background-color: ${indicatorColor};"></div>
+            <strong>${step.name}</strong>
+            <span class="badge ${statusClass}">${statusText}</span>
+          </div>
+          <p class="text-muted mb-0">${step.description}</p>
+        `;
+        
+        pipelineResults.appendChild(stepElement);
+      });
+    }
+  </script>
+
+  <script>
+  // 流水线配置解析和展示
+  let currentPipelineConfig = null;
+  let currentSchedulerConfig = null;
+  
+  // 模拟流水线配置数据
+  const mockPipelineConfig = {
+    metadata: {
+      version: "1.0.0",
+      createdAt: "2025-09-10T10:40:50.063Z",
+      updatedAt: "2025-09-10T10:40:50.063Z",
+      description: "RCC 流水线配置",
+      author: "RCC System"
+    },
+    routingRules: [
+      {
+        ruleId: "llm-chat-routing",
+        name: "LLM 聊天路由规则",
+        priority: 1,
+        conditions: [
+          {
+            field: "requestType",
+            operator: "equals",
+            value: "chat"
+          }
+        ],
+        pipelineSelection: {
+          strategy: "priority",
+          targetPipelineId: "llm-chat-primary"
+        }
+      },
+      {
+        ruleId: "code-generation-routing",
+        name: "代码生成路由规则",
+        priority: 2,
+        conditions: [
+          {
+            field: "requestType",
+            operator: "equals",
+            value: "code"
+          }
+        ],
+        pipelineSelection: {
+          strategy: "priority",
+          targetPipelineId: "code-generation-pipeline"
+        }
+      }
+    ],
+    pipelineTemplates: [
+      {
+        templateId: "llm-chat-primary",
+        baseConfig: {
+          name: "LLM 聊天主流水线",
+          description: "处理聊天请求的主要流水线",
+          timeout: 30000
+        },
+        moduleAssembly: [
+          {
+            moduleId: "llm-switch-module",
+            config: {
+              strategy: "priority",
+              fallbackEnabled: true
+            }
+          },
+          {
+            moduleId: "protocol-adapter-module",
+            config: {
+              protocol: "openai",
+              format: "chat"
+            }
+          }
+        ],
+        executionStrategy: {
+          type: "sequential",
+          errorHandling: "continue"
+        }
+      },
+      {
+        templateId: "code-generation-pipeline",
+        baseConfig: {
+          name: "代码生成流水线",
+          description: "专门处理代码生成请求的流水线",
+          timeout: 45000
+        },
+        moduleAssembly: [
+          {
+            moduleId: "code-processor-module",
+            config: {
+              language: "auto",
+              optimization: true
+            }
+          },
+          {
+            moduleId: "llm-switch-module",
+            config: {
+              strategy: "specialized",
+              modelType: "coding"
+            }
+          }
+        ],
+        executionStrategy: {
+          type: "sequential",
+          errorHandling: "retry"
+        }
+      }
+    ],
+    moduleRegistry: [
+      {
+        moduleId: "llm-switch-module",
+        type: "model-selector",
+        name: "LLM 模型选择器",
+        description: "根据请求类型选择合适的LLM模型",
+        version: "1.0.0",
+        capabilities: ["model-selection", "load-balancing", "fallback"],
+        configSchema: {
+          strategy: { type: "string", enum: ["priority", "weighted", "specialized"] },
+          fallbackEnabled: { type: "boolean" },
+          modelType: { type: "string" }
+        }
+      },
+      {
+        moduleId: "protocol-adapter-module",
+        type: "protocol-adapter",
+        name: "协议适配器",
+        description: "适配不同的AI服务协议",
+        version: "1.0.0",
+        capabilities: ["protocol-adaptation", "format-conversion"],
+        configSchema: {
+          protocol: { type: "string", enum: ["openai", "anthropic", "gemini"] },
+          format: { type: "string", enum: ["chat", "completion"] }
+        }
+      },
+      {
+        moduleId: "code-processor-module",
+        type: "preprocessor",
+        name: "代码预处理器",
+        description: "处理和优化代码生成请求",
+        version: "1.0.0",
+        capabilities: ["code-analysis", "language-detection", "optimization"],
+        configSchema: {
+          language: { type: "string" },
+          optimization: { type: "boolean" }
+        }
+      }
+    ]
+  };
+  
+  // 模拟调度器配置数据
+  const mockSchedulerConfig = {
+    loadBalancing: {
+      strategy: "weighted",
+      strategyConfig: {
+        weighted: {
+          weights: {
+            "provider_1": 60,
+            "provider_2": 30,
+            "provider_3": 10
+          }
+        }
+      },
+      failover: {
+        enabled: true,
+        maxRetries: 3,
+        retryDelay: 1000
+      }
+    },
+    healthCheck: {
+      strategy: "hybrid",
+      intervals: {
+        active: 30000,
+        passive: 60000
+      },
+      thresholds: {
+        responseTime: 5000,
+        errorRate: 0.05,
+        consecutiveFailures: 3
+      }
+    },
+    errorHandling: {
+      strategies: {
+        timeout: {
+          action: "retry",
+          maxRetries: 2
+        },
+        rateLimit: {
+          action: "wait",
+          maxWaitTime: 5000
+        },
+        authFailure: {
+          action: "fail",
+          blacklistDuration: 300000
+        }
+      },
+      blacklist: {
+        enabled: true,
+        maxEntries: 100,
+        cleanupInterval: 3600000
+      },
+      reporting: {
+        level: "detailed",
+        includeStack: false
+      }
+    },
+    performance: {
+      concurrency: {
+        maxConcurrent: 10,
+        perProvider: {
+          "provider_1": 5,
+          "provider_2": 3,
+          "provider_3": 2
+        }
+      },
+      timeouts: {
+        connect: 5000,
+        read: 30000,
+        write: 10000
+      },
+      caching: {
+        enabled: true,
+        ttl: 300000,
+        maxSize: 1000
+      },
+      rateLimiting: {
+        enabled: true,
+        requestsPerMinute: 60,
+        burstSize: 10
+      }
+    },
+    monitoring: {
+      metrics: {
+        enabled: true,
+        interval: 10000,
+        metrics: ["requestCount", "responseTime", "errorRate", "throughput"]
+      },
+      logging: {
+        level: "info",
+        format: "json",
+        outputs: ["console", "file"]
+      },
+      tracing: {
+        enabled: true,
+        sampleRate: 0.1
+      },
+      alerts: {
+        enabled: true,
+        channels: ["email", "webhook"],
+        rules: [
+          {
+            metric: "errorRate",
+            threshold: 0.1,
+            duration: 300000
+          }
+        ]
+      }
+    },
+    security: {
+      authentication: {
+        type: "bearer",
+        header: "Authorization"
+      },
+      authorization: {
+        enabled: true,
+        roles: ["admin", "user", "readonly"]
+      },
+      encryption: {
+        inTransit: true,
+        atRest: false,
+        algorithm: "AES-256"
+      }
+    }
+  };
+  
+  // 解析流水线配置
+  function parsePipelineConfig() {
+    const statusDiv = document.getElementById('config-parse-status');
+    const loadingDiv = document.getElementById('config-loading');
+    const contentDiv = document.getElementById('config-content');
+    
+    // 显示加载状态
+    statusDiv.className = 'config-parse-status';
+    statusDiv.innerHTML = '<div class="spinner"></div><div>正在解析流水线配置...</div>';
+    loadingDiv.style.display = 'block';
+    contentDiv.style.display = 'none';
+    
+    // 模拟异步解析过程
+    setTimeout(() => {
+      try {
+        // 使用模拟数据
+        currentPipelineConfig = mockPipelineConfig;
+        currentSchedulerConfig = mockSchedulerConfig;
+        
+        // 显示成功状态
+        statusDiv.className = 'config-parse-status success';
+        statusDiv.innerHTML = '<i class="bi bi-check-circle-fill"></i><div>流水线配置解析成功</div>';
+        
+        // 更新各个标签页的内容
+        updateMetadataTab();
+        updateRoutingRulesTab();
+        updatePipelineTemplatesTab();
+        updateModuleRegistryTab();
+        updateSchedulerConfigTab();
+        
+        // 显示内容
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+        
+        // 激活第一个标签页
+        document.querySelector('#config-tabs button').click();
+        
+      } catch (error) {
+        // 显示错误状态
+        statusDiv.className = 'config-parse-status error';
+        statusDiv.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i><div>配置解析失败: ' + error.message + '</div>';
+        loadingDiv.style.display = 'none';
+      }
+    }, 1500);
+  }
+  
+  // 更新元数据标签页
+  function updateMetadataTab() {
+    const metadata = currentPipelineConfig.metadata;
+    const content = `
+      <div class="metadata-item">
+        <label class="form-label">版本</label>
+        <div class="metadata-value">${metadata.version}</div>
+      </div>
+      <div class="metadata-item">
+        <label class="form-label">创建时间</label>
+        <div class="metadata-value">${new Date(metadata.createdAt).toLocaleString()}</div>
+      </div>
+      <div class="metadata-item">
+        <label class="form-label">更新时间</label>
+        <div class="metadata-value">${new Date(metadata.updatedAt).toLocaleString()}</div>
+      </div>
+      <div class="metadata-item">
+        <label class="form-label">描述</label>
+        <div class="metadata-value">${metadata.description}</div>
+      </div>
+      <div class="metadata-item">
+        <label class="form-label">作者</label>
+        <div class="metadata-value">${metadata.author}</div>
+      </div>
+    `;
+    document.getElementById('metadata-content').innerHTML = content;
+  }
+  
+  // 更新路由规则标签页
+  function updateRoutingRulesTab() {
+    const rules = currentPipelineConfig.routingRules;
+    let content = '';
+    
+    rules.forEach(rule => {
+      content += `
+        <div class="routing-rule-item">
+          <div class="rule-priority">优先级: ${rule.priority}</div>
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <h6>${rule.name}</h6>
+              <small class="text-muted">规则ID: ${rule.ruleId}</small>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="editRoutingRule('${rule.ruleId}')">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteRoutingRule('${rule.ruleId}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="rule-conditions">
+            <strong>条件:</strong>
+            <ul class="mb-0">
+              ${rule.conditions.map(condition => 
+                `<li>${condition.field} ${condition.operator} "${condition.value}"</li>`
+              ).join('')}
+            </ul>
+          </div>
+          <div class="mt-2">
+            <strong>流水线选择:</strong> ${rule.pipelineSelection.strategy} -> ${rule.pipelineSelection.targetPipelineId}
+          </div>
+        </div>
+      `;
+    });
+    
+    content += `
+      <div class="text-center mt-3">
+        <button class="btn btn-primary" onclick="addRoutingRule()">
+          <i class="bi bi-plus-lg"></i> 添加路由规则
+        </button>
+      </div>
+    `;
+    
+    document.getElementById('routing-rules-content').innerHTML = content;
+  }
+  
+  // 更新流水线模板标签页
+  function updatePipelineTemplatesTab() {
+    const templates = currentPipelineConfig.pipelineTemplates;
+    let content = '';
+    
+    templates.forEach(template => {
+      content += `
+        <div class="pipeline-template-item">
+          <div class="template-header">
+            <div>
+              <h6>${template.baseConfig.name}</h6>
+              <small class="text-muted">模板ID: ${template.templateId}</small>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="editPipelineTemplate('${template.templateId}')">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deletePipelineTemplate('${template.templateId}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+          <p class="text-muted mb-2">${template.baseConfig.description}</p>
+          <div class="mb-2">
+            <strong>超时:</strong> ${template.baseConfig.timeout}ms
+          </div>
+          <div class="template-modules">
+            <strong>模块组装:</strong>
+            <ul class="mb-0">
+              ${template.moduleAssembly.map(module => 
+                `<li>${module.moduleId} - ${JSON.stringify(module.config)}</li>`
+              ).join('')}
+            </ul>
+          </div>
+          <div class="mt-2">
+            <strong>执行策略:</strong> ${template.executionStrategy.type} (${template.executionStrategy.errorHandling})
+          </div>
+        </div>
+      `;
+    });
+    
+    content += `
+      <div class="text-center mt-3">
+        <button class="btn btn-primary" onclick="addPipelineTemplate()">
+          <i class="bi bi-plus-lg"></i> 添加流水线模板
+        </button>
+      </div>
+    `;
+    
+    document.getElementById('pipeline-templates-content').innerHTML = content;
+  }
+  
+  // 更新模块注册表标签页
+  function updateModuleRegistryTab() {
+    const modules = currentPipelineConfig.moduleRegistry;
+    let content = '';
+    
+    modules.forEach(module => {
+      content += `
+        <div class="module-item">
+          <div class="module-header">
+            <div>
+              <h6>${module.name}</h6>
+              <small class="text-muted">模块ID: ${module.moduleId}</small>
+            </div>
+            <span class="module-type">${module.type}</span>
+          </div>
+          <p class="text-muted mb-2">${module.description}</p>
+          <div class="mb-2">
+            <strong>版本:</strong> ${module.version}
+          </div>
+          <div class="module-capabilities">
+            <strong>能力:</strong>
+            ${module.capabilities.map(capability => 
+              `<span class="capability-tag">${capability}</span>`
+            ).join('')}
+          </div>
+          <div class="mt-2">
+            <strong>配置模式:</strong>
+            <pre class="mt-1">${JSON.stringify(module.configSchema, null, 2)}</pre>
+          </div>
+        </div>
+      `;
+    });
+    
+    document.getElementById('module-registry-content').innerHTML = content;
+  }
+  
+  // 更新调度器配置标签页
+  function updateSchedulerConfigTab() {
+    const config = currentSchedulerConfig;
+    const content = `
+      <div class="config-section">
+        <h6><i class="bi bi-balance-scale"></i> 负载均衡</h6>
+        <div class="config-item">
+          <label class="form-label">策略</label>
+          <div class="config-value">${config.loadBalancing.strategy}</div>
+        </div>
+        <div class="config-item">
+          <label class="form-label">权重配置</label>
+          <div class="config-value">${JSON.stringify(config.loadBalancing.strategyConfig.weighted.weights, null, 2)}</div>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h6><i class="bi bi-heart-pulse"></i> 健康检查</h6>
+        <div class="config-item">
+          <label class="form-label">策略</label>
+          <div class="config-value">${config.healthCheck.strategy}</div>
+        </div>
+        <div class="config-item">
+          <label class="form-label">检查间隔</label>
+          <div class="config-value">主动: ${config.healthCheck.intervals.active}ms, 被动: ${config.healthCheck.intervals.passive}ms</div>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h6><i class="bi bi-shield-exclamation"></i> 错误处理</h6>
+        <div class="config-item">
+          <label class="form-label">超时处理</label>
+          <div class="config-value">${config.errorHandling.strategies.timeout.action} (最大重试: ${config.errorHandling.strategies.timeout.maxRetries})</div>
+        </div>
+        <div class="config-item">
+          <label class="form-label">黑名单</label>
+          <div class="config-value">${config.errorHandling.blacklist.enabled ? '启用' : '禁用'} (最大条目: ${config.errorHandling.blacklist.maxEntries})</div>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h6><i class="bi bi-speedometer2"></i> 性能配置</h6>
+        <div class="config-item">
+          <label class="form-label">最大并发数</label>
+          <div class="config-value">${config.performance.concurrency.maxConcurrent}</div>
+        </div>
+        <div class="config-item">
+          <label class="form-label">超时设置</label>
+          <div class="config-value">连接: ${config.performance.timeouts.connect}ms, 读取: ${config.performance.timeouts.read}ms</div>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h6><i class="bi bi-graph-up"></i> 监控配置</h6>
+        <div class="config-item">
+          <label class="form-label">指标收集</label>
+          <div class="config-value">${config.monitoring.metrics.enabled ? '启用' : '禁用'} (间隔: ${config.monitoring.metrics.interval}ms)</div>
+        </div>
+        <div class="config-item">
+          <label class="form-label">日志级别</label>
+          <div class="config-value">${config.monitoring.logging.level}</div>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h6><i class="bi bi-lock"></i> 安全配置</h6>
+        <div class="config-item">
+          <label class="form-label">认证方式</label>
+          <div class="config-value">${config.security.authentication.type}</div>
+        </div>
+        <div class="config-item">
+          <label class="form-label">传输加密</label>
+          <div class="config-value">${config.security.encryption.inTransit ? '启用' : '禁用'}</div>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('scheduler-config-content').innerHTML = content;
+  }
+  
+  // 路由规则操作函数
+  function addRoutingRule() {
+    alert('添加路由规则功能将在后续版本中实现');
+  }
+  
+  function editRoutingRule(ruleId) {
+    alert(`编辑路由规则 ${ruleId} 功能将在后续版本中实现`);
+  }
+  
+  function deleteRoutingRule(ruleId) {
+    if (confirm('确定要删除这个路由规则吗？')) {
+      alert(`删除路由规则 ${ruleId} 功能将在后续版本中实现`);
+    }
+  }
+  
+  // 流水线模板操作函数
+  function addPipelineTemplate() {
+    alert('添加流水线模板功能将在后续版本中实现');
+  }
+  
+  function editPipelineTemplate(templateId) {
+    alert(`编辑流水线模板 ${templateId} 功能将在后续版本中实现`);
+  }
+  
+  function deletePipelineTemplate(templateId) {
+    if (confirm('确定要删除这个流水线模板吗？')) {
+      alert(`删除流水线模板 ${templateId} 功能将在后续版本中实现`);
+    }
+  }
+  
+  // 页面加载完成后自动解析配置
+  document.addEventListener('DOMContentLoaded', function() {
+    parsePipelineConfig();
+  });
+  </script>
+</body>
+</html>

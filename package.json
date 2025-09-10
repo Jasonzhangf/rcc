@@ -1,13 +1,15 @@
 {
   "name": "rcc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "RCC - Modular TypeScript Framework",
   "private": true,
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "rcc-basemodule": "^0.1.2",
+    "axios": "^1.11.0",
+    "rcc-basemodule": "^0.1.3",
+    "rcc-errorhandling": "^1.0.3",
     "uuid": "^9.0.1"
   },
   "files": [
@@ -39,6 +41,8 @@
     "npm": ">=8.0.0"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.0.0",
     "@types/uuid": "^9.0.8",

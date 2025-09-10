@@ -750,7 +750,10 @@ export function getRandomColor(): string {
     '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8',
     '#6f42c1', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'
   ];
-  return colors[Math.floor(Math.random() * colors.length)];
+  if (colors.length === 0) {
+    return '#007bff'; // default color
+  }
+  return colors[Math.floor(Math.random() * colors.length)] || '#007bff';
 }
 
 /**
@@ -758,7 +761,7 @@ export function getRandomColor(): string {
  */
 export function getContrastRatio(color1: string, color2: string): number {
   // 简化实现，实际中需要更复杂的算法
-  const getLuminance = (color: string) => {
+  const getLuminance = (_color: string) => {
     // 这里只是示例，实际需要解析颜色值
     return 0.5; // 返回默认值
   };

@@ -1,0 +1,115 @@
+{
+  "version": "1.0.0",
+  "description": "Gemini to OpenAI protocol conversion",
+  "protocols": {
+    "input": "gemini",
+    "output": "openai"
+  },
+  "requestMappings": {
+    "model": {
+      "field": "model",
+      "transform": "mapGeminiModelToOpenAI"
+    },
+    "contents": {
+      "field": "messages",
+      "transform": "convertGeminiContentsToOpenAI"
+    },
+    "generationConfig.maxOutputTokens": {
+      "field": "max_tokens"
+    },
+    "generationConfig.temperature": {
+      "field": "temperature"
+    },
+    "generationConfig.topP": {
+      "field": "top_p"
+    },
+    "generationConfig.topK": {
+      "field": "top_k"
+    },
+    "generationConfig.stopSequences": {
+      "field": "stop",
+      "transform": "convertStopSequences"
+    }
+  },
+  "responseMappings": {
+    "candidates[0].content.parts[0].text": {
+      "field": "choices[0].message.content"
+    },
+    "candidates[0].content.role": {
+      "field": "choices[0].message.role",
+      "defaultValue": "assistant"
+    },
+    "usageMetadata.promptTokenCount": {
+      "field": "usage.prompt_tokens"
+    },
+    "usageMetadata.candidatesTokenCount": {
+      "field": "usage.completion_tokens"
+    },
+    "usageMetadata.totalTokenCount": {
+      "field": "usage.total_tokens"
+    },
+    "model": {
+      "field": "model"
+    }
+  },
+  "validation": {
+    "required": ["model", "contents"],
+    "types": {
+      "model": "string",
+      "contents": "array",
+      "max_tokens": "number",
+      "temperature": "number",
+      "top_p": "number"
+    },
+    "ranges": {
+      "temperature": { "min": 0, "max": 2 },
+      "top_p": { "min": 0, "max": 1 },
+      "max_tokens": { "min": 1, "max": 8192 }
+    }
+  },
+  "transformFunctions": {
+    "mapGeminiModelToOpenAI": {
+      "type": "mapping",
+      "mappings": {
+        "gemini-1.5-pro-latest": "gpt-4",
+        "gemini-1.5-flash-latest": "gpt-4-turbo",
+        "gemini-1.0-pro": "gpt-4",
+        "gemini-1.0-pro-vision": "gpt-4-turbo",
+        "gemini-1.0-pro-001": "gpt-4",
+        "gemini-1.0-pro-latest": "gpt-4",
+        "gemini-1.0-pro-002": "gpt-4",
+        "gemini-1.5-pro-001": "gpt-4",
+        "gemini-1.5-pro-002": "gpt-4",
+        "gemini-1.5-flash-001": "gpt-3.5-turbo",
+        "gemini-1.5-flash-002": "gpt-3.5-turbo",
+        "gemini-1.5-flash-8b-001": "gpt-3.5-turbo",
+        "gemini-1.5-flash-8b-latest": "gpt-3.5-turbo"
+      },
+      "defaultValue": "gpt-4"
+    },
+    "convertGeminiContentsToOpenAI": {
+      "type": "array_transform",
+      "elementTransform": {
+        "role": {
+          "mapping": {
+            "user": "user",
+            "model": "assistant",
+            "function": "tool"
+          }
+        },
+        "parts": {
+          "field": "content",
+          "transform": "convertGeminiPartsToContent"
+        }
+      }
+    },
+    "convertGeminiPartsToContent": {
+      "type": "transform",
+      "operation": "extractTextFromParts"
+    },
+    "convertStopSequences": {
+      "type": "transform",
+      "operation": "arrayToString"
+    }
+  }
+}

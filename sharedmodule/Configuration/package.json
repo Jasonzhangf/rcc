@@ -104,6 +104,7 @@
     "webui:test": "npm run test:webui",
     "webui:validate": "node validate-webui.js",
     "webui:full-test": "npm run webui:validate && npm run test:webui:coverage && npm run webui:demo",
+    "webui:serve": "node start-demo-server.mjs",
     "test:ui": "jest __test__/**/*.test.ts",
     "test:ui:watch": "jest __test__/**/*.test.ts --watch",
     "test:ui:coverage": "jest __test__/**/*.test.ts --coverage",

@@ -216,7 +216,8 @@ export class StorageService implements UIService {
    * 获取最近文件列表
    */
   public async getRecentFiles(): Promise<any[]> {
-    return await this.getValue(STORAGE_KEYS.RECENT_FILES, []);
+    const files = await this.getValue(STORAGE_KEYS.RECENT_FILES, []);
+    return files || [];
   }
 
   /**
@@ -259,7 +260,8 @@ export class StorageService implements UIService {
    * 获取最近配置列表
    */
   public async getRecentConfigs(): Promise<any[]> {
-    return await this.getValue(STORAGE_KEYS.RECENT_CONFIGS, []);
+    const configs = await this.getValue(STORAGE_KEYS.RECENT_CONFIGS, []);
+    return configs || [];
   }
 
   /**
@@ -291,7 +293,8 @@ export class StorageService implements UIService {
    * 获取解析历史
    */
   public async getParseHistory(): Promise<any[]> {
-    return await this.getValue(STORAGE_KEYS.PARSE_HISTORY, []);
+    const history = await this.getValue(STORAGE_KEYS.PARSE_HISTORY, []);
+    return history || [];
   }
 
   /**
@@ -326,7 +329,8 @@ export class StorageService implements UIService {
    * 获取表单草稿
    */
   public async getFormDrafts(): Promise<Record<string, any>> {
-    return await this.getValue(STORAGE_KEYS.FORM_DRAFTS, {});
+    const drafts = await this.getValue(STORAGE_KEYS.FORM_DRAFTS, {});
+    return drafts || {};
   }
 
   /**

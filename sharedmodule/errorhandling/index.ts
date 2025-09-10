@@ -1,68 +1,185 @@
 /**
- * ErrorHandlingCenter - A comprehensive error handling and response management system
- * 
- * This module provides a centralized error handling system with the following components:
- * - ErrorInterfaceGateway: Main entry point for external error requests
- * - ErrorQueueManager: Manages error queue and priority processing
- * - ResponseRouterEngine: Routes errors to appropriate handlers
- * - ErrorClassifier: Classifies errors by type and severity
- * - ResponseExecutor: Executes error response actions
- * - ResponseTemplateManager: Manages response templates
- * - ModuleRegistryManager: Manages module registration
- * - PolicyEngine: Enforces error handling policies
+ * Simple ErrorHandling Center for RCC
+ * Basic error handling functionality
  */
 
-// Main components
-export { ErrorInterfaceGateway } from './src/components/ErrorInterfaceGateway';
-export { ErrorQueueManager } from './src/components/ErrorQueueManager';
-export { ResponseRouterEngine } from './src/components/ResponseRouterEngine';
-export { ErrorClassifier } from './src/components/ErrorClassifier';
-export { ResponseExecutor } from './src/components/ResponseExecutor';
-export { ResponseTemplateManager } from './src/components/ResponseTemplateManager';
-export { ModuleRegistryManager } from './src/components/ModuleRegistryManager';
-export { PolicyEngine } from './src/components/PolicyEngine';
+import { BaseModule } from 'rcc-basemodule';
+import { ModuleInfo } from 'rcc-basemodule';
 
-// Interfaces
-export { IErrorHandlingCenter } from './interfaces/IErrorHandlingCenter.interface';
+/**
+ * Simple error context
+ */
+export interface ErrorContext {
+  error: Error | string;
+  source: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  timestamp: number;
+  moduleId?: string;
+  context?: Record<string, any>;
+}
 
-// Constants
-export { ErrorHandlingCenterConstants } from './constants/ErrorHandlingCenter.constants';
+/**
+ * Simple error response
+ */
+export interface ErrorResponse {
+  success: boolean;
+  message: string;
+  actionTaken?: string;
+  timestamp: number;
+  errorId?: string;
+}
 
-// Types (re-export from SharedTypes)
-export type {
-  ErrorContext,
-  ErrorResponse,
-  ModuleRegistration,
-  ResponseHandler,
-  ErrorClassification,
-  ModuleSource,
-  ErrorHandlingConfig,
-  HandlingResult,
-  ResponseData,
-  Action,
-  ModuleAnnotation,
-  RoutingRule,
-  Template,
-  ResponseTemplate,
-  ErrorQueueManager as ErrorQueueManagerInterface,
-  ResponseRouterEngine as ResponseRouterEngineInterface,
-  ErrorClassifier as ErrorClassifierInterface
-} from '../SharedTypes';
+/**
+ * Simple ErrorHandling Center extending BaseModule
+ */
+export class ErrorHandlingCenter extends BaseModule {
+  private isInitialized: boolean = false;
+  private errorCount: number = 0;
+  private startTime: number = Date.now();
+
+  constructor(moduleInfo?: ModuleInfo) {
+    const defaultInfo: ModuleInfo = {
+      id: 'error-handling-center',
+      name: 'ErrorHandlingCenter',
+      version: '1.0.0',
+      description: 'Simple error handling center for RCC',
+      type: 'error-handling'
+    };
+
+    super(moduleInfo || defaultInfo);
+  }
+
+  /**
+   * Initialize the error handling center
+   */
+  public async initialize(): Promise<void> {
+    try {
+      console.log('Initializing ErrorHandlingCenter');
+      this.isInitialized = true;
+      console.log('ErrorHandlingCenter initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize ErrorHandlingCenter:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle an error
+   */
+  public async handleError(error: ErrorContext): Promise<ErrorResponse> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    this.errorCount++;
+    const errorId = `error_${this.errorCount}_${Date.now()}`;
+
+    console.error('Error received:', {
+      errorId,
+      error: error.error,
+      source: error.source,
+      severity: error.severity,
+      moduleId: error.moduleId
+    });
+
+    // Basic error handling - just log and acknowledge
+    const response: ErrorResponse = {
+      success: true,
+      message: `Error processed: ${typeof error.error === 'string' ? error.error : error.error.message}`,
+      actionTaken: 'logged',
+      timestamp: Date.now(),
+      errorId
+    };
+
+    console.log('Error handled successfully:', { errorId, response });
+    return response;
+  }
+
+  /**
+   * Handle error asynchronously (fire and forget)
+   */
+  public handleErrorAsync(error: ErrorContext): void {
+    this.handleError(error).catch(err => {
+      console.error('Failed to handle async error:', err);
+    });
+  }
+
+  /**
+   * Handle batch errors
+   */
+  public async handleBatchErrors(errors: ErrorContext[]): Promise<ErrorResponse[]> {
+    const responses: ErrorResponse[] = [];
+    
+    for (const error of errors) {
+      try {
+        const response = await this.handleError(error);
+        responses.push(response);
+      } catch (err) {
+        responses.push({
+          success: false,
+          message: `Failed to handle error: ${err}`,
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    return responses;
+  }
+
+  /**
+   * Get health status
+   */
+  public getHealth() {
+    return {
+      isInitialized: this.isInitialized,
+      errorCount: this.errorCount,
+      uptime: Date.now() - this.startTime,
+      lastError: this.errorCount > 0 ? `Last error was error_${this.errorCount}` : 'No errors'
+    };
+  }
+
+  /**
+   * Get error statistics
+   */
+  public getStats() {
+    return {
+      totalErrors: this.errorCount,
+      uptime: Date.now() - this.startTime,
+      isInitialized: this.isInitialized,
+      moduleId: 'error-handling-center',
+      moduleName: 'ErrorHandlingCenter'
+    };
+  }
+
+  /**
+   * Reset error count
+   */
+  public resetErrorCount(): void {
+    this.errorCount = 0;
+    console.log('Error count reset');
+  }
+
+  /**
+   * Destroy the error handling center
+   */
+  public async destroy(): Promise<void> {
+    try {
+      console.log('Destroying ErrorHandlingCenter:', { 
+        finalErrorCount: this.errorCount,
+        uptime: Date.now() - this.startTime
+      });
+      
+      this.isInitialized = false;
+      console.log('ErrorHandlingCenter destroyed successfully');
+    } catch (error) {
+      console.error('Failed to destroy ErrorHandlingCenter:', error);
+      throw error;
+    }
+  }
+}
 
 // Version info
 export const ErrorHandlingCenterVersion = '1.0.0';
 
 // Default export
-export default {
-  ErrorInterfaceGateway,
-  ErrorQueueManager,
-  ResponseRouterEngine,
-  ErrorClassifier,
-  ResponseExecutor,
-  ResponseTemplateManager,
-  ModuleRegistryManager,
-  PolicyEngine,
-  IErrorHandlingCenter,
-  ErrorHandlingCenterConstants,
-  version: ErrorHandlingCenterVersion
-};
+export default ErrorHandlingCenter;

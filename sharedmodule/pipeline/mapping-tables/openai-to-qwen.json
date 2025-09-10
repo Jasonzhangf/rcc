@@ -1,0 +1,218 @@
+{
+  "version": "1.0.0",
+  "description": "OpenAI to Qwen protocol compatibility mapping table",
+  "focus": "Pure protocol conversion (no routing or model management)",
+  "formats": {
+    "source": "openai",
+    "target": "qwen"
+  },
+  "fieldMappings": {
+    "model": {
+      "targetField": "model",
+      "transform": "noMapping",
+      "required": true,
+      "description": "Model name (no mapping, pass through)"
+    },
+    "messages": {
+      "targetField": "input.messages",
+      "transform": "convertMessagesFormat",
+      "required": true,
+      "description": "Convert OpenAI message format to Qwen message format"
+    },
+    "temperature": {
+      "targetField": "parameters.temperature",
+      "defaultValue": 0.7,
+      "validation": {
+        "min": 0.0,
+        "max": 2.0,
+        "allowEmpty": false
+      },
+      "description": "Temperature parameter for response randomness"
+    },
+    "max_tokens": {
+      "targetField": "parameters.max_tokens",
+      "validation": {
+        "min": 1,
+        "max": 200000,
+        "allowEmpty": false
+      },
+      "description": "Maximum number of tokens to generate"
+    },
+    "top_p": {
+      "targetField": "parameters.top_p",
+      "defaultValue": 1.0,
+      "validation": {
+        "min": 0.0,
+        "max": 1.0,
+        "allowEmpty": false
+      },
+      "description": "Nucleus sampling parameter"
+    },
+    "frequency_penalty": {
+      "targetField": "parameters.frequency_penalty",
+      "defaultValue": 0.0,
+      "validation": {
+        "min": -2.0,
+        "max": 2.0,
+        "allowEmpty": false
+      },
+      "description": "Frequency penalty for token repetition"
+    },
+    "presence_penalty": {
+      "targetField": "parameters.presence_penalty",
+      "defaultValue": 0.0,
+      "validation": {
+        "min": -2.0,
+        "max": 2.0,
+        "allowEmpty": false
+      },
+      "description": "Presence penalty for new topics"
+    },
+    "stop": {
+      "targetField": "parameters.stop",
+      "description": "Stop sequences for generation"
+    },
+    "stream": {
+      "targetField": "stream",
+      "defaultValue": false,
+      "description": "Enable streaming response"
+    },
+    "user": {
+      "targetField": "user",
+      "description": "User identifier"
+    },
+    "n": {
+      "targetField": "n",
+      "defaultValue": 1,
+      "validation": {
+        "min": 1,
+        "max": 10,
+        "allowEmpty": false
+      },
+      "description": "Number of completions to generate"
+    },
+    "tools": {
+      "targetField": "tools",
+      "transform": "convertOpenAIToolsToQwen",
+      "description": "Convert OpenAI tool definitions to Qwen format"
+    },
+    "tool_choice": {
+      "targetField": "tool_choice",
+      "transform": "convertOpenAIToolChoiceToQwen",
+      "defaultValue": "auto",
+      "description": "Tool choice strategy"
+    }
+  },
+  "validationRules": {
+    "required": ["model", "messages"],
+    "types": {
+      "model": "string",
+      "messages": "array",
+      "temperature": "number",
+      "max_tokens": "number",
+      "top_p": "number",
+      "frequency_penalty": "number",
+      "presence_penalty": "number",
+      "stream": "boolean",
+      "user": "string",
+      "tools": "array",
+      "tool_choice": "string"
+    },
+    "constraints": {
+      "model": {
+        "pattern": "^[a-zA-Z0-9-]+$",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "messages": {
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "max_tokens": {
+        "min": 1,
+        "max": 200000
+      },
+      "temperature": {
+        "min": 0.0,
+        "max": 2.0
+      },
+      "top_p": {
+        "min": 0.0,
+        "max": 1.0
+      }
+    }
+  },
+  "transformFunctions": {
+    "noMapping": {
+      "type": "noMapping",
+      "description": "No transformation, pass through as-is"
+    },
+    "convertMessagesFormat": {
+      "type": "protocolMapping",
+      "description": "Convert message format between OpenAI and Qwen protocols",
+      "roleMapping": {
+        "system": "system",
+        "user": "user", 
+        "assistant": "assistant",
+        "tool": "tool"
+      }
+    },
+    "convertToolsFormat": {
+      "type": "protocolMapping",
+      "description": "Convert tool definitions between OpenAI and Qwen formats",
+      "typeMapping": {
+        "function": "function"
+      }
+    },
+    "convertToolCallsFormat": {
+      "type": "protocolMapping", 
+      "description": "Convert tool calls between OpenAI and Qwen formats",
+      "structureMapping": {
+        "id": "id",
+        "type": "type", 
+        "function": "function"
+      }
+    },
+    "convertResponseStructure": {
+      "type": "protocolMapping",
+      "description": "Convert response structure between OpenAI and Qwen formats",
+      "openaiToQwen": {
+        "choices": "output.choices",
+        "usage": "output.usage"
+      },
+      "qwenToOpenai": {
+        "output.choices": "choices",
+        "output.usage": "usage"
+      }
+    },
+    "convertFinishReason": {
+      "type": "protocolMapping",
+      "description": "Convert finish reason between OpenAI and Qwen formats",
+      "mappings": {
+        "stop": "stop",
+        "length": "length", 
+        "tool_calls": "tool_calls",
+        "content_filter": "content_filter"
+      }
+    },
+    "convertToolResult": {
+      "type": "protocolMapping",
+      "description": "Convert tool result format between protocols",
+      "structure": {
+        "role": "role",
+        "tool_call_id": "tool_call_id", 
+        "content": "content"
+      }
+    },
+    "convertStreamingFormat": {
+      "type": "protocolMapping",
+      "description": "Convert streaming format between OpenAI and Qwen protocols",
+      "openaiToQwen": {
+        "choices": "output.choices"
+      },
+      "qwenToOpenai": {
+        "output.choices": "choices"
+      }
+    }
+  }
+}

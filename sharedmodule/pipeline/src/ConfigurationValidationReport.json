@@ -1,0 +1,41 @@
+{
+  "assemblyTableValidation": {
+    "isValid": true,
+    "errors": [],
+    "warnings": [
+      {
+        "field": "metadata.description",
+        "message": "Description is recommended for better documentation",
+        "suggestion": "Add a brief description of the assembly table"
+      }
+    ],
+    "recommendations": []
+  },
+  "schedulerConfigValidation": {
+    "isValid": true,
+    "errors": [],
+    "warnings": [],
+    "recommendations": [
+      {
+        "field": "performance.concurrency.maxConcurrentRequests",
+        "current": 1000,
+        "recommended": 500,
+        "reason": "High concurrency may impact system stability under resource constraints",
+        "impact": "medium"
+      }
+    ]
+  },
+  "crossReferenceValidation": {
+    "isValid": true,
+    "errors": [],
+    "warnings": [],
+    "recommendations": []
+  },
+  "summary": {
+    "overallValid": true,
+    "totalErrors": 0,
+    "totalWarnings": 1,
+    "totalRecommendations": 1,
+    "validationTimestamp": "2024-01-01T00:00:00Z"
+  }
+}

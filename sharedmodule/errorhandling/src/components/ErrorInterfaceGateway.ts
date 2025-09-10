@@ -3,7 +3,7 @@ import {
   ErrorContext, 
   ErrorResponse, 
   ModuleRegistration 
-} from '../../../SharedTypes';
+} from '../types';
 import { ErrorQueueManager } from './ErrorQueueManager';
 import { ResponseRouterEngine } from './ResponseRouterEngine';
 

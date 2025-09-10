@@ -1,7 +1,6 @@
 import { ModuleInfo } from 'rcc-basemodule';
 import { BasePipelineModule } from './BasePipelineModule';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import crypto from 'crypto';
 
 /**
  * Provider Module Configuration
@@ -84,6 +83,8 @@ export interface QwenAuthConfig {
     scope: string;
     pkce: boolean;
   };
+  /** Token expiration timestamp */
+  expiresAt?: number;
 }
 
 /**
@@ -164,7 +165,7 @@ export interface QwenTokenResponse {
 }
 
 export class ProviderModule extends BasePipelineModule {
-  protected config: ProviderConfig = {} as ProviderConfig;
+  protected override config: ProviderConfig = {} as ProviderConfig;
   protected httpClient: AxiosInstance;
   private tokenCache: Map<string, AuthResult> = new Map();
   private tokenStoreFile?: string;
@@ -190,7 +191,7 @@ export class ProviderModule extends BasePipelineModule {
    * Configure the Provider module
    * @param config - Configuration object
    */
-  async configure(config: ProviderConfig): Promise<void> {
+  override async configure(config: ProviderConfig): Promise<void> {
     this.logInfo('Configuring ProviderModule', config, 'configure');
     
     this.config = {
@@ -223,7 +224,7 @@ export class ProviderModule extends BasePipelineModule {
    * @param request - Input request
    * @returns Promise<any> - Provider response
    */
-  async process(request: any): Promise<any> {
+  override async process(request: any): Promise<any> {
     this.logInfo('Processing Provider request', {
       provider: this.config?.provider,
       endpoint: this.config?.endpoint,
@@ -276,7 +277,7 @@ export class ProviderModule extends BasePipelineModule {
    * @param response - Input response data
    * @returns Promise<any> - Processed response data
    */
-  async processResponse(response: any): Promise<any> {
+  override async processResponse(response: any): Promise<any> {
     this.logInfo('Processing Provider response', {
       provider: this.config?.provider,
       responseStatus: response.status,
@@ -663,7 +664,7 @@ export class ProviderModule extends BasePipelineModule {
     // Generate PKCE codes if enabled
     let pkceCodes: { verifier: string; challenge: string } | null = null;
     if (deviceFlow.pkce) {
-      pkceCodes = this.generatePKCECodes();
+      pkceCodes = await this.generatePKCECodes();
     }
     
     const deviceAuthResponse = await this.httpClient.post<QwenDeviceAuthorizationResponse>(deviceAuthEndpoint, {
@@ -701,9 +702,25 @@ export class ProviderModule extends BasePipelineModule {
    * @returns { verifier: string; challenge: string } - PKCE codes
    */
   private generatePKCECodes(): { verifier: string; challenge: string } {
-    const auth = crypto.randomBytes(32).toString('base64url');
-    const challenge = crypto.createHash('sha256').update(auth).digest('base64url');
-    return { verifier: auth, challenge };
+    // Generate random verifier using Web Crypto API
+    const randomValues = new Uint8Array(32);
+    crypto.getRandomValues(randomValues);
+    const verifier = btoa(String.fromCharCode(...randomValues))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    
+    // Generate challenge using Web Crypto API
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    
+    return crypto.subtle.digest('SHA-256', data).then(hash => {
+      const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+      return { verifier, challenge };
+    });
   }
 
   /**

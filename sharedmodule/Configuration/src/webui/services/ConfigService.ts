@@ -7,7 +7,6 @@
 import { 
   UIService, 
   ProviderConfig, 
-  ModelConfig, 
   VirtualModelConfig, 
   RouteConfig 
 } from '../types/ui.types';
@@ -268,6 +267,49 @@ export class ConfigService implements UIService {
   }
 
   /**
+   * 将简单值转换为ConfigValue对象
+   */
+  private createConfigValue(value: any, required: boolean = true): import('../../interfaces/IConfigurationSystem').ConfigValue {
+    let type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'null' = 'string';
+    
+    if (typeof value === 'number') {
+      type = 'number';
+    } else if (typeof value === 'boolean') {
+      type = 'boolean';
+    } else if (value === null) {
+      type = 'null';
+    } else if (Array.isArray(value)) {
+      type = 'array';
+    } else if (typeof value === 'object') {
+      type = 'object';
+    }
+    
+    return {
+      value,
+      type,
+      required
+    };
+  }
+
+  /**
+   * 将设置对象转换为ConfigValue结构
+   */
+  private convertSettingsToConfigValue(settings: Record<string, any>, required: boolean = true): Record<string, import('../../interfaces/IConfigurationSystem').ConfigValue> {
+    const result: Record<string, import('../../interfaces/IConfigurationSystem').ConfigValue> = {};
+    
+    for (const [key, value] of Object.entries(settings)) {
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        // For nested objects, create a ConfigValue object containing the nested structure
+        result[key] = this.createConfigValue(value, required);
+      } else {
+        result[key] = this.createConfigValue(value, required);
+      }
+    }
+    
+    return result;
+  }
+
+  /**
    * 获取所有支持的供应商类型
    */
   public getSupportedProviders(): string[] {
@@ -294,18 +336,18 @@ export class ConfigService implements UIService {
         environment: 'development'
       },
       settings: {
-        general: {
+        general: this.convertSettingsToConfigValue({
           port: 5506,
-          debug: true,
-          cors: {
-            enabled: true,
-            origins: ['*']
-          }
-        },
+          debug: true
+        }),
+        cors: this.convertSettingsToConfigValue({
+          enabled: true,
+          origins: ['*']
+        }),
         providers: this.convertProvidersToSettings(options.providers),
         virtualModels: this.convertVirtualModelsToSettings(options.virtualModels),
         routes: this.convertRoutesToSettings(options.routes),
-        security: {
+        security: this.convertSettingsToConfigValue({
           rateLimiting: {
             enabled: true,
             maxRequests: 100,
@@ -314,8 +356,8 @@ export class ConfigService implements UIService {
           authentication: {
             required: false
           }
-        },
-        monitoring: {
+        }),
+        monitoring: this.convertSettingsToConfigValue({
           logging: {
             level: 'info',
             file: './logs/rcc.log'
@@ -324,7 +366,7 @@ export class ConfigService implements UIService {
             enabled: true,
             endpoint: '/metrics'
           }
-        }
+        })
       },
       version: '1.0.0'
     };
@@ -430,16 +472,17 @@ export class ConfigService implements UIService {
       errors.push('至少需要配置一个供应商');
     } else {
       for (const [providerId, provider] of Object.entries(config.providers as any)) {
-        if (!provider.name) {
+        const typedProvider: any = provider;
+        if (!typedProvider.name) {
           errors.push(`供应商 ${providerId} 缺少名称`);
         }
-        if (!provider.endpoint) {
+        if (!typedProvider.endpoint) {
           errors.push(`供应商 ${providerId} 缺少端点地址`);
         }
-        if (!provider.auth || !provider.auth.keys || provider.auth.keys.length === 0) {
+        if (!typedProvider.auth || !typedProvider.auth.keys || typedProvider.auth.keys.length === 0) {
           warnings.push(`供应商 ${providerId} 缺少API密钥`);
         }
-        if (!provider.models || Object.keys(provider.models).length === 0) {
+        if (!typedProvider.models || Object.keys(typedProvider.models).length === 0) {
           errors.push(`供应商 ${providerId} 缺少模型配置`);
         }
       }
@@ -448,23 +491,24 @@ export class ConfigService implements UIService {
     // 验证虚拟模型配置
     if (config.virtualModels) {
       for (const [vmName, vm] of Object.entries(config.virtualModels as any)) {
-        if (!vm.targetProvider) {
+        const typedVm: any = vm;
+        if (!typedVm.targetProvider) {
           errors.push(`虚拟模型 ${vmName} 缺少目标供应商`);
         }
-        if (!vm.targetModel) {
+        if (!typedVm.targetModel) {
           errors.push(`虚拟模型 ${vmName} 缺少目标模型`);
         }
         
         // 检查目标供应商是否存在
-        if (vm.targetProvider && !config.providers[vm.targetProvider]) {
-          errors.push(`虚拟模型 ${vmName} 的目标供应商 ${vm.targetProvider} 不存在`);
+        if (typedVm.targetProvider && !config.providers[typedVm.targetProvider]) {
+          errors.push(`虚拟模型 ${vmName} 的目标供应商 ${typedVm.targetProvider} 不存在`);
         }
         
         // 检查目标模型是否存在
-        if (vm.targetProvider && vm.targetModel && config.providers[vm.targetProvider]) {
-          const provider = config.providers[vm.targetProvider];
-          if (!provider.models[vm.targetModel]) {
-            errors.push(`虚拟模型 ${vmName} 的目标模型 ${vm.targetModel} 在供应商 ${vm.targetProvider} 中不存在`);
+        if (typedVm.targetProvider && typedVm.targetModel && config.providers[typedVm.targetProvider]) {
+          const provider = config.providers[typedVm.targetProvider];
+          if (!provider.models[typedVm.targetModel]) {
+            errors.push(`虚拟模型 ${vmName} 的目标模型 ${typedVm.targetModel} 在供应商 ${typedVm.targetProvider} 中不存在`);
           }
         }
       }
@@ -526,7 +570,7 @@ export class ConfigService implements UIService {
   /**
    * 合并重复配置
    */
-  private mergeDuplicateConfigs(config: any): void {
+  private mergeDuplicateConfigs(_config: any): void {
     // 这里可以实现合并重复配置的逻辑
     // 例如合并相同的供应商配置等
   }

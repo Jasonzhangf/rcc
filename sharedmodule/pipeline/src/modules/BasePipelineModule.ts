@@ -79,7 +79,7 @@ export abstract class BasePipelineModule extends BaseModule {
    * @param source - Source module
    */
   protected logInputPort(data: any, port: string, source?: string): void {
-    this.debug('info', `Input port data received: ${port} from ${source || 'unknown'}`);
+    this.debug('info', `Input port data received: ${port} from ${source || 'unknown'}`, undefined, 'logInputPort');
   }
 
   /**
@@ -89,7 +89,7 @@ export abstract class BasePipelineModule extends BaseModule {
    * @param target - Target module
    */
   protected logOutputPort(data: any, port: string, target?: string): void {
-    this.debug('info', `Output port data sent: ${port} to ${target || 'unknown'}`);
+    this.debug('info', `Output port data sent: ${port} to ${target || 'unknown'}`, undefined, 'logOutputPort');
   }
 
   /**
@@ -123,7 +123,7 @@ export abstract class BasePipelineModule extends BaseModule {
    * @param targetModule - Target module to connect to
    */
   connect(targetModule: BasePipelineModule): void {
-    this.debug('info', `Connecting to module: ${targetModule.getName()}`);
+    this.debug('info', `Connecting to module: ${targetModule.getName()}`, undefined, 'connect');
     // Add connection logic here
   }
 
@@ -132,7 +132,7 @@ export abstract class BasePipelineModule extends BaseModule {
    * @param targetModule - Target module to disconnect from
    */
   disconnect(targetModule: BasePipelineModule): void {
-    this.debug('info', `Disconnecting from module: ${targetModule.getName()}`);
+    this.debug('info', `Disconnecting from module: ${targetModule.getName()}`, undefined, 'disconnect');
     // Add disconnection logic here
   }
 

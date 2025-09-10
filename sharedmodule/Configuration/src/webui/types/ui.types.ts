@@ -4,7 +4,7 @@
  * 定义Web界面组件和服务的TypeScript类型
  */
 
-import { ConfigData } from '../../interfaces/IConfigurationSystem';
+// import { ConfigData } from '../../interfaces/IConfigurationSystem'; // Unused import
 
 /**
  * UI配置选项

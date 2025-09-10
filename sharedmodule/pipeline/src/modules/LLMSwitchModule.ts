@@ -1,5 +1,7 @@
 import { ModuleInfo } from 'rcc-basemodule';
 import { BasePipelineModule } from './BasePipelineModule';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * LLMSwitch Module - Protocol conversion and field mapping
@@ -62,22 +64,22 @@ export interface TransformTable {
 }
 
 export class LLMSwitchModule extends BasePipelineModule {
-  protected config: LLMSwitchConfig = {} as LLMSwitchConfig;
+  protected override config: LLMSwitchConfig = {} as LLMSwitchConfig;
   private transformTable: TransformTable | null = null;
   private requestCache: Map<string, any> = new Map();
   private responseCache: Map<string, any> = new Map();
 
   constructor(info: ModuleInfo) {
     super(info);
-    console.log(`[INFO] LLMSwitchModule initialized: ${this.moduleName}`);
+    this.logInfo('LLMSwitchModule initialized', { module: this.moduleName }, 'constructor');
   }
 
   /**
    * Configure the LLMSwitch module
    * @param config - Configuration object
    */
-  async configure(config: LLMSwitchConfig): Promise<void> {
-    console.log(`[INFO] Configuring LLMSwitchModule:`, config);
+  override async configure(config: LLMSwitchConfig): Promise<void> {
+    this.logInfo('Configuring LLMSwitchModule', config, 'configure');
     
     this.config = config;
     
@@ -90,7 +92,7 @@ export class LLMSwitchModule extends BasePipelineModule {
     }
     
     await super.configure(config);
-    console.log(`[INFO] LLMSwitchModule configured successfully`);
+    this.logInfo('LLMSwitchModule configured successfully', config, 'configure');
   }
 
   /**
@@ -99,8 +101,8 @@ export class LLMSwitchModule extends BasePipelineModule {
    * @param request - Input request in source protocol format
    * @returns Promise<any> - Transformed request in target protocol format
    */
-  async process(request: any): Promise<any> {
-    console.log(`[INFO] Processing LLMSwitch request`, {
+  override async process(request: any): Promise<any> {
+    this.logInfo('Processing LLMSwitch request', {
       inputProtocol: this.config?.inputProtocol,
       outputProtocol: this.config?.outputProtocol,
       requestSize: JSON.stringify(request).length
@@ -141,11 +143,11 @@ export class LLMSwitchModule extends BasePipelineModule {
       // Log output data at output port
       this.logOutputPort(transformedRequest, 'request-output', 'next-module');
       
-      this.logProcessingComplete('LLMSwitch request', transformedRequest, Date.now() - startTime, 'process');
+      this.debug('debug', 'LLMSwitch request processing complete', { data: transformedRequest, processingTime: Date.now() - startTime }, 'process');
       
       return transformedRequest;
     } catch (error) {
-      this.logError(error as Error, { operation: 'process' }, 'process');
+      this.error('Error processing request', { error: error as Error, operation: 'process' }, 'process');
       throw error;
     }
   }
@@ -155,7 +157,7 @@ export class LLMSwitchModule extends BasePipelineModule {
    * @param response - Response in target protocol format
    * @returns Promise<any> - Transformed response in source protocol format
    */
-  async processResponse(response: any): Promise<any> {
+  override async processResponse(response: any): Promise<any> {
     this.logInfo('Processing LLMSwitch response', {
       inputProtocol: this.config?.inputProtocol,
       outputProtocol: this.config?.outputProtocol,
@@ -197,11 +199,11 @@ export class LLMSwitchModule extends BasePipelineModule {
       // Log output data at output port
       this.logOutputPort(transformedResponse, 'response-output', 'external');
       
-      this.logProcessingComplete('LLMSwitch response', transformedResponse, Date.now() - startTime, 'processResponse');
+      this.debug('debug', 'LLMSwitch response processing complete', { data: transformedResponse, processingTime: Date.now() - startTime }, 'processResponse');
       
       return transformedResponse;
     } catch (error) {
-      this.logError(error as Error, { operation: 'processResponse' }, 'processResponse');
+      this.error('Error processing response', { error: error as Error, operation: 'processResponse' }, 'processResponse');
       throw error;
     }
   }
@@ -232,55 +234,74 @@ export class LLMSwitchModule extends BasePipelineModule {
         outputProtocol: this.transformTable.protocols.output
       }, 'loadTransformTable');
     } catch (error) {
-      this.logError(error as Error, { tableName }, 'loadTransformTable');
+      this.error('Error loading transform table', { error: error as Error, tableName }, 'loadTransformTable');
       throw error;
     }
   }
 
   /**
-   * Get transform table by name (mock implementation)
+   * Get transform table by name - load from JSON file
    * @param tableName - Name of the transform table
    * @returns Promise<TransformTable> - Transform table
    */
   private async getTransformTable(tableName: string): Promise<TransformTable> {
-    // This would typically load from a file or database
-    // Mock implementation for demonstration
-    const mockTables: Record<string, TransformTable> = {
-      'anthropic-to-openai-v1': {
-        version: '1.0.0',
-        description: 'Anthropic to OpenAI protocol conversion',
-        protocols: {
-          input: 'anthropic',
-          output: 'openai'
-        },
-        requestMappings: {
-          'model': 'model',
-          'max_tokens': 'max_tokens',
-          'messages': {
-            field: 'messages',
-            transform: (messages: any[]) => {
-              return messages.map(msg => ({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: msg.content
-              }));
-            }
-          }
-        },
-        responseMappings: {
-          'choices[0].message.content': 'content',
-          'choices[0].message.role': 'role',
-          'usage.prompt_tokens': 'usage.input_tokens',
-          'usage.completion_tokens': 'usage.output_tokens'
-        }
+    try {
+      // Construct path to transform table file
+      const transformTablePath = path.join(__dirname, '..', 'mapping-tables', `${tableName}.json`);
+      
+      this.logInfo(`Loading transform table from file: ${transformTablePath}`, {}, 'getTransformTable');
+      
+      // Check if file exists
+      if (!fs.existsSync(transformTablePath)) {
+        throw new Error(`Transform table file not found: ${transformTablePath}`);
       }
-    };
+      
+      // Read and parse JSON file
+      const fileContent = fs.readFileSync(transformTablePath, 'utf-8');
+      const transformTable = JSON.parse(fileContent) as TransformTable;
+      
+      // Validate transform table structure
+      this.validateTransformTableStructure(transformTable, tableName);
+      
+      this.logInfo(`Transform table loaded successfully: ${tableName}`, {
+        version: transformTable.version,
+        protocols: transformTable.protocols,
+        requestMappingCount: Object.keys(transformTable.requestMappings).length,
+        responseMappingCount: Object.keys(transformTable.responseMappings).length
+      }, 'getTransformTable');
+      
+      return transformTable;
+    } catch (error) {
+      this.logError(`Failed to load transform table: ${tableName}`, error, 'getTransformTable');
+      throw error;
+    }
+  }
+  
+  /**
+   * Validate transform table structure
+   * @param transformTable - Transform table to validate
+   * @param tableName - Name of the transform table
+   */
+  private validateTransformTableStructure(transformTable: any, tableName: string): void {
+    const requiredFields = ['version', 'description', 'protocols', 'requestMappings', 'responseMappings'];
     
-    const table = mockTables[tableName];
-    if (!table) {
-      throw new Error(`Transform table not found: ${tableName}`);
+    for (const field of requiredFields) {
+      if (!(field in transformTable)) {
+        throw new Error(`Transform table ${tableName} is missing required field: ${field}`);
+      }
     }
     
-    return table;
+    if (!transformTable.protocols.input || !transformTable.protocols.output) {
+      throw new Error(`Transform table ${tableName} must specify input and output protocols`);
+    }
+    
+    if (!transformTable.requestMappings || typeof transformTable.requestMappings !== 'object') {
+      throw new Error(`Transform table ${tableName} must have valid requestMappings`);
+    }
+    
+    if (!transformTable.responseMappings || typeof transformTable.responseMappings !== 'object') {
+      throw new Error(`Transform table ${tableName} must have valid responseMappings`);
+    }
   }
 
   /**
@@ -308,7 +329,7 @@ export class LLMSwitchModule extends BasePipelineModule {
         // Apply transform if specified
         let transformedValue = sourceValue;
         if (typeof mappingConfig === 'object' && mappingConfig.transform) {
-          transformedValue = await mappingConfig.transform(sourceValue, { sourcePath, request });
+          transformedValue = await this.resolveTransformFunction(mappingConfig.transform, sourceValue, { sourcePath, request });
         }
         
         // Set target field
@@ -349,7 +370,7 @@ export class LLMSwitchModule extends BasePipelineModule {
         // Apply transform if specified
         let transformedValue = sourceValue;
         if (typeof mappingConfig === 'object' && mappingConfig.transform) {
-          transformedValue = await mappingConfig.transform(sourceValue, { sourcePath, response });
+          transformedValue = await this.resolveTransformFunction(mappingConfig.transform, sourceValue, { sourcePath, response });
         }
         
         // Set target field
@@ -445,13 +466,16 @@ export class LLMSwitchModule extends BasePipelineModule {
     
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
-      if (!(part in current) || current[part] === null || typeof current[part] !== 'object') {
+      if (part && (!(part in current) || current[part] === null || typeof current[part] !== 'object')) {
         current[part] = {};
       }
-      current = current[part];
+      current = part ? current[part] : current;
     }
     
-    current[parts[parts.length - 1]] = value;
+    const lastPart = parts[parts.length - 1];
+    if (lastPart) {
+      current[lastPart] = value;
+    }
   }
 
   /**
@@ -534,5 +558,171 @@ export class LLMSwitchModule extends BasePipelineModule {
       requestCacheSize: this.requestCache.size,
       responseCacheSize: this.responseCache.size
     }, 'cleanupCache');
+  }
+
+  /**
+   * Resolve transform function from string reference to actual function
+   * @param transformRef - Transform function reference (string)
+   * @param value - Value to transform
+   * @param context - Transformation context
+   * @returns Promise<any> - Transformed value
+   */
+  private async resolveTransformFunction(transformRef: string, value: any, context: any): Promise<any> {
+    if (!this.transformTable?.transformFunctions) {
+      throw new Error(`No transform functions defined in transform table`);
+    }
+
+    const transformConfig = this.transformTable.transformFunctions[transformRef];
+    if (!transformConfig) {
+      throw new Error(`Transform function not found: ${transformRef}`);
+    }
+
+    switch (transformConfig.type) {
+      case 'mapping':
+        return this.applyMappingTransform(value, transformConfig);
+      
+      case 'transform':
+        return this.applyGenericTransform(value, transformConfig);
+      
+      case 'array_transform':
+        return this.applyArrayTransform(value, transformConfig);
+      
+      case 'function':
+        return this.applyFunctionTransform(value, transformConfig);
+      
+      default:
+        throw new Error(`Unknown transform function type: ${transformConfig.type}`);
+    }
+  }
+
+  /**
+   * Apply mapping transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyMappingTransform(value: any, config: any): any {
+    const mappings = config.mappings || {};
+    const defaultValue = config.defaultValue;
+    
+    return mappings[value] || defaultValue || value;
+  }
+
+  /**
+   * Apply generic transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyGenericTransform(value: any, config: any): any {
+    switch (config.operation) {
+      case 'stringToArray':
+        return Array.isArray(value) ? value : value ? [value] : [];
+      
+      case 'arrayToString':
+        return Array.isArray(value) ? value.join(', ') : value;
+      
+      case 'convertContentToParts':
+        return this.convertContentToGeminiParts(value);
+      
+      case 'extractTextFromParts':
+        return this.extractTextFromGeminiParts(value);
+      
+      default:
+        return value;
+    }
+  }
+
+  /**
+   * Apply array transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyArrayTransform(value: any, config: any): any {
+    if (!Array.isArray(value)) {
+      return value;
+    }
+
+    return value.map(item => {
+      const result: any = {};
+      
+      for (const [field, fieldConfig] of Object.entries(config.elementTransform)) {
+        const fieldValue = this.getNestedValue(item, field);
+        
+        if (fieldValue !== undefined) {
+          if (typeof fieldConfig === 'object' && fieldConfig.mapping) {
+            result[field] = this.applyMappingTransform(fieldValue, fieldConfig);
+          } else if (typeof fieldConfig === 'object' && fieldConfig.transform) {
+            result[field] = this.applyGenericTransform(fieldValue, fieldConfig);
+          } else if (typeof fieldConfig === 'string') {
+            result[field] = fieldValue;
+          }
+        }
+      }
+      
+      return result;
+    });
+  }
+
+  /**
+   * Apply function transform
+   * @param value - Value to transform
+   * @param config - Transform configuration
+   * @returns any - Transformed value
+   */
+  private applyFunctionTransform(value: any, config: any): any {
+    try {
+      // Note: In production, this should use a safe eval approach
+      // For now, we'll implement specific known functions
+      switch (config.function) {
+        case 'Math.floor(Date.now() / 1000)':
+          return Math.floor(Date.now() / 1000);
+        
+        default:
+          return value;
+      }
+    } catch (error) {
+      this.logError(`Error applying function transform`, error, 'applyFunctionTransform');
+      return value;
+    }
+  }
+
+  /**
+   * Convert OpenAI content to Gemini parts
+   * @param content - OpenAI content
+   * @returns any - Gemini parts format
+   */
+  private convertContentToGeminiParts(content: any): any {
+    if (typeof content === 'string') {
+      return [{ text: content }];
+    }
+    
+    if (Array.isArray(content)) {
+      return content.map(item => {
+        if (typeof item === 'string') {
+          return { text: item };
+        }
+        return item;
+      });
+    }
+    
+    return [{ text: String(content) }];
+  }
+
+  /**
+   * Extract text from Gemini parts
+   * @param parts - Gemini parts
+   * @returns string - Extracted text
+   */
+  private extractTextFromGeminiParts(parts: any): string {
+    if (!Array.isArray(parts)) {
+      return String(parts);
+    }
+    
+    return parts
+      .filter(part => part.text)
+      .map(part => part.text)
+      .join('');
   }
 }

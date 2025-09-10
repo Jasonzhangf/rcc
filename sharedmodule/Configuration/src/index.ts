@@ -11,7 +11,7 @@ export { ConfigurationSystem } from './core/ConfigurationSystem';
 // Also import for default export
 import { ConfigurationSystem } from './core/ConfigurationSystem';
 
-// Export all interfaces
+// Export core interfaces
 export * from './interfaces/IConfigurationSystem';
 export * from './interfaces/IConfigLoaderModule';
 export * from './interfaces/IConfigUIModule';
@@ -21,8 +21,9 @@ export * from './interfaces/IConfigValidatorModule';
 // Export constants only (types are already exported from interfaces)
 export * from './constants/ConfigurationConstants';
 
-// Export Web UI module
-export * from './webui';
+// Export Web UI module with namespace to avoid conflicts
+import * as WebUI from './webui';
+export { WebUI };
 
 // Export individual module implementations (when available)
 // These would be actual implementations of the interface modules

@@ -1,0 +1,203 @@
+{
+  "version": "1.0.0",
+  "description": "Qwen to OpenAI compatibility mapping table",
+  "formats": {
+    "source": "qwen",
+    "target": "openai"
+  },
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "updated": "2024-01-01T00:00:00Z",
+    "author": "RCC System"
+  },
+  "fieldMappings": {
+    "request_id": {
+      "targetField": "id",
+      "transform": "prefixRequestId",
+      "required": true,
+      "description": "Convert Qwen request ID to OpenAI response ID"
+    },
+    "output.choices": {
+      "targetField": "choices",
+      "transform": "convertQwenChoicesToOpenAI",
+      "required": true,
+      "description": "Convert Qwen choices to OpenAI choices format"
+    },
+    "usage": {
+      "targetField": "usage",
+      "transform": "convertQwenUsageToOpenAI",
+      "description": "Convert Qwen usage statistics to OpenAI format"
+    },
+    "model": {
+      "targetField": "model",
+      "transform": "mapQwenModelToOpenAI",
+      "description": "Map Qwen model names to OpenAI model names"
+    },
+    "created": {
+      "targetField": "created",
+      "transform": "generateTimestamp",
+      "defaultValue": 0,
+      "description": "Generate timestamp for OpenAI response"
+    },
+    "object": {
+      "targetField": "object",
+      "defaultValue": "chat.completion",
+      "description": "Set OpenAI response object type"
+    }
+  },
+  "validationRules": {
+    "required": ["request_id", "output.choices"],
+    "types": {
+      "request_id": "string",
+      "output": "object",
+      "usage": "object",
+      "model": "string",
+      "created": "number",
+      "object": "string"
+    },
+    "constraints": {
+      "request_id": {
+        "pattern": "^[a-zA-Z0-9-_]+$",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "output": {
+        "required": ["choices"]
+      },
+      "usage": {
+        "required": ["input_tokens", "output_tokens", "total_tokens"]
+      }
+    }
+  },
+  "transformFunctions": {
+    "prefixRequestId": {
+      "type": "string_transform",
+      "operation": "prefix",
+      "prefix": "req_",
+      "description": "Add prefix to Qwen request ID"
+    },
+    "convertQwenChoicesToOpenAI": {
+      "type": "array_transform",
+      "elementTransform": {
+        "index": {
+          "targetField": "index",
+          "required": true
+        },
+        "message": {
+          "targetField": "message",
+          "transform": "convertQwenMessageToOpenAI",
+          "required": true
+        },
+        "finish_reason": {
+          "targetField": "finish_reason",
+          "transform": "mapQwenFinishReason",
+          "required": true
+        },
+        "logprobs": {
+          "targetField": "logprobs",
+          "required": false
+        }
+      },
+      "description": "Convert each choice from Qwen to OpenAI format"
+    },
+    "convertQwenMessageToOpenAI": {
+      "type": "object_transform",
+      "fields": {
+        "role": {
+          "targetField": "role",
+          "mapping": {
+            "assistant": "assistant"
+          }
+        },
+        "content": {
+          "targetField": "content",
+          "required": false
+        },
+        "tool_calls": {
+          "targetField": "tool_calls",
+          "transform": "convertQwenToolCallsToOpenAI",
+          "required": false
+        }
+      },
+      "description": "Convert Qwen message to OpenAI format"
+    },
+    "convertQwenToolCallsToOpenAI": {
+      "type": "array_transform",
+      "elementTransform": {
+        "id": {
+          "targetField": "id",
+          "required": true
+        },
+        "type": {
+          "mapping": {
+            "function": "function"
+          }
+        },
+        "function": {
+          "targetField": "function",
+          "fields": {
+            "name": {
+              "targetField": "name",
+              "required": true
+            },
+            "arguments": {
+              "targetField": "arguments",
+              "required": true
+            }
+          }
+        }
+      },
+      "description": "Convert Qwen tool calls to OpenAI format"
+    },
+    "mapQwenFinishReason": {
+      "type": "mapping",
+      "mappings": {
+        "stop": "stop",
+        "length": "length",
+        "tool_calls": "tool_calls"
+      },
+      "defaultValue": "stop",
+      "description": "Map Qwen finish reason to OpenAI finish reason"
+    },
+    "convertQwenUsageToOpenAI": {
+      "type": "object_transform",
+      "fields": {
+        "input_tokens": {
+          "targetField": "prompt_tokens",
+          "required": true
+        },
+        "output_tokens": {
+          "targetField": "completion_tokens",
+          "required": true
+        },
+        "total_tokens": {
+          "targetField": "total_tokens",
+          "required": true,
+          "transform": "validateTotalTokens"
+        }
+      },
+      "description": "Convert Qwen usage statistics to OpenAI format"
+    },
+    "validateTotalTokens": {
+      "type": "validation",
+      "validation": "sum_equals_total",
+      "fields": ["prompt_tokens", "completion_tokens"],
+      "description": "Validate that total tokens equals sum of input and output tokens"
+    },
+    "mapQwenModelToOpenAI": {
+      "type": "mapping",
+      "defaultMappings": {
+        "qwen-turbo": "gpt-3.5-turbo",
+        "qwen-plus": "gpt-4",
+        "qwen-max": "gpt-4-turbo",
+        "qwen-max-longcontext": "gpt-4-turbo"
+      },
+      "description": "Map Qwen model names to OpenAI model names"
+    },
+    "generateTimestamp": {
+      "type": "function",
+      "function": "Math.floor(Date.now() / 1000)",
+      "description": "Generate Unix timestamp"
+    }
+  }
+}

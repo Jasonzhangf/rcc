@@ -7,7 +7,7 @@
     "declaration": true,
     "declarationDir": "./dist/dts",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -30,12 +30,39 @@
     "emitDecoratorMetadata": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "sharedmodule/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "__test__",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "**/examples/**",
+    "**/__test__/**",
+    "**/test-*.ts",
+    "**/debug-test.ts",
+    "**/simple-test.ts",
+    "**/webui/**",
+    "**/Configuration/**",
+    "**/errorhandling/**",
+    "**/Qwen*.ts",
+    "sharedmodule/pipeline/src/ConfigurationExamples.ts",
+    "sharedmodule/pipeline/src/EnhancedErrorResponseCenter.ts",
+    "sharedmodule/pipeline/src/ErrorHandlerCenter.ts",
+    "sharedmodule/pipeline/src/PipelineCompleteConfig.ts",
+    "sharedmodule/pipeline/src/PipelineConfig.ts",
+    "sharedmodule/pipeline/src/PipelineInstance.ts",
+    "sharedmodule/pipeline/src/PipelineScheduler.ts",
+    "sharedmodule/pipeline/src/QwenCompatibilityModule.ts",
+    // "sharedmodule/pipeline/src/QwenProviderModule.ts",
+    "sharedmodule/pipeline/src/QwenErrorHandling.ts",
+    "sharedmodule/pipeline/src/LoadBalancers.ts",
+    "sharedmodule/pipeline/src/PipelineConfigValidator.ts",
+    "sharedmodule/pipeline/src/ConfigConverter.ts",
+    "sharedmodule/pipeline/src/EnhancedPipelineConfig.ts",
+    "sharedmodule/pipeline/src/CompletePipelineConfig.ts",
+    "sharedmodule/pipeline/src/SimpleConfigurationExamples.ts",
+    "sharedmodule/pipeline/src/assembler/**"
   ]
 }

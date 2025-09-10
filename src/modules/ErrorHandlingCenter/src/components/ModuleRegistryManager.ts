@@ -1,10 +1,6 @@
 import { 
-  ModuleRegistration, 
-  ResponseHandler,
-  ModuleMetadata,
-  ErrorPolicy,
-  CustomRule 
-} from '../../types/ErrorHandlingCenter.types';
+  ModuleRegistration
+} from '../../../../interfaces/SharedTypes';
 
 /**
  * Module Registry Manager - Manages all registered modules' error handling configurations
@@ -201,11 +197,11 @@ export class ModuleRegistryManager {
     this.ensureInitialized();
     
     const dependents: string[] = [];
-    for (const [id, dependencies] of this.moduleDependencies.entries()) {
+    this.moduleDependencies.forEach((dependencies, id) => {
       if (dependencies.includes(moduleId)) {
         dependents.push(id);
       }
-    }
+    });
     
     return dependents;
   }
@@ -297,7 +293,7 @@ export class ModuleRegistryManager {
     
     const health: Record<string, any> = {};
     
-    for (const [moduleId, config] of this.moduleConfigs.entries()) {
+    this.moduleConfigs.forEach((config, moduleId) => {
       const module = this.modules.get(moduleId);
       health[moduleId] = {
         status: config.status,
@@ -311,7 +307,7 @@ export class ModuleRegistryManager {
           type: module.metadata?.category
         } : null
       };
-    }
+    });
     
     return health;
   }
@@ -351,9 +347,9 @@ export class ModuleRegistryManager {
     };
     
     // Visit all modules
-    for (const moduleId of this.modules.keys()) {
+    this.modules.forEach((_, moduleId) => {
       visit(moduleId);
-    }
+    });
     
     return order;
   }

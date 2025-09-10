@@ -2,15 +2,12 @@ import {
   ErrorContext, 
   ErrorResponse, 
   ResponseHandler,
-  ModuleRegistration,
   Action,
   ActionType,
-  ResponseStatus,
   HandlingStatus,
   ActionStatus
-} from '../../types/ErrorHandlingCenter.types';
+} from '../../../../interfaces/SharedTypes';
 import { PolicyEngine } from './PolicyEngine';
-import { ERROR_HANDLING_CENTER_CONSTANTS } from '../../constants/ErrorHandlingCenter.constants';
 
 /**
  * Response Executor - Executes actual error response logic
@@ -461,7 +458,7 @@ export class ResponseExecutor {
    * @param error - Error context
    * @returns Executed action
    */
-  private async executeCustomAction(action: Action, error: ErrorContext): Promise<Action> {
+  private async executeCustomAction(action: Action, _error: ErrorContext): Promise<Action> {
     console.log(`Executing custom action ${action.actionId}:`, action.payload);
     
     // In a real implementation, this would execute custom logic
@@ -483,7 +480,7 @@ export class ResponseExecutor {
   private async processAsync(
     error: ErrorContext,
     baseResponse: ErrorResponse,
-    handler: ResponseHandler,
+    _handler: ResponseHandler,
     executionId: string
   ): Promise<void> {
     try {
@@ -709,28 +706,6 @@ export class ResponseExecutor {
     }
   }
 
-  /**
-   * Ensure response executor is initialized
-   * @throws Error if not initialized
-   */
-  private convertResponseStatusToHandlingStatus(status: ResponseStatus): HandlingStatus {
-    switch (status) {
-      case ResponseStatus.SUCCESS:
-        return HandlingStatus.SUCCESS;
-      case ResponseStatus.FAILURE:
-        return HandlingStatus.FAILURE;
-      case ResponseStatus.RETRY:
-        return HandlingStatus.RETRY;
-      case ResponseStatus.FALLENBACK:
-        return HandlingStatus.FALLENBACK;
-      case ResponseStatus.PENDING:
-        return HandlingStatus.PARTIAL;
-      case ResponseStatus.IN_PROGRESS:
-        return HandlingStatus.PARTIAL;
-      default:
-        return HandlingStatus.FAILURE;
-    }
-  }
 
   
   private ensureInitialized(): void {

@@ -2,17 +2,13 @@ import {
   ErrorContext, 
   ErrorResponse, 
   ErrorPolicy, 
-  PolicyConfig,
   PolicyCondition,
   PolicyType,
   ActionType,
-  ModuleResponse,
-  ResponseStatus,
   RouteCondition,
   ConditionOperator,
   ErrorSeverity
-} from '../../types/ErrorHandlingCenter.types';
-import { ERROR_HANDLING_CENTER_CONSTANTS } from '../../constants/ErrorHandlingCenter.constants';
+} from '../../../../interfaces/SharedTypes';
 
 /**
  * Policy Engine - Executes error handling strategies and decides processing methods
@@ -41,16 +37,19 @@ export class PolicyEngine {
     }
 
     try {
+      // Set initialized first to allow policy registration
+      this.isInitialized = true;
+      
       // Register default policies
       this.registerDefaultPolicies();
       
       // Start cleanup timer for expired states
       this.startCleanupTimer();
       
-      this.isInitialized = true;
       console.log('Policy Engine initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Policy Engine:', error);
+      this.isInitialized = false;
       throw error;
     }
   }
@@ -759,18 +758,18 @@ export class PolicyEngine {
     const now = Date.now();
     
     // Clean up old retry trackers
-    for (const [errorId, state] of this.retryTracker.entries()) {
+    this.retryTracker.forEach((state, errorId) => {
       if (now - state.getStartTime() > 3600000) { // 1 hour
         this.retryTracker.delete(errorId);
       }
-    }
+    });
     
     // Clean up recovered circuit breakers
-    for (const [moduleId, state] of this.circuitBreakers.entries()) {
+    this.circuitBreakers.forEach((state, moduleId) => {
       if (state.getState() === 'closed' && now - state.getLastAttemptTime() > 1800000) { // 30 minutes
         this.circuitBreakers.delete(moduleId);
       }
-    }
+    });
   }
 
   /**

@@ -1,13 +1,11 @@
 import { 
   ErrorContext, 
-  ModuleResponse, 
   ResponseHandler,
   ResponseRouterEngine as IResponseRouterEngine,
   RoutingRule,
   RouteCondition,
   ModuleRegistration 
-} from '../../types/ErrorHandlingCenter.types';
-import { ERROR_HANDLING_CENTER_CONSTANTS } from '../../constants/ErrorHandlingCenter.constants';
+} from '../../../../interfaces/SharedTypes';
 
 /**
  * Response Router Engine - Routes errors to appropriate response handlers
@@ -37,13 +35,16 @@ export class ResponseRouterEngine implements IResponseRouterEngine {
     }
 
     try {
+      // Set initialized first to allow rule registration
+      this.isInitialized = true;
+      
       // Register default routing rules
       this.registerDefaultRoutingRules();
       
-      this.isInitialized = true;
       console.log('Response Router Engine initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Response Router Engine:', error);
+      this.isInitialized = false;
       throw error;
     }
   }

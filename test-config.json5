@@ -1,9 +1,0 @@
-{
-  // This is an invalid JSON5 file with syntax errors
-  "name": "Test Config
-  "value": 42,
-  "nested": {
-    "array": [1, 2, 3,
-    "enabled": true
-  }
-}

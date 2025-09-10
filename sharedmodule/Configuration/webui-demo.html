@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RCC Configuration Center - Web UI Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+    }
+    
+    .demo-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .demo-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    
+    .demo-header h1 {
+      font-size: 2.5rem;
+      color: #0d6efd;
+      margin-bottom: 1rem;
+    }
+    
+    .demo-header p {
+      font-size: 1.1rem;
+      color: #666;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+    
+    .feature-card {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e0e0e0;
+    }
+    
+    .feature-card h3 {
+      font-size: 1.25rem;
+      color: #333;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .feature-icon {
+      font-size: 1.5rem;
+    }
+    
+    .feature-list {
+      list-style: none;
+    }
+    
+    .feature-list li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .feature-list li:last-child {
+      border-bottom: none;
+    }
+    
+    .check-icon {
+      color: #28a745;
+      font-weight: bold;
+    }
+    
+    .tech-stack {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e0e0e0;
+      margin-bottom: 3rem;
+    }
+    
+    .tech-stack h3 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: #333;
+    }
+    
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    
+    .tech-item {
+      text-align: center;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .tech-item strong {
+      display: block;
+      color: #0d6efd;
+      margin-bottom: 0.25rem;
+    }
+    
+    .implementation-status {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e0e0e0;
+    }
+    
+    .implementation-status h3 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: #333;
+    }
+    
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .status-section {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    
+    .status-section h4 {
+      margin-bottom: 1rem;
+      color: #333;
+    }
+    
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .status-item:last-child {
+      border-bottom: none;
+    }
+    
+    .status-complete {
+      color: #28a745;
+      font-weight: bold;
+    }
+    
+    .status-progress {
+      color: #ffc107;
+      font-weight: bold;
+    }
+    
+    .status-planned {
+      color: #6c757d;
+    }
+    
+    .demo-ui {
+      background: white;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e0e0e0;
+      margin-top: 2rem;
+    }
+    
+    .demo-ui h3 {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: #333;
+    }
+    
+    #rcc-config-ui {
+      min-height: 600px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #f8f9fa;
+    }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 600px;
+      color: #666;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <div class="demo-header">
+      <h1>🚀 RCC Configuration Center</h1>
+      <p>
+        统一的配置中心Web界面，提供配置生成、配置解析、流水线管理等功能。
+        基于TypeScript开发，模块化架构，标准化重构。
+      </p>
+    </div>
+    
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>
+          <span class="feature-icon">⚙️</span>
+          配置生成器
+        </h3>
+        <ul class="feature-list">
+          <li><span class="check-icon">✓</span> 供应商管理</li>
+          <li><span class="check-icon">✓</span> 模型配置</li>
+          <li><span class="check-icon">✓</span> 虚拟模型映射</li>
+          <li><span class="check-icon">✓</span> 路由配置</li>
+          <li><span class="check-icon">✓</span> 实时预览</li>
+        </ul>
+      </div>
+      
+      <div class="feature-card">
+        <h3>
+          <span class="feature-icon">🔄</span>
+          配置解析器
+        </h3>
+        <ul class="feature-list">
+          <li><span class="check-icon">✓</span> 文件上传支持</li>
+          <li><span class="check-icon">✓</span> 流水线生成</li>
+          <li><span class="check-icon">✓</span> 解析统计</li>
+          <li><span class="check-icon">✓</span> 错误检测</li>
+          <li><span class="check-icon">✓</span> 历史记录</li>
+        </ul>
+      </div>
+      
+      <div class="feature-card">
+        <h3>
+          <span class="feature-icon">🎨</span>
+          通用组件
+        </h3>
+        <ul class="feature-list">
+          <li><span class="check-icon">✓</span> 模块化设计</li>
+          <li><span class="check-icon">✓</span> 主题支持</li>
+          <li><span class="check-icon">✓</span> 响应式布局</li>
+          <li><span class="check-icon">✓</span> 国际化准备</li>
+          <li><span class="check-icon">✓</span> 可访问性支持</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="tech-stack">
+      <h3>🛠️ 技术栈</h3>
+      <div class="tech-grid">
+        <div class="tech-item">
+          <strong>语言</strong>
+          TypeScript
+        </div>
+        <div class="tech-item">
+          <strong>基础模块</strong>
+          rcc-basemodule
+        </div>
+        <div class="tech-item">
+          <strong>架构</strong>
+          模块化设计
+        </div>
+        <div class="tech-item">
+          <strong>样式</strong>
+          CSS Variables
+        </div>
+        <div class="tech-item">
+          <strong>存储</strong>
+          LocalStorage
+        </div>
+        <div class="tech-item">
+          <strong>构建</strong>
+          Rollup + TypeScript
+        </div>
+      </div>
+    </div>
+    
+    <div class="implementation-status">
+      <h3>📋 实施状态</h3>
+      <div class="status-grid">
+        <div class="status-section">
+          <h4>✅ 已完成</h4>
+          <div class="status-item">
+            <span>项目结构重构</span>
+            <span class="status-complete">100%</span>
+          </div>
+          <div class="status-item">
+            <span>类型定义</span>
+            <span class="status-complete">100%</span>
+          </div>
+          <div class="status-item">
+            <span>服务层设计</span>
+            <span class="status-complete">100%</span>
+          </div>
+          <div class="status-item">
+            <span>主组件框架</span>
+            <span class="status-complete">100%</span>
+          </div>
+          <div class="status-item">
+            <span>样式系统</span>
+            <span class="status-complete">100%</span>
+          </div>
+        </div>
+        
+        <div class="status-section">
+          <h4>🚧 进行中</h4>
+          <div class="status-item">
+            <span>配置解析核心</span>
+            <span class="status-progress">80%</span>
+          </div>
+          <div class="status-item">
+            <span>表单组件</span>
+            <span class="status-progress">60%</span>
+          </div>
+          <div class="status-item">
+            <span>数据验证</span>
+            <span class="status-progress">70%</span>
+          </div>
+          <div class="status-item">
+            <span>错误处理</span>
+            <span class="status-progress">50%</span>
+          </div>
+        </div>
+        
+        <div class="status-section">
+          <h4>📝 计划中</h4>
+          <div class="status-item">
+            <span>高级表单组件</span>
+            <span class="status-planned">待开始</span>
+          </div>
+          <div class="status-item">
+            <span>国际化支持</span>
+            <span class="status-planned">待开始</span>
+          </div>
+          <div class="status-item">
+            <span>主题定制</span>
+            <span class="status-planned">待开始</span>
+          </div>
+          <div class="status-item">
+            <span>单元测试</span>
+            <span class="status-planned">待开始</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="demo-ui">
+      <h3>🎯 Web UI 演示</h3>
+      <div id="rcc-config-ui">
+        <div class="loading">
+          ⏳ UI组件正在开发中，即将上线...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // 这里将来会加载实际的Web UI模块
+    console.log('RCC Configuration Center Web UI Demo');
+    console.log('当前状态: 核心框架已完成，正在完善具体功能');
+  </script>
+</body>
+</html>

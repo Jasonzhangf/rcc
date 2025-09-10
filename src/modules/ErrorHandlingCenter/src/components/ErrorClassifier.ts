@@ -7,7 +7,7 @@ import {
   ErrorImpact,
   ErrorRecoverability,
   ErrorClassifier as IErrorClassifier 
-} from '../../types/ErrorHandlingCenter.types';
+} from '../../../../interfaces/SharedTypes';
 
 // Use native Error type
 declare const Error: ErrorConstructor;
@@ -362,6 +362,7 @@ export class ErrorClassifier implements IErrorClassifier {
       return ErrorSeverity.CRITICAL;
     }
     
+    // High severity errors
     if (errorMessage.includes('timeout') || 
         errorMessage.includes('not found') ||
         errorName.includes('notfound') ||
@@ -369,13 +370,18 @@ export class ErrorClassifier implements IErrorClassifier {
       return ErrorSeverity.HIGH;
     }
     
+    // Medium severity errors - business logic, validation, unknown errors
     if (errorMessage.includes('invalid') || 
         errorMessage.includes('failed') ||
-        errorName.includes('validation')) {
+        errorMessage.includes('unknown') ||
+        errorName.includes('validation') ||
+        errorName.includes('business') ||
+        // Default for most application errors
+        errorName.includes('error')) {
       return ErrorSeverity.MEDIUM;
     }
     
-    // Default to low severity
+    // Default to low severity for system-level issues that aren't critical
     return ErrorSeverity.LOW;
   }
 
@@ -578,11 +584,13 @@ export class ErrorClassifier implements IErrorClassifier {
   private isResourceError(error: Error): boolean {
     const message = error.message.toLowerCase();
     
-    return message.includes('resource') ||
-           message.includes('memory') ||
-           message.includes('disk') ||
-           message.includes('quota') ||
-           message.includes('limit');
+    // Only classify as resource error if it's explicitly about resource constraints
+    // System memory issues are typically technical errors
+    return message.includes('disk space') ||
+           message.includes('quota exceeded') ||
+           message.includes('rate limit') ||
+           (message.includes('memory') && message.includes('leak')) ||
+           (message.includes('resource') && !message.includes('system'));
   }
 
   private isDependencyError(error: Error): boolean {
@@ -598,11 +606,16 @@ export class ErrorClassifier implements IErrorClassifier {
     const message = error.message.toLowerCase();
     const name = error.constructor.name.toLowerCase();
     
+    // Only truly critical errors should be marked as critical
     return message.includes('fatal') ||
            message.includes('critical') ||
-           message.includes('error') ||
-           name.includes('error') ||
-           name.includes('exception');
+           name.includes('fatal') ||
+           name.includes('critical') ||
+           // System-level critical errors
+           message.includes('system crash') ||
+           message.includes('kernel panic') ||
+           message.includes('database connection lost') ||
+           message.includes('authentication service unavailable');
   }
 
   private isSystemWideImpact(error: Error): boolean {

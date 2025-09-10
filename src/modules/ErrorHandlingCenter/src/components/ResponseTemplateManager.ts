@@ -1,15 +1,13 @@
 import { 
   ErrorContext, 
   ErrorResponse, 
-  ModuleResponse,
   Template,
   TemplateManager as ITemplateManager,
   ResponseTemplate,
   DynamicTemplateLoader,
   EnhancedResponseTemplate,
   PolicyCondition
-} from '../../types/ErrorHandlingCenter.types';
-import { ERROR_HANDLING_CENTER_CONSTANTS } from '../../constants/ErrorHandlingCenter.constants';
+} from '../../../../interfaces/SharedTypes';
 
 /**
  * Response Template Manager - Manages standardized response templates
@@ -148,11 +146,11 @@ export class ResponseTemplateManager implements ITemplateManager {
       const deleted = this.templates.delete(templateId);
       
       // Remove from module templates mapping
-      for (const [moduleId, mappedTemplateId] of this.moduleTemplates.entries()) {
+      this.moduleTemplates.forEach((mappedTemplateId, moduleId) => {
         if (mappedTemplateId === templateId) {
           this.moduleTemplates.delete(moduleId);
         }
-      }
+      });
       
       if (deleted) {
         console.log(`Template ${templateId} unregistered successfully`);
@@ -307,8 +305,8 @@ export class ResponseTemplateManager implements ITemplateManager {
     }
 
     try {
-      if (this.dynamicLoader && this.dynamicLoader.loadAllTemplates) {
-        const dynamicTemplates = await this.dynamicLoader.loadAllTemplates();
+      if (this.dynamicLoader && this.dynamicLoader.loadTemplates) {
+        const dynamicTemplates = await this.dynamicLoader.loadTemplates([]);
         
         for (const template of dynamicTemplates) {
           this.registerTemplate(template);
@@ -345,8 +343,8 @@ export class ResponseTemplateManager implements ITemplateManager {
       console.log('Shutting down Response Template Manager...');
       
       // Shutdown dynamic loader
-      if (this.dynamicLoader && this.dynamicLoader.shutdown) {
-        await this.dynamicLoader.shutdown();
+      if (this.dynamicLoader && this.dynamicLoader.clearCache) {
+        this.dynamicLoader.clearCache();
       }
       
       // Clear templates and cache
@@ -374,7 +372,7 @@ export class ResponseTemplateManager implements ITemplateManager {
       moduleAssignmentsCount: this.moduleTemplates.size,
       cacheSize: this.templateCache.size,
       dynamicLoaderAvailable: !!this.dynamicLoader,
-      dynamicLoaderStatus: this.dynamicLoader && this.dynamicLoader.getStatus ? this.dynamicLoader.getStatus() : null
+      dynamicLoaderStatus: this.dynamicLoader ? 'active' : null
     };
   }
 

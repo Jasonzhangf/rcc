@@ -1,0 +1,31 @@
+metadata:
+  name: sample-yaml-config
+  description: Sample YAML configuration for testing
+  createdAt: 2023-01-01T00:00:00.000Z
+  updatedAt: 2023-01-01T00:00:00.000Z
+  author: Test Automation
+  environment: test
+settings:
+  general:
+    appName:
+      value: Test Application
+      type: string
+      required: true
+      description: Application name
+    version:
+      value: 1.0.0
+      type: string
+      required: true
+      description: Application version
+  database:
+    host:
+      value: localhost
+      type: string
+      required: true
+      description: Database host
+    port:
+      value: 5432
+      type: number
+      required: true
+      description: Database port
+version: 1.0.0

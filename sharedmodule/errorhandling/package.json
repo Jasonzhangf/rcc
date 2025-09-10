@@ -1,0 +1,88 @@
+{
+  "name": "@rcc/errorhandling",
+  "version": "1.0.0",
+  "description": "RCC ErrorHandling Center - Comprehensive error handling and response management system",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "rcc",
+    "error-handling",
+    "error-management",
+    "response-system",
+    "modular",
+    "typescript",
+    "error-classification",
+    "error-routing",
+    "error-queue"
+  ],
+  "author": "RCC Team",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/jest": "^29.5.0",
+    "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.5.0",
+    "jest-environment-node": "^29.5.0",
+    "rimraf": "^5.0.0",
+    "rollup": "^3.0.0",
+    "rollup-plugin-typescript2": "^0.35.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@rcc/basemodule": ">=1.0.0",
+    "@rcc/shared-types": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@rcc/basemodule": {
+      "optional": true
+    },
+    "@rcc/shared-types": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*",
+    "interfaces/**/*",
+    "constants/**/*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rcc/rcc-errorhandling.git"
+  },
+  "homepage": "https://github.com/rcc/rcc-errorhandling#readme",
+  "bugs": {
+    "url": "https://github.com/rcc/rcc-errorhandling/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

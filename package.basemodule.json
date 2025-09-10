@@ -1,0 +1,37 @@
+{
+  "name": "rcc-basemodule",
+  "version": "0.1.1",
+  "description": "RCC BaseModule - Abstract base class for all RCC modules",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rimraf dist"
+  },
+  "keywords": ["rcc", "basemodule", "typescript", "module", "framework"],
+  "author": "RCC Development Team",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.8",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "eslint": "^8.57.1",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.11",
+    "ts-jest": "^29.1.1",
+    "rimraf": "^5.0.5"
+  },
+  "files": ["dist/**/*", "README.md"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rcc/rcc-basemodule.git"
+  }
+}

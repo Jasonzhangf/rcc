@@ -3,8 +3,7 @@ import {
   ErrorResponse, 
   ErrorQueueManager as IErrorQueueManager,
   QueueStatus 
-} from '../../types/ErrorHandlingCenter.types';
-import { ERROR_HANDLING_CENTER_CONSTANTS } from '../../constants/ErrorHandlingCenter.constants';
+} from '../../../../interfaces/SharedTypes';
 
 /**
  * Error Queue Manager - Manages error queue, priority, and distribution
@@ -20,7 +19,6 @@ export class ErrorQueueManager implements IErrorQueueManager {
   private readonly maxQueueSize: number;
   private readonly flushInterval: number;
   private readonly enableBatchProcessing: boolean;
-  private readonly maxBatchSize: number;
   
   /**
    * Constructs the Error Queue Manager
@@ -32,10 +30,9 @@ export class ErrorQueueManager implements IErrorQueueManager {
     enableBatchProcessing?: boolean;
     maxBatchSize?: number;
   }) {
-    this.maxQueueSize = config?.maxQueueSize || ERROR_HANDLING_CENTER_CONSTANTS.DEFAULT_QUEUE_SIZE;
-    this.flushInterval = config?.flushInterval || ERROR_HANDLING_CENTER_CONSTANTS.QUEUE_FLUSH_INTERVAL;
+    this.maxQueueSize = config?.maxQueueSize || 1000;
+    this.flushInterval = config?.flushInterval || 5000;
     this.enableBatchProcessing = config?.enableBatchProcessing ?? true;
-    this.maxBatchSize = config?.maxBatchSize || 100;
     
     // Initialize priority queues
     this.initializePriorityQueues();
@@ -259,9 +256,9 @@ export class ErrorQueueManager implements IErrorQueueManager {
    */
   public getPriorityCounts(): Record<string, number> {
     const counts: Record<string, number> = {};
-    for (const [priority, queue] of this.priorityQueue.entries()) {
+    this.priorityQueue.forEach((queue, priority) => {
       counts[priority] = queue.length;
-    }
+    });
     return counts;
   }
 

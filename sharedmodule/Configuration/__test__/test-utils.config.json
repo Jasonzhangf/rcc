@@ -1,0 +1,39 @@
+{
+  "fixtures": {
+    "path": "./__test__/fixtures",
+    "files": [
+      "sample-config.json",
+      "invalid-config.json",
+      "large-config.json",
+      "sample-yaml-config.yaml"
+    ]
+  },
+  "timeouts": {
+    "short": 5000,
+    "medium": 15000,
+    "long": 30000,
+    "extraLong": 60000
+  },
+  "selectors": {
+    "testIds": {
+      "prefix": "data-testid",
+      "attributes": [
+        "data-test",
+        "data-automation-id"
+      ]
+    },
+    "accessibility": {
+      "skipHidden": true,
+      "waitForVisible": true
+    }
+  },
+  "reporting": {
+    "outputDir": "./test-reports",
+    "formats": [
+      "json",
+      "html",
+      "junit"
+    ],
+    "includeScreenshots": true
+  }
+}

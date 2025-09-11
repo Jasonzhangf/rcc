@@ -1,5 +1,5 @@
 /**
- * Server Module Unit Tests - Enhanced with Real Dependencies
+ * Server Module Unit Tests - Enhanced with Real Dependencies and Pipeline Integration
  * 
  * Testing Strategy:
  * 1. Test basic module initialization with real BaseModule
@@ -14,6 +14,9 @@
  * 10. Test message handling and communication
  * 11. Test resource cleanup and memory management
  * 12. Stress testing with concurrent requests
+ * 13. Test Pipeline Scheduler integration
+ * 14. Test request routing via Pipeline vs Direct processing
+ * 15. Test fallback mechanisms and error handling
  */
 
 import { jest } from '@jest/globals';
@@ -28,6 +31,15 @@ import {
   createRealHttpServer,
   createRealVirtualModelRouter
 } from './test-utils';
+
+// Pipeline types for testing
+import { 
+  IPipelineScheduler, 
+  PipelineExecutionResult, 
+  PipelineExecutionContext,
+  ExecutionOptions,
+  SchedulerStats
+} from '../../../pipeline/src/PipelineScheduler';
 
 // Real dependencies for testing
 import express from 'express';
@@ -273,7 +285,7 @@ describe('ServerModule', () => {
 
     test('should handle multiple virtual models', async () => {
       const models = Array.from({ length: 5 }, (_, i) => 
-        createMockVirtualModelConfig({ id: `model-${i}`, priority: i + 1 })
+        createMockVirtualModelConfig({ id: `model-${i}` })
       );
       
       // Register all models
@@ -284,25 +296,23 @@ describe('ServerModule', () => {
       const allModels = serverModule.getVirtualModels();
       expect(allModels).toHaveLength(5);
       
-      // Verify models are sorted by priority
-      const priorities = allModels.map(m => m.priority);
-      expect(priorities).toEqual([1, 2, 3, 4, 5]);
+      // Verify all models are registered
+      const modelIds = allModels.map(m => m.id);
+      expect(modelIds).toEqual(['model-0', 'model-1', 'model-2', 'model-3', 'model-4']);
     });
 
     test('should route requests to appropriate virtual models', async () => {
-      const highPriorityModel = createMockVirtualModelConfig({ 
-        id: 'high-priority', 
-        priority: 10 
+      const modelA = createMockVirtualModelConfig({ 
+        id: 'model-a' 
       });
-      const lowPriorityModel = createMockVirtualModelConfig({ 
-        id: 'low-priority', 
-        priority: 1 
+      const modelB = createMockVirtualModelConfig({ 
+        id: 'model-b' 
       });
       
-      await serverModule.registerVirtualModel(highPriorityModel);
-      await serverModule.registerVirtualModel(lowPriorityModel);
+      await serverModule.registerVirtualModel(modelA);
+      await serverModule.registerVirtualModel(modelB);
       
-      const request = createMockClientRequest({ virtualModel: 'high-priority' });
+      const request = createMockClientRequest({ virtualModel: 'model-a' });
       
       const response = await serverModule.handleRequest(request);
       
@@ -321,7 +331,7 @@ describe('ServerModule', () => {
     });
 
     test('should throw error for invalid model configuration', async () => {
-      const invalidModel = createMockVirtualModelConfig({ priority: 15 });
+      const invalidModel = createMockVirtualModelConfig({ maxTokens: 0 });
       
       await expect(serverModule.registerVirtualModel(invalidModel)).rejects.toThrow();
     });
@@ -447,7 +457,7 @@ describe('ServerModule', () => {
 
     test('should recover from virtual model registration failures', async () => {
       const validModel = createMockVirtualModelConfig();
-      const invalidModel = createMockVirtualModelConfig({ priority: 15 });
+      const invalidModel = createMockVirtualModelConfig({ maxTokens: 0 });
       
       // Register valid model
       await serverModule.registerVirtualModel(validModel);
@@ -712,6 +722,435 @@ describe('ServerModule', () => {
       // Most requests should succeed, some might fail due to resource limits
       const successfulRequests = results.filter(r => r.status === 200);
       expect(successfulRequests.length).toBeGreaterThan(largeRequestCount * 0.8); // At least 80% success rate
+    });
+  });
+
+  describe('Pipeline Scheduler Integration', () => {
+    let mockPipelineScheduler: jest.Mocked<IPipelineScheduler>;
+    let mockExecutionResult: PipelineExecutionResult;
+    let mockSchedulerStats: SchedulerStats;
+
+    beforeEach(async () => {
+      const config = createMockServerConfig();
+      serverModule.configure(config);
+      await serverModule.initialize();
+      await serverModule.start();
+
+      // Create mock pipeline scheduler
+      mockPipelineScheduler = {
+        initialize: jest.fn().mockResolvedValue(undefined),
+        execute: jest.fn(),
+        createPipeline: jest.fn(),
+        destroyPipeline: jest.fn(),
+        enablePipeline: jest.fn(),
+        disablePipeline: jest.fn(),
+        setPipelineMaintenance: jest.fn(),
+        getPipelineStatus: jest.fn(),
+        getAllPipelineStatuses: jest.fn(),
+        getSchedulerStats: jest.fn(),
+        healthCheck: jest.fn(),
+        shutdown: jest.fn(),
+      };
+
+      // Mock execution result
+      mockExecutionResult = {
+        executionId: 'test-execution-id',
+        pipelineId: 'test-pipeline-id',
+        instanceId: 'test-instance-id',
+        status: 'COMPLETED' as any,
+        startTime: Date.now() - 100,
+        endTime: Date.now(),
+        duration: 100,
+        result: {
+          message: 'Pipeline execution completed successfully',
+          data: 'test-result'
+        },
+        metadata: { test: 'metadata' },
+        retryCount: 0
+      };
+
+      // Mock scheduler stats
+      mockSchedulerStats = {
+        totalRequests: 10,
+        successfulRequests: 9,
+        failedRequests: 1,
+        averageResponseTime: 50,
+        activeInstances: 3,
+        totalInstances: 5,
+        blacklistedInstances: 1,
+        uptime: 3600000,
+        lastHealthCheck: Date.now(),
+        requestsByPipeline: new Map([['test-pipeline', 5]]),
+        errorsByPipeline: new Map([['test-pipeline', 1]]),
+        loadBalancerStats: {}
+      };
+
+      mockPipelineScheduler.getSchedulerStats.mockReturnValue(mockSchedulerStats);
+      mockPipelineScheduler.healthCheck.mockResolvedValue(true);
+    });
+
+    test('should set Pipeline Scheduler successfully', async () => {
+      mockPipelineScheduler.getSchedulerStats.mockReturnValue({
+        ...mockSchedulerStats,
+        totalRequests: 0
+      });
+
+      await expect(serverModule.setPipelineScheduler(mockPipelineScheduler)).resolves.not.toThrow();
+
+      expect(mockPipelineScheduler.initialize).toHaveBeenCalled();
+      expect(mockPipelineScheduler.getSchedulerStats).toHaveBeenCalled();
+
+      const config = serverModule.getPipelineIntegrationConfig();
+      expect(config.enabled).toBe(true);
+    });
+
+    test('should use existing scheduler if already initialized', async () => {
+      mockPipelineScheduler.getSchedulerStats.mockReturnValue(mockSchedulerStats);
+
+      await expect(serverModule.setPipelineScheduler(mockPipelineScheduler)).resolves.not.toThrow();
+
+      expect(mockPipelineScheduler.initialize).not.toHaveBeenCalled();
+    });
+
+    test('should process request via Pipeline Scheduler when available', async () => {
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig();
+
+      // Mock successful pipeline execution
+      mockPipelineScheduler.execute.mockResolvedValue(mockExecutionResult);
+
+      const response = await serverModule.processVirtualModelRequest(request, model);
+
+      expect(mockPipelineScheduler.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'virtual-model-request',
+          requestId: request.id,
+          virtualModelId: model.id
+        }),
+        expect.objectContaining({
+          timeout: 30000,
+          maxRetries: 3,
+          preferredPipelineId: model.id
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers['X-Processing-Method']).toBe('pipeline');
+      expect(response.headers['X-Pipeline-Id']).toBe(mockExecutionResult.pipelineId);
+    });
+
+    test('should fallback to direct processing when pipeline fails', async () => {
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig();
+
+      // Mock pipeline execution failure
+      mockPipelineScheduler.execute.mockRejectedValue(new Error('Pipeline execution failed'));
+
+      const response = await serverModule.processVirtualModelRequest(request, model);
+
+      expect(mockPipelineScheduler.execute).toHaveBeenCalled();
+      expect(response.headers['X-Processing-Method']).toBe('direct');
+      expect(response.status).toBe(200);
+    });
+
+    test('should throw error when pipeline fails and fallback is disabled', async () => {
+      // Update config to disable fallback
+      const config = serverModule.getPipelineIntegrationConfig();
+      config.fallbackToDirect = false;
+      
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig();
+
+      // Mock pipeline execution failure
+      mockPipelineScheduler.execute.mockRejectedValue(new Error('Pipeline execution failed'));
+
+      await expect(serverModule.processVirtualModelRequest(request, model)).rejects.toThrow('Pipeline execution failed');
+    });
+
+    test('should handle pipeline timeout correctly', async () => {
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig();
+
+      // Mock pipeline execution timeout
+      const timeoutResult: PipelineExecutionResult = {
+        ...mockExecutionResult,
+        status: 'FAILED' as any,
+        error: {
+          code: 'EXECUTION_TIMEOUT',
+          message: 'Pipeline execution timeout',
+          category: 'execution',
+          severity: 'high',
+          recoverability: 'recoverable',
+          impact: 'single_module',
+          source: 'module',
+          timestamp: Date.now()
+        }
+      };
+
+      mockPipelineScheduler.execute.mockResolvedValue(timeoutResult);
+
+      const response = await serverModule.processVirtualModelRequest(request, model);
+
+      expect(response.status).toBe(504);
+      expect(response.headers['X-Processing-Method']).toBe('pipeline');
+    });
+
+    test('should include pipeline integration in server status', async () => {
+      const status = serverModule.getStatus();
+
+      expect(status.pipelineIntegration).toBeDefined();
+      expect(status.pipelineIntegration?.enabled).toBe(false);
+      expect(status.pipelineIntegration?.schedulerAvailable).toBe(false);
+      expect(status.pipelineIntegration?.processingMethod).toBe('direct');
+
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const updatedStatus = serverModule.getStatus();
+
+      expect(updatedStatus.pipelineIntegration?.enabled).toBe(true);
+      expect(updatedStatus.pipelineIntegration?.schedulerAvailable).toBe(true);
+      expect(updatedStatus.pipelineIntegration?.processingMethod).toBe('pipeline');
+    });
+
+    test('should convert ClientRequest to PipelineRequestContext correctly', async () => {
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest({
+        method: 'POST',
+        path: '/api/test',
+        body: { test: 'data' },
+        headers: { 'Content-Type': 'application/json' },
+        query: { param: 'value' }
+      });
+      
+      const model = createMockVirtualModelConfig({
+        id: 'test-model',
+        provider: 'test-provider',
+        model: 'test-model-name'
+      });
+
+      mockPipelineScheduler.execute.mockResolvedValue(mockExecutionResult);
+
+      await serverModule.processVirtualModelRequest(request, model);
+
+      expect(mockPipelineScheduler.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'virtual-model-request',
+          requestId: request.id,
+          method: request.method,
+          path: request.path,
+          body: request.body,
+          headers: request.headers,
+          query: request.query,
+          virtualModelId: model.id,
+          metadata: expect.objectContaining({
+            provider: model.provider,
+            model: model.model,
+            clientRequestId: request.id,
+            virtualModel: model.id
+          })
+        }),
+        expect.any(Object)
+      );
+    });
+
+    test('should handle pipeline scheduler initialization errors', async () => {
+      const errorScheduler: jest.Mocked<IPipelineScheduler> = {
+        ...mockPipelineScheduler,
+        initialize: jest.fn().mockRejectedValue(new Error('Scheduler initialization failed')),
+        getSchedulerStats: jest.fn().mockReturnValue({ totalRequests: 0 })
+      };
+
+      await expect(serverModule.setPipelineScheduler(errorScheduler)).rejects.toThrow('Scheduler initialization failed');
+    });
+
+    test('should maintain compatibility when no pipeline scheduler is set', async () => {
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig();
+
+      // Should work without pipeline scheduler
+      const response = await serverModule.processVirtualModelRequest(request, model);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['X-Processing-Method']).toBe('direct');
+      expect(response.body.message).toBe('Request processed successfully');
+    });
+
+    test('should handle pipeline execution with different status codes', async () => {
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig();
+
+      // Test different pipeline statuses
+      const testCases = [
+        { status: 'COMPLETED', expectedHttpCode: 200 },
+        { status: 'FAILED', expectedHttpCode: 500 },
+        { status: 'TIMEOUT', expectedHttpCode: 504 },
+        { status: 'CANCELLED', expectedHttpCode: 499 },
+        { status: 'FAILED', expectedHttpCode: 500 }
+      ];
+
+      for (const testCase of testCases) {
+        const result: PipelineExecutionResult = {
+          ...mockExecutionResult,
+          status: testCase.status as any
+        };
+
+        mockPipelineScheduler.execute.mockResolvedValue(result);
+
+        const response = await serverModule.processVirtualModelRequest(request, model);
+
+        expect(response.status).toBe(testCase.expectedHttpCode);
+        expect(response.headers['X-Processing-Method']).toBe('pipeline');
+      }
+    });
+
+    test('should handle ConfigurationToPipelineModule integration', async () => {
+      const config = createMockServerConfig();
+      serverModule.configure(config);
+      await serverModule.initialize();
+      await serverModule.start();
+
+      // Test that configuration integration is initialized
+      expect((serverModule as any).configurationToPipelineModule).toBeDefined();
+      expect((serverModule as any).virtualModelMappings).toBeDefined();
+      expect((serverModule as any).pipelineTable).toBeDefined();
+    });
+
+    test('should map virtual model to pipeline ID correctly', async () => {
+      const config = createMockServerConfig();
+      serverModule.configure(config);
+      await serverModule.initialize();
+      await serverModule.start();
+
+      const virtualModelId = 'test-virtual-model';
+      const pipelineId = (serverModule as any).mapVirtualModelToPipelineId(virtualModelId);
+      
+      // Should return undefined if no mapping exists
+      expect(pipelineId).toBeUndefined();
+    });
+
+    test('should get pipeline config for virtual model', async () => {
+      const config = createMockServerConfig();
+      serverModule.configure(config);
+      await serverModule.initialize();
+      await serverModule.start();
+
+      const virtualModelId = 'test-virtual-model';
+      const pipelineConfig = (serverModule as any).getPipelineConfigForVirtualModel(virtualModelId);
+      
+      // Should return undefined if no config exists
+      expect(pipelineConfig).toBeUndefined();
+    });
+
+    test('should handle ConfigurationToPipelineModule initialization failure gracefully', async () => {
+      const config = createMockServerConfig();
+      serverModule.configure(config);
+      
+      // Mock initialization to fail
+      const originalInit = (serverModule as any).initializeConfigurationToPipelineIntegration;
+      (serverModule as any).initializeConfigurationToPipelineIntegration = jest.fn().mockRejectedValue(new Error('Configuration integration failed'));
+      
+      // Should still initialize successfully
+      await expect(serverModule.initialize()).resolves.not.toThrow();
+      
+      // Should restore original method
+      (serverModule as any).initializeConfigurationToPipelineIntegration = originalInit;
+    });
+
+    test('should use configuration mapping in pipeline execution', async () => {
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig({ id: 'test-model' });
+
+      // Mock virtual model mapping
+      const mockMapping = {
+        virtualModelId: 'test-model',
+        targetProvider: 'test-provider',
+        targetModel: 'test-model-name',
+        enabled: true,
+        priority: 1
+      };
+      
+      (serverModule as any).virtualModelMappings.set('test-model', mockMapping);
+      
+      // Mock pipeline table
+      const mockPipelineConfig = {
+        id: 'pipeline-test-model',
+        name: 'Test Pipeline',
+        modules: [],
+        connections: []
+      };
+      
+      (serverModule as any).pipelineTable.set('test-model', mockPipelineConfig);
+
+      mockPipelineScheduler.execute.mockResolvedValue(mockExecutionResult);
+
+      await serverModule.processVirtualModelRequest(request, model);
+
+      expect(mockPipelineScheduler.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'virtual-model-request',
+          virtualModelId: 'test-model'
+        }),
+        expect.objectContaining({
+          preferredPipelineId: 'pipeline-test-model',
+          metadata: expect.objectContaining({
+            pipelineId: 'pipeline-test-model',
+            virtualModelMapping: mockMapping
+          })
+        })
+      );
+    });
+
+    test('should format pipeline response body correctly', async () => {
+      await serverModule.setPipelineScheduler(mockPipelineScheduler);
+
+      const request = createMockClientRequest();
+      const model = createMockVirtualModelConfig();
+
+      // Test successful response
+      mockPipelineScheduler.execute.mockResolvedValue(mockExecutionResult);
+
+      const successResponse = await serverModule.processVirtualModelRequest(request, model);
+
+      expect(successResponse.body.message).toBe('Request processed successfully via pipeline');
+      expect(successResponse.body.result).toBeDefined();
+      expect(successResponse.body.executionId).toBe(mockExecutionResult.executionId);
+
+      // Test error response
+      const errorResult: PipelineExecutionResult = {
+        ...mockExecutionResult,
+        status: 'FAILED' as any,
+        error: {
+          code: 'EXECUTION_FAILED',
+          message: 'Test error',
+          category: 'execution',
+          severity: 'high',
+          recoverability: 'recoverable',
+          impact: 'single_module',
+          source: 'module',
+          timestamp: Date.now()
+        }
+      };
+
+      mockPipelineScheduler.execute.mockResolvedValue(errorResult);
+
+      const errorResponse = await serverModule.processVirtualModelRequest(request, model);
+
+      expect(errorResponse.body.error).toBe('Pipeline execution failed');
+      expect(errorResponse.body.error).toBeDefined();
+      expect(errorResponse.status).toBe(500);
     });
   });
 });

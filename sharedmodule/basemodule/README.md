@@ -104,7 +104,9 @@ interface Message {
 
 ## Debug System
 
-The BaseModule provides a comprehensive debug system with configurable logging levels:
+The BaseModule provides a comprehensive debug system with configurable logging levels and **dynamic directory management**:
+
+### Configuration
 
 ```typescript
 // Configure debug settings
@@ -119,7 +121,7 @@ myModule.setDebugConfig({
 
 // Log at different levels
 myModule.trace('Trace message', { data: 'value' });
-myModule.log('Debug message');
+myModule.debug('Debug message');
 myModule.logInfo('Info message');
 myModule.warn('Warning message');
 myModule.error('Error message');
@@ -132,6 +134,151 @@ myModule.error('Error message');
 - **info**: General information messages
 - **warn**: Warning messages
 - **error**: Error messages with stack traces
+
+### 🎯 Dynamic Log Directory Configuration
+
+**Key Feature**: The debug system supports runtime log directory updates without restarting the system.
+
+#### Startup Configuration
+
+When a module starts, it automatically configures the debug system to log to the **system-start** directory:
+
+```typescript
+// Default behavior: logs to ~/.rcc/debug/system-start/
+const myModule = new MyModule(moduleInfo);
+await myModule.initialize();
+
+// System startup logs are automatically recorded
+myModule.logInfo('System initialized'); // Logged to system-start directory
+```
+
+#### Runtime Directory Updates
+
+Change the log directory at runtime using the configuration update interface:
+
+```typescript
+// Example: Switch to port-specific logging
+const newConfig = {
+  baseDirectory: '~/.rcc/debug/port-5506',
+  phase: 'port-specific',
+  port: 5506
+};
+
+// Update configuration - logs will now be written to the new directory
+myModule.setDebugConfig(newConfig);
+
+// Subsequent logs go to the new directory
+myModule.logInfo('Service now running on port 5506'); // Logged to port-5506 directory
+```
+
+#### Configuration Interface
+
+```typescript
+interface DebugConfig {
+  enabled: boolean;           // Enable/disable debug logging
+  level: DebugLevel;          // Minimum log level to record
+  baseDirectory: string;     // Base directory for log files (default: ~/.rcc/debug)
+  phase: 'system-start' | 'port-specific';  // Current logging phase
+  port?: number;             // Port number for port-specific logging
+  maxLogEntries: number;     // Maximum log entries to keep in memory
+  consoleOutput: boolean;     // Enable console output
+  recordStack: boolean;       // Record stack traces for errors
+  trackDataFlow: boolean;    // Track data flow between modules
+}
+```
+
+#### Usage Examples
+
+**1. Basic Usage**
+```typescript
+class MyService extends BaseModule {
+  protected async initialize(): Promise<void> {
+    // Logs to ~/.rcc/debug/system-start/
+    this.logInfo('Service starting up');
+    
+    // Initialize your service
+    await this.startService();
+    
+    this.logInfo('Service initialized successfully');
+  }
+  
+  private async startService(): Promise<void> {
+    // Update config when service port is known
+    const port = await this.findAvailablePort();
+    
+    // Switch to port-specific logging
+    this.setDebugConfig({
+      ...this.getDebugConfig(),
+      baseDirectory: `~/.rcc/debug/port-${port}`,
+      phase: 'port-specific',
+      port: port
+    });
+    
+    this.logInfo(`Service started on port ${port}`);
+  }
+}
+```
+
+**2. Multi-Instance Support**
+```typescript
+class ClusterManager extends BaseModule {
+  private instances: Map<string, BaseModule> = new Map();
+  
+  public async addInstance(instanceId: string, config: any): Promise<void> {
+    const instance = new ServiceInstance(config);
+    
+    // Configure instance-specific logging
+    instance.setDebugConfig({
+      enabled: true,
+      baseDirectory: `~/.rcc/debug/instance-${instanceId}`,
+      phase: 'port-specific',
+      port: config.port
+    });
+    
+    await instance.initialize();
+    this.instances.set(instanceId, instance);
+    
+    this.logInfo(`Instance ${instanceId} added with dedicated logging`);
+  }
+}
+```
+
+**3. Configuration Persistence**
+```typescript
+class ConfigurableService extends BaseModule {
+  private loadSavedConfig(): DebugConfig {
+    // Load from file, database, or environment
+    const saved = this.loadConfiguration();
+    
+    return {
+      enabled: saved.debug?.enabled ?? true,
+      level: saved.debug?.level ?? 'info',
+      baseDirectory: saved.debug?.baseDirectory ?? '~/.rcc/debug',
+      phase: saved.debug?.phase ?? 'system-start',
+      port: saved.debug?.port,
+      maxLogEntries: saved.debug?.maxLogEntries ?? 1000,
+      consoleOutput: saved.debug?.consoleOutput ?? true,
+      recordStack: saved.debug?.recordStack ?? true,
+      trackDataFlow: saved.debug?.trackDataFlow ?? true
+    };
+  }
+  
+  protected async initialize(): Promise<void> {
+    const config = this.loadSavedConfig();
+    this.setDebugConfig(config);
+    
+    this.logInfo('Configuration loaded and applied', config);
+  }
+}
+```
+
+### Best Practices
+
+1. **Startup Phase**: Always use `system-start` phase during initialization
+2. **Port Assignment**: Switch to `port-specific` phase when your service port is determined
+3. **Directory Structure**: Use consistent naming patterns for log directories
+4. **Configuration Updates**: Use `setDebugConfig()` for runtime updates, never modify internal properties directly
+5. **Log Rotation**: The system automatically manages log files and handles rotation
 
 ## Message System
 

@@ -1,0 +1,152 @@
+{
+  "published_modules": {
+    "rcc-basemodule": {
+      "name": "rcc-basemodule",
+      "version": "0.1.3",
+      "description": "RCC BaseModule - Core framework for modular TypeScript development",
+      "category": "core",
+      "functionality": "base-framework",
+      "dependencies": ["uuid@^9.0.1"],
+      "peerDependencies": [],
+      "repository": "https://github.com/rcc/rcc-basemodule.git",
+      "npm_package": "https://www.npmjs.com/package/rcc-basemodule",
+      "status": "published",
+      "last_updated": "2025-09-11",
+      "maintainer": "RCC Development Team"
+    },
+    "rcc-configuration": {
+      "name": "rcc-configuration",
+      "version": "0.1.0",
+      "description": "RCC Configuration Module - Comprehensive configuration management for modular TypeScript applications",
+      "category": "core",
+      "functionality": "configuration-management",
+      "dependencies": [
+        "ajv@^8.12.0",
+        "chokidar@^3.5.3",
+        "express@^4.18.2",
+        "fs-extra@^11.1.1",
+        "lodash@^4.17.21",
+        "rcc-basemodule@^0.1.2",
+        "uuid@^9.0.1"
+      ],
+      "peerDependencies": [],
+      "repository": "https://github.com/rcc/rcc-configuration.git",
+      "npm_package": "https://www.npmjs.com/package/rcc-configuration",
+      "status": "published",
+      "last_updated": "2025-09-11",
+      "maintainer": "RCC Development Team"
+    },
+    "rcc-errorhandling": {
+      "name": "rcc-errorhandling",
+      "version": "1.0.3",
+      "description": "RCC ErrorHandling Center - Simple error handling for RCC modules",
+      "category": "core",
+      "functionality": "error-management",
+      "dependencies": ["rcc-basemodule@>=0.1.0"],
+      "peerDependencies": [],
+      "repository": "https://github.com/rcc/rcc-errorhandling.git",
+      "npm_package": "https://www.npmjs.com/package/rcc-errorhandling",
+      "status": "published",
+      "last_updated": "2025-09-11",
+      "maintainer": "RCC Team"
+    },
+    "rcc-pipeline": {
+      "name": "rcc-pipeline",
+      "version": "0.1.0",
+      "description": "RCC Pipeline Module System",
+      "category": "core",
+      "functionality": "pipeline-workflow",
+      "dependencies": [
+        "rcc-basemodule@^0.1.3",
+        "rcc-errorhandling@^1.0.1",
+        "axios@^1.6.0",
+        "uuid@^9.0.0"
+      ],
+      "peerDependencies": [],
+      "repository": "https://github.com/rcc/rcc-pipeline.git",
+      "npm_package": "https://www.npmjs.com/package/rcc-pipeline",
+      "status": "published",
+      "last_updated": "2025-09-11",
+      "maintainer": "RCC Team"
+    },
+    "rcc-server": {
+      "name": "rcc-server",
+      "version": "0.1.0",
+      "description": "RCC Server Module - Client input proxy response server with virtual model routing",
+      "category": "core",
+      "functionality": "server-proxy",
+      "dependencies": [
+        "rcc-basemodule@^0.1.3",
+        "uuid@^9.0.1",
+        "express@^4.18.2",
+        "cors@^2.8.5",
+        "helmet@^7.1.0",
+        "compression@^1.7.4",
+        "body-parser@^1.20.2"
+      ],
+      "peerDependencies": [
+        "rcc-basemodule@>=0.1.0",
+        "rcc-pipeline@>=0.1.0",
+        "rcc-errorhandling@>=0.1.0"
+      ],
+      "repository": "https://github.com/rcc/rcc-server.git",
+      "npm_package": "https://www.npmjs.com/package/rcc-server",
+      "status": "published",
+      "last_updated": "2025-09-11",
+      "maintainer": "RCC Development Team"
+    }
+  },
+  "development_rules": {
+    "no_duplicate_functionality": {
+      "rule": "禁止功能重复模块开发",
+      "description": "所有已发布的模块功能都是唯一的，不允许开发功能重复的新模块",
+      "enforcement": "在开发新模块前，必须检查已发布模块清单，确保功能不重复",
+      "exception": "如果现有模块无法满足需求，应该通过issue或PR改进现有模块，而不是创建新模块"
+    },
+    "npm_only_dependencies": {
+      "rule": "依赖必须使用npm发布渠道版本",
+      "description": "所有模块依赖必须使用npm官方发布渠道的版本，不允许使用本地路径或未发布的版本",
+      "enforcement": "在package.json中使用明确的版本号或版本范围，不允许使用file:路径依赖",
+      "validation": "在CI/CD流程中验证所有依赖是否来自npm官方渠道"
+    },
+    "naming_convention": {
+      "rule": "模块命名规范",
+      "description": "所有RCC模块必须使用rcc-前缀",
+      "enforcement": "在模块创建时验证命名"
+    },
+    "version_management": {
+      "rule": "版本管理",
+      "description": "遵循语义化版本控制(SemVer)",
+      "enforcement": "在发布前验证版本号"
+    },
+    "documentation_requirements": {
+      "rule": "文档要求",
+      "description": "每个模块必须包含README.md、CHANGELOG.md、LICENSE文件",
+      "enforcement": "在CI/CD流程中验证文档完整性"
+    },
+    "testing_requirements": {
+      "rule": "测试要求",
+      "description": "所有模块必须有完整的测试覆盖，覆盖率不低于90%",
+      "enforcement": "在CI/CD流程中验证测试覆盖率"
+    }
+  },
+  "module_categories": {
+    "core": "核心模块，提供基础功能和框架支持",
+    "extension": "扩展模块，提供特定功能扩展",
+    "utility": "工具模块，提供辅助功能",
+    "integration": "集成模块，提供第三方服务集成"
+  },
+  "functionalities": {
+    "base-framework": "基础框架，提供模块化架构支持",
+    "configuration-management": "配置管理，提供配置加载、验证、持久化功能",
+    "error-management": "错误管理，提供错误处理、分类、恢复功能",
+    "pipeline-workflow": "流水线工作流，提供任务编排和流程管理",
+    "server-proxy": "服务器代理，提供HTTP服务和路由功能"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2025-09-11",
+    "maintainer": "RCC Development Team",
+    "description": "RCC项目已发布模块清单和开发规则配置"
+  }
+}

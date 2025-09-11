@@ -1,0 +1,27 @@
+# Ignore everything except the module content
+*
+!dist/
+!package.json
+!README.md
+!LICENSE
+!src/
+!scripts/
+
+# Exclude source maps
+*.map
+
+# Exclude test files
+**/*.test.*
+**/*.spec.*
+**/test/
+**/tests/
+
+# Exclude development files
+**/.git/
+**/.github/
+**/.vscode/
+**/.idea/
+**/node_modules/
+
+# Exclude TypeScript build outputs except our dist directory
+**/tsconfig.tsbuildinfo

@@ -61,7 +61,6 @@ export function createMockVirtualModelConfig(overrides = {}): any {
     maxTokens: 4000,
     temperature: 0.7,
     topP: 1.0,
-    priority: 5,
     enabled: true,
     routingRules: [],
     ...overrides

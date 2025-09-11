@@ -226,25 +226,35 @@ validate_file_creation() {
     # File not allowed
     log_file_access "$file_path" "CREATE" "BLOCKED"
     
+    # Create temporary directory if it doesn't exist
+    mkdir -p "./tmp"
+    
     echo "❌ FILE CREATION BLOCKED:"
-    echo "   File: $file_path"
-    echo "   Reason: File path not in allowlist"
-    echo "   "
-    echo "   To allow this file:"
-    if [ -f "$ALLOWLIST_JSON" ]; then
-        echo "   1. Add the path to $ALLOWLIST_JSON (JSON format)"
-        echo "   2. Or use: $0 add <pattern>"
-        echo "   3. Or place temporary files in ./tmp/ directory"
-        echo "   "
-        echo "   Manual JSON editing:"
-        echo "   - Edit $ALLOWLIST_JSON"
-        echo "   - Add to 'specific_files', 'directories', or 'file_patterns' arrays"
-        echo "   - Set 'allowed': true for the entry"
-    else
-        echo "   1. Add the path to $ALLOWLIST_TXT (legacy format)"
-        echo "   2. Or create JSON allowlist at $ALLOWLIST_JSON"
-        echo "   3. Or place temporary files in ./tmp/ directory"
-    fi
+    echo "   📁 File: $file_path"
+    echo "   🚫 Reason: File path not in allowlist"
+    echo ""
+    echo "   🔧 SOLUTIONS:"
+    echo "   ┌─────────────────────────────────────────────────────────────────────────┐"
+    echo "   │ 1️⃣  FOR TEMPORARY FILES:                                               │"
+    echo "   │    - Move to: ./tmp/$(basename "$file_path")                             │"
+    echo "   │    - Command: mv '$file_path' './tmp/$(basename "$file_path")'          │"
+    echo "   │                                                                         │"
+    echo "   │ 2️⃣  FOR PERMANENT FILES:                                              │"
+    echo "   │    - Use approval script: ./.claude/scripts/approve-file-allowlist.sh  │"
+    echo "   │    - Command: ./.claude/scripts/approve-file-allowlist.sh add '$file_path'"
+    echo "   │                                                                         │"
+    echo "   │ 3️⃣  EMERGENCY BYPASS:                                                │"
+    echo "   │    - Use: git commit --no-verify (not recommended)                     │"
+    echo "   └─────────────────────────────────────────────────────────────────────────┘"
+    echo ""
+    echo "   📋 APPROVAL PROCESS:"
+    echo "   1. Use the approval script to request file addition"
+    echo "   2. Script will log the request and require confirmation"
+    echo "   3. All modifications to allowlist are tracked and audited"
+    echo "   4. Temporary files can be created in ./tmp/ without approval"
+    echo ""
+    echo "   🗂️  Temporary files directory: ./tmp/"
+    echo "   📝 Approval requests log: ./.claude/approval-requests.log"
     
     return 1
 }

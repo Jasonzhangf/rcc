@@ -27,6 +27,9 @@ The RCC Server Module is a powerful HTTP server component designed for the RCC (
 - **Health Monitoring**: Real-time health checks and system metrics
 - **Error Handling**: Comprehensive error handling and recovery
 - **Performance Metrics**: Request tracking and performance analytics
+- **Pipeline Integration**: Seamless integration with Pipeline Scheduler for request processing
+- **Configuration Management**: Dynamic configuration integration with virtual model mapping
+- **Fallback Processing**: Automatic fallback to direct processing when pipeline fails
 
 ## Installation
 
@@ -39,7 +42,7 @@ npm install rcc-server
 This module requires the following RCC modules:
 
 ```bash
-npm install rcc-basemodule rcc-pipeline rcc-errorhandling
+npm install rcc-basemodule rcc-pipeline rcc-errorhandling rcc-configuration rcc-virtual-model-rules rcc-underconstruction
 ```
 
 ## Quick Start
@@ -125,6 +128,184 @@ const routeConfig: RouteConfig = {
 };
 
 await server.registerRoute(routeConfig);
+```
+
+## Pipeline Integration
+
+The RCC Server Module provides seamless integration with the Pipeline Scheduler for advanced request processing capabilities. This integration enables sophisticated request routing, load balancing, and error handling through a unified pipeline architecture.
+
+### Complete Integration Setup
+
+```typescript
+import { ServerModule } from 'rcc-server';
+import { PipelineScheduler } from 'rcc-pipeline';
+import { PipelineSystemConfig } from 'rcc-pipeline';
+
+// Create server instance
+const server = new ServerModule();
+
+// Configure server
+const serverConfig = {
+  port: 3000,
+  host: 'localhost',
+  // ... other server configuration
+};
+
+server.configure(serverConfig);
+await server.initialize();
+await server.start();
+
+// Create pipeline scheduler configuration
+const pipelineConfig: PipelineSystemConfig = {
+  pipelines: [
+    {
+      id: 'qwen-turbo-pipeline',
+      name: 'Qwen Turbo Pipeline',
+      type: 'ai-model',
+      enabled: true,
+      priority: 1,
+      weight: 3,
+      maxConcurrentRequests: 20,
+      timeout: 45000,
+      config: {
+        model: 'qwen-turbo',
+        provider: 'qwen',
+        maxTokens: 2000,
+        temperature: 0.7,
+        topP: 0.9
+      }
+    }
+  ],
+  loadBalancer: {
+    strategy: 'weighted',
+    healthCheckInterval: 15000
+  },
+  scheduler: {
+    defaultTimeout: 45000,
+    maxRetries: 5,
+    retryDelay: 2000
+  }
+};
+
+// Create and integrate pipeline scheduler
+const pipelineScheduler = new PipelineScheduler(pipelineConfig);
+await server.setPipelineScheduler(pipelineScheduler);
+
+// Register virtual models
+await server.registerVirtualModel({
+  id: 'qwen-turbo-virtual',
+  name: 'Qwen Turbo Virtual Model',
+  provider: 'qwen',
+  model: 'qwen-turbo',
+  capabilities: ['text-generation', 'chat'],
+  maxTokens: 2000,
+  temperature: 0.7,
+  enabled: true
+});
+```
+
+### Configuration-to-Pipeline Integration
+
+The server automatically integrates with the Configuration module to provide dynamic virtual model mapping and pipeline generation:
+
+```typescript
+// The server automatically initializes ConfigurationToPipelineModule
+// which provides:
+// - Virtual model mapping from configuration
+// - Pipeline table generation
+// - Dynamic pipeline assembly
+// - Configuration validation
+
+// Check integration status
+const status = server.getStatus();
+console.log('Pipeline Integration:', {
+  enabled: status.pipelineIntegration.enabled,
+  schedulerAvailable: status.pipelineIntegration.schedulerAvailable,
+  processingMethod: status.pipelineIntegration.processingMethod,
+  fallbackEnabled: status.pipelineIntegration.fallbackEnabled
+});
+```
+
+### Request Processing Flow
+
+1. **Request Reception**: Server receives HTTP request
+2. **Virtual Model Routing**: Request is routed to appropriate virtual model
+3. **Pipeline Execution**: Request is processed through Pipeline Scheduler
+4. **Fallback Handling**: If pipeline fails, falls back to direct processing
+5. **Response Generation**: Response is formatted and returned to client
+
+```typescript
+// Example request processing
+const request = {
+  id: 'test-request',
+  method: 'POST',
+  path: '/api/chat',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: {
+    messages: [
+      { role: 'user', content: 'Hello!' }
+    ]
+  },
+  timestamp: Date.now(),
+  virtualModel: 'qwen-turbo-virtual'
+};
+
+// Process request (automatically uses pipeline if available)
+const response = await server.handleRequest(request);
+
+// Response includes processing metadata
+console.log('Response:', {
+  status: response.status,
+  processingMethod: response.headers['X-Processing-Method'],
+  virtualModel: response.headers['X-Virtual-Model'],
+  pipelineId: response.headers['X-Pipeline-Id'],
+  executionId: response.headers['X-Execution-Id'],
+  processingTime: response.processingTime
+});
+```
+
+### Error Handling and Fallback
+
+The system provides comprehensive error handling with automatic fallback:
+
+```typescript
+// Pipeline execution errors are automatically handled
+try {
+  const response = await server.handleRequest(request);
+  
+  if (response.headers['X-Processing-Method'] === 'direct') {
+    // Request was processed via fallback
+    console.log('Fallback reason:', response.headers['X-Fallback-Reason']);
+  }
+} catch (error) {
+  // Handle critical errors
+  console.error('Request failed:', error);
+}
+```
+
+### Monitoring and Metrics
+
+Monitor pipeline integration performance:
+
+```typescript
+// Get detailed integration status
+const integrationConfig = server.getPipelineIntegrationConfig();
+console.log('Pipeline Integration Config:', {
+  enabled: integrationConfig.enabled,
+  defaultTimeout: integrationConfig.defaultTimeout,
+  maxRetries: integrationConfig.maxRetries,
+  fallbackToDirect: integrationConfig.fallbackToDirect
+});
+
+// Monitor overall system health
+const health = await server.getHealth();
+console.log('System Health:', {
+  status: health.status,
+  pipelineIntegration: health.checks.pipeline_integration,
+  schedulerHealth: health.checks.pipeline_scheduler
+});
 ```
 
 ## API Documentation
@@ -224,29 +405,41 @@ interface ServerConfig {
 }
 ```
 
-## Load Balancing Strategies
+## Routing Rules and Virtual Model Mapping
 
-The server supports three load balancing strategies:
+The server uses routing rules to determine which virtual model should handle each request. When no specific model is requested, the system evaluates all enabled models against their routing rules and selects the first matching candidate.
 
-### 1. Round-Robin
-Distributes requests evenly across all available models.
-
+### Virtual Model Registration
 ```typescript
-server.setLoadBalancingStrategy('round-robin');
+const model = {
+  id: 'chat-model',
+  name: 'Chat Model',
+  provider: 'openai',
+  endpoint: 'https://api.openai.com/v1/chat',
+  capabilities: ['chat', 'streaming'],
+  // ... other config
+};
+
+await server.registerVirtualModel(model);
 ```
 
-### 2. Weighted
-Distributes requests based on model priority weights.
+### Routing Rules
+Virtual models can define routing rules to filter which requests they should handle:
 
 ```typescript
-server.setLoadBalancingStrategy('weighted');
-```
-
-### 3. Least Connections
-Routes requests to the model with the fewest active connections.
-
-```typescript
-server.setLoadBalancingStrategy('least-connections');
+const model = {
+  // ... other config
+  routingRules: [
+    {
+      id: 'chat-only',
+      name: 'Chat Requests Only',
+      condition: 'path:/api/chat',
+      weight: 1.0,
+      enabled: true,
+      priority: 1
+    }
+  ]
+};
 ```
 
 ## Monitoring and Metrics
@@ -365,10 +558,12 @@ npm run test:watch
 
 Check the `examples/` directory for complete usage examples:
 
-- [Basic Server](examples/basic-server.ts)
-- [Virtual Model Setup](examples/virtual-model.ts)
-- [Custom Routes](examples/custom-routes.ts)
-- [Middleware](examples/middleware.ts)
+- [Basic Server](examples/basic-server.ts) - Basic server setup and configuration
+- [Virtual Model Setup](examples/virtual-model.ts) - Virtual model registration and routing
+- [Custom Routes](examples/custom-routes.ts) - Custom route registration and handling
+- [Middleware](examples/middleware.ts) - Middleware system and custom middleware
+- [Pipeline Integration](examples/pipeline-integration-example.ts) - Pipeline scheduler integration examples
+- [Complete Integration](examples/complete-integration-example.ts) - Complete end-to-end integration example
 
 ## Performance
 
@@ -416,7 +611,10 @@ See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
 
 - [RCC Base Module](https://github.com/rcc/rcc-basemodule) - Core framework for modular development
 - [RCC Pipeline](https://github.com/rcc/rcc-pipeline) - Pipeline and workflow management
+- [RCC Configuration](https://github.com/rcc/rcc-configuration) - Configuration management and validation
+- [RCC Virtual Model Rules](https://github.com/rcc/rcc-virtual-model-rules) - Virtual model routing and rule management
 - [RCC Error Handling](https://github.com/rcc/rcc-errorhandling) - Error handling and recovery
+- [RCC Under Construction](https://github.com/rcc/rcc-underconstruction) - Feature development tracking
 
 ---
 

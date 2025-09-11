@@ -8,7 +8,7 @@ export { RuleEvaluator } from './src/components/RuleEvaluator';
 
 // Interfaces
 export type {
-  IVirtualModelRulesModule,
+  IVirtualModelRules,
   IRuleEngine,
   IModelScheduler,
   IRuleEvaluator
@@ -21,7 +21,6 @@ export type {
   RuleAction,
   RulePriority,
   ModelSchedule,
-  ScheduleConfig,
   EvaluationContext,
   EvaluationResult,
   RuleMetrics

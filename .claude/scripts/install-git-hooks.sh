@@ -63,18 +63,34 @@ if [ -f "$FILE_ALLOWLIST_VALIDATOR" ]; then
     FILES_TO_CHECK=$(git diff --cached --name-only --diff-filter=ACM)
     if [ -n "$FILES_TO_CHECK" ]; then
         FAILED_FILES=0
+        echo "📋 检查文件:"
         for file in $FILES_TO_CHECK; do
             if [ -f "$file" ]; then
+                echo "   - $file"
                 if ! "$FILE_ALLOWLIST_VALIDATOR" validate "$file"; then
                     echo "❌ 文件 '$file' 未通过allowlist验证"
                     FAILED_FILES=$((FAILED_FILES + 1))
                 fi
             fi
         done
+        
         if [ $FAILED_FILES -gt 0 ]; then
-            echo "❌ 有 $FAILED_FILES 个文件未通过allowlist验证"
+            echo ""
+            echo "🚨 ❌ 有 $FAILED_FILES 个文件未通过allowlist验证"
+            echo ""
+            echo "💡 解决方案："
+            echo "   1. 使用审批脚本：./.claude/scripts/approve-file-allowlist.sh add <文件路径>"
+            echo "   2. 或者移动临时文件到 ./tmp/ 目录"
+            echo "   3. 或者使用 git commit --no-verify 跳过检查（不推荐）"
+            echo ""
+            echo "📝 审批日志：.claude/approval-requests.log"
+            echo "🔍 监控日志：.claude/allowlist-access.log"
             exit 1
+        else
+            echo "✅ 所有文件都通过了allowlist验证"
         fi
+    else
+        echo "✅ 没有需要验证的文件"
     fi
 else
     echo "⚠️  文件allowlist验证器不存在，跳过检查"

@@ -263,6 +263,12 @@
       "description": "Manually added",
       "allowed": true,
       "notes": "Added via command line"
+    },
+    {
+      "path": "test-approval.txt",
+      "description": "Manually added",
+      "allowed": true,
+      "notes": "Added via command line"
     }
   ]
 }

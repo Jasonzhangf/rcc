@@ -8,7 +8,8 @@ import {
   ModelSchedule, 
   EvaluationContext, 
   EvaluationResult, 
-  RuleMetrics 
+  RuleMetrics,
+  RulePriority 
 } from './types/VirtualModelRulesTypes';
 
 /**
@@ -23,6 +24,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
   private evaluationContext: EvaluationContext | null = null;
   private isInitialized: boolean = false;
   private ruleExecutionCache: Map<string, { result: boolean; timestamp: number; ttl: number }> = new Map();
+  private cacheCleanupInterval: any = null;
   
   constructor() {
     const moduleInfo: ModuleInfo = {
@@ -47,17 +49,17 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
   /**
    * Configure the virtual model rules module
    */
-  public configure(config: any): void {
+  public override configure(config: any): void {
     super.configure(config);
-    this.logInfo('Virtual Model Rules module configured', { config }, 'configure');
+    this.logInfo('Virtual Model Rules module configured', 'configure');
   }
 
   /**
    * Initialize the virtual model rules module
    */
-  public async initialize(): Promise<void> {
+  public override async initialize(): Promise<void> {
     if (this.isInitialized) {
-      this.warn('Virtual Model Rules module is already initialized', {}, 'initialize');
+      this.warn('Virtual Model Rules module is already initialized', 'initialize');
       return;
     }
 
@@ -77,7 +79,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       this.startCacheCleanup();
       
       this.isInitialized = true;
-      this.logInfo('Virtual Model Rules Module initialized successfully', {}, 'initialize');
+      this.logInfo('Virtual Model Rules Module initialized successfully', 'initialize');
       
       // Notify initialization complete
       this.broadcastMessage('virtual-model-rules-initialized', { 
@@ -86,7 +88,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       });
       
     } catch (error) {
-      this.error('Failed to initialize Virtual Model Rules Module', error, 'initialize');
+      this.error('Failed to initialize Virtual Model Rules Module [initialize]', error instanceof Error ? error.message : String(error));
       throw error;
     }
   }
@@ -117,7 +119,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       errorCount: 0
     });
     
-    this.logInfo('Virtual model rule registered successfully', { ruleId: rule.id }, 'registerRule');
+    this.logInfo('Virtual model rule registered successfully', 'registerRule');
     
     // Notify rule registered
     this.broadcastMessage('virtual-model-rule-registered', { rule });
@@ -140,7 +142,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     // Clear cache entries for this rule
     this.clearRuleCache(ruleId);
     
-    this.logInfo('Virtual model rule unregistered successfully', { ruleId }, 'unregisterRule');
+    this.logInfo('Virtual model rule unregistered successfully', 'unregisterRule');
     
     // Notify rule unregistered
     this.broadcastMessage('virtual-model-rule-unregistered', { ruleId });
@@ -190,7 +192,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
         results.push(result);
         
       } catch (error) {
-        this.error('Rule evaluation failed', { ruleId: rule.id, error }, 'evaluateRules');
+        this.error('Rule evaluation failed [evaluateRules]', `Rule ${rule.id} failed: ${error instanceof Error ? error.message : String(error)}`);
         
         // Create error result
         results.push({
@@ -235,6 +237,103 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
   }
 
   /**
+   * Load rules from configuration file
+   */
+  public async loadRules(rulesPath: string): Promise<void> {
+    this.log('Loading rules from configuration file', { rulesPath }, 'loadRules');
+    
+    // Mark as under construction feature
+    const underConstruction = new (await import('rcc-underconstruction')).UnderConstruction();
+    await underConstruction.initialize();
+    
+    underConstruction.callUnderConstructionFeature('load-rules-from-config', {
+      caller: 'VirtualModelRulesModule.loadRules',
+      parameters: { rulesPath },
+      purpose: '从配置文件加载规则'
+    });
+    
+    // Placeholder implementation
+    this.logInfo('Rules loading feature is under construction', 'loadRules');
+  }
+
+  /**
+   * Add a new virtual model rule (alias for registerRule)
+   */
+  public async addRule(rule: VirtualModelRule): Promise<void> {
+    return await this.registerRule(rule);
+  }
+
+  /**
+   * Remove a virtual model rule (alias for unregisterRule)
+   */
+  public async removeRule(ruleId: string): Promise<void> {
+    return await this.unregisterRule(ruleId);
+  }
+
+  /**
+   * Update an existing rule
+   */
+  public async updateRule(ruleId: string, updates: Partial<VirtualModelRule>): Promise<void> {
+    this.log('Updating virtual model rule', { ruleId }, 'updateRule');
+    
+    const existingRule = this.rules.get(ruleId);
+    if (!existingRule) {
+      throw new Error(`Rule '${ruleId}' not found`);
+    }
+    
+    // Merge updates with existing rule
+    const updatedRule = { ...existingRule, ...updates };
+    
+    // Remove and re-add the rule
+    await this.unregisterRule(ruleId);
+    await this.registerRule(updatedRule);
+    
+    this.logInfo('Virtual model rule updated successfully', 'updateRule');
+  }
+
+  /**
+   * Get model schedule (alias for getSchedule)
+   */
+  public getModelSchedule(modelId: string): ModelSchedule | undefined {
+    return this.getSchedule(modelId);
+  }
+
+  /**
+   * Set model schedule (alias for registerSchedule)
+   */
+  public async setModelSchedule(modelId: string, schedule: ModelSchedule): Promise<void> {
+    // Ensure schedule has the correct modelId
+    schedule.modelId = modelId;
+    await this.registerSchedule(schedule);
+  }
+
+  /**
+   * Get active rules for model
+   */
+  public getActiveRules(modelId: string): VirtualModelRule[] {
+    return this.getRulesForModel(modelId).filter(rule => rule.enabled);
+  }
+
+  /**
+   * Enable/disable rule
+   */
+  public async setRuleEnabled(ruleId: string, enabled: boolean): Promise<void> {
+    this.log('Setting rule enabled state', { ruleId, enabled }, 'setRuleEnabled');
+    
+    const rule = this.rules.get(ruleId);
+    if (!rule) {
+      throw new Error(`Rule '${ruleId}' not found`);
+    }
+    
+    rule.enabled = enabled;
+    
+    this.logInfo('Rule enabled state updated successfully', 'setRuleEnabled');
+    
+    // Notify rule state changed
+    this.broadcastMessage('rule-state-changed', { ruleId, enabled });
+  }
+
+  /**
    * Register a model schedule
    */
   public async registerSchedule(schedule: ModelSchedule): Promise<void> {
@@ -246,7 +345,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     // Add to schedules registry
     this.schedules.set(schedule.modelId, schedule);
     
-    this.logInfo('Model schedule registered successfully', { modelId: schedule.modelId }, 'registerSchedule');
+    this.logInfo('Model schedule registered successfully', 'registerSchedule');
     
     // Notify schedule registered
     this.broadcastMessage('model-schedule-registered', { schedule });
@@ -265,7 +364,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     // Remove from schedules registry
     this.schedules.delete(modelId);
     
-    this.logInfo('Model schedule unregistered successfully', { modelId }, 'unregisterSchedule');
+    this.logInfo('Model schedule unregistered successfully', 'unregisterSchedule');
     
     // Notify schedule unregistered
     this.broadcastMessage('model-schedule-unregistered', { modelId });
@@ -301,7 +400,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
   /**
    * Get configuration
    */
-  public getConfig(): any {
+  public override getConfig(): any {
     return super.getConfig();
   }
 
@@ -314,16 +413,16 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     // Call parent update
     super.configure(config);
     
-    this.logInfo('Virtual model rules configuration updated successfully', config, 'updateConfig');
+    this.logInfo('Virtual model rules configuration updated successfully', 'updateConfig');
   }
 
   /**
    * Handle incoming messages
    */
-  public async handleMessage(message: any): Promise<any> {
-    this.log('Handling message', { type: message.type, source: message.source }, 'handleMessage');
+  public override async handleMessage(message: any): Promise<any> {
+    this.log('Handling message', { type: message?.type, source: message?.source }, 'handleMessage');
     
-    switch (message.type) {
+    switch (message?.type) {
       case 'rule-evaluation-request':
         return await this.handleRuleEvaluation(message);
       case 'schedule-status-request':
@@ -338,7 +437,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
   /**
    * Cleanup resources
    */
-  public async destroy(): Promise<void> {
+  public override async destroy(): Promise<void> {
     this.log('Cleaning up Virtual Model Rules Module', {}, 'destroy');
     
     try {
@@ -351,10 +450,16 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       this.evaluationContext = null;
       this.isInitialized = false;
       
+      // Clear cache cleanup interval
+      if (this.cacheCleanupInterval) {
+        clearInterval(this.cacheCleanupInterval);
+        this.cacheCleanupInterval = null;
+      }
+      
       await super.destroy();
       
     } catch (error) {
-      this.error('Error during cleanup', error, 'destroy');
+      this.error('Error during cleanup [destroy]', error instanceof Error ? error.message : String(error));
       throw error;
     }
   }
@@ -368,7 +473,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     // Initialize with default rules if needed
     // This could load rules from configuration files
     
-    this.logInfo('Rule engine initialized successfully', {}, 'initializeRuleEngine');
+    this.logInfo('Rule engine initialized successfully', 'initializeRuleEngine');
   }
 
   /**
@@ -385,9 +490,12 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    */
   private startCacheCleanup(): void {
     // Clean up expired cache entries every minute
-    setInterval(() => {
+    const intervalId = setInterval(() => {
       this.cleanupCache();
     }, 60000);
+    
+    // Store interval ID for cleanup
+    this.cacheCleanupInterval = intervalId;
     
     this.log('Cache cleanup started', {}, 'startCacheCleanup');
   }
@@ -408,9 +516,10 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       throw new Error('Rule must have at least one action');
     }
     
-    // Validate priority range (1-10)
-    if (rule.priority < 1 || rule.priority > 10) {
-      throw new Error('Rule priority must be between 1 and 10');
+    // Validate priority is one of the allowed values
+    const validPriorities: RulePriority[] = ['low', 'medium', 'high', 'critical'];
+    if (!validPriorities.includes(rule.priority)) {
+      throw new Error('Rule priority must be one of: low, medium, high, critical');
     }
   }
 
@@ -440,10 +549,10 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
         return priorityOrder[b.priority] - priorityOrder[a.priority];
       });
     
-    this.trace('Found applicable rules', { 
+    this.trace('Found applicable rules [getApplicableRules]', { 
       requestId: context.requestId, 
       ruleCount: applicableRules.length 
-    }, 'getApplicableRules');
+    });
     
     return applicableRules;
   }
@@ -459,7 +568,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     const cachedResult = this.ruleExecutionCache.get(cacheKey);
     
     if (cachedResult && Date.now() - cachedResult.timestamp < cachedResult.ttl) {
-      this.trace('Using cached rule result', { ruleId: rule.id }, 'evaluateRule');
+      this.trace('Using cached rule result [evaluateRule]', { ruleId: rule.id });
       return this.createEvaluationResult(rule, true, cachedResult.result, 0.95);
     }
     
@@ -522,11 +631,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
         }
         
       } catch (error) {
-        this.warn('Condition evaluation failed', { 
-          ruleId: rule.id, 
-          conditionField: condition.field, 
-          error 
-        }, 'evaluateConditions');
+        this.warn('Condition evaluation failed [evaluateConditions]', `Rule ${rule.id}, field ${condition.field}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     
@@ -641,7 +746,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    * Execute a single action
    */
   private async executeAction(action: any, context: EvaluationContext): Promise<any> {
-    this.trace('Executing action', { type: action.type }, 'executeAction');
+    this.trace('Executing action [executeAction]', { type: action.type });
     
     switch (action.type) {
       case 'route_to_model':
@@ -663,7 +768,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    * Execute route to model action
    */
   private async executeRouteToModel(action: any, context: EvaluationContext): Promise<any> {
-    this.trace('Routing to model', action.parameters, 'executeRouteToModel');
+    this.trace('Routing to model [executeRouteToModel]', action.parameters);
     return { routed: true, modelId: action.parameters.modelId };
   }
 
@@ -671,7 +776,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    * Execute set priority action
    */
   private async executeSetPriority(action: any, context: EvaluationContext): Promise<any> {
-    this.trace('Setting priority', action.parameters, 'executeSetPriority');
+    this.trace('Setting priority [executeSetPriority]', action.parameters);
     return { priority: action.parameters.priority };
   }
 
@@ -679,7 +784,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    * Execute add tag action
    */
   private async executeAddTag(action: any, context: EvaluationContext): Promise<any> {
-    this.trace('Adding tag', action.parameters, 'executeAddTag');
+    this.trace('Adding tag [executeAddTag]', action.parameters);
     return { tagAdded: true, tag: action.parameters.tag };
   }
 
@@ -687,7 +792,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    * Execute remove tag action
    */
   private async executeRemoveTag(action: any, context: EvaluationContext): Promise<any> {
-    this.trace('Removing tag', action.parameters, 'executeRemoveTag');
+    this.trace('Removing tag [executeRemoveTag]', action.parameters);
     return { tagRemoved: true, tag: action.parameters.tag };
   }
 
@@ -803,9 +908,9 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     }
     
     if (keysToDelete.length > 0) {
-      this.trace('Cache cleanup completed', { 
+      this.trace('Cache cleanup completed [cleanupCache]', { 
         entriesRemoved: keysToDelete.length 
-      }, 'cleanupCache');
+      });
     }
   }
 

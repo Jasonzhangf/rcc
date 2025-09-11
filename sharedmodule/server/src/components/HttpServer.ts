@@ -1,17 +1,17 @@
 // HTTP Server component for RCC Server Module
 
-import express = require('express');
-import cors = require('cors');
-import helmet = require('helmet');
-import compression = require('compression');
-import bodyParser = require('body-parser');
+import express, { Application as ExpressApplication, Request, Response } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import bodyParser from 'body-parser';
 import { createServer, Server as HttpServer } from 'http';
 import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { IHttpServer } from '../interfaces/IServerModule';
 import { ServerConfig, ClientRequest, ClientResponse } from '../types/ServerTypes';
 
 export class HttpServerComponent extends BaseModule implements IHttpServer {
-  private app: Application;
+  private app: ExpressApplication;
   private server: HttpServer | null = null;
   private config: ServerConfig | null = null;
   private isRunning: boolean = false;
@@ -39,12 +39,12 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Initialize the HTTP server with configuration
    */
-  public configure(config: ServerConfig): void {
+  public override configure(config: ServerConfig): void {
     super.configure(config);
     this.config = config;
   }
 
-  public async initialize(): Promise<void> {
+  public override async initialize(): Promise<void> {
     this.log('Initializing HTTP server component');
     
     if (!this.config) {
@@ -80,15 +80,15 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
     // Add metrics endpoint
     this.app.get('/metrics', this.getMetrics.bind(this));
     
-    this.log('HTTP server component initialized successfully');
+    this.log('HTTP server component initialized successfully', { method: 'initialize' });
   }
 
   /**
    * Start the HTTP server
    */
-  async listen(port: number, host: string = 'localhost'): Promise<void> {
+  public async listen(port: number, host: string = 'localhost'): Promise<void> {
     if (this.isRunning) {
-      this.warn('HTTP server is already running');
+      this.warn('HTTP server is already running', { method: 'listen' });
       return;
     }
 
@@ -97,24 +97,24 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       
       this.server.listen(port, host, () => {
         this.isRunning = true;
-        this.log(`HTTP server listening on ${host}:${port}`);
+        this.log(`HTTP server listening on ${host}:${port}`, { method: 'listen' });
         resolve();
       });
       
       this.server.on('error', (error) => {
-        this.error('HTTP server error:', error);
+        this.error('HTTP server error', { method: 'listen' });
         reject(error);
       });
       
       this.server.on('connection', (socket) => {
-        this.debug(`New connection established from ${socket.remoteAddress}`);
+        this.log(`New connection established from ${socket.remoteAddress}`, { method: 'listen' });
         
         socket.on('close', () => {
-          this.debug(`Connection closed from ${socket.remoteAddress}`);
+          this.log(`Connection closed from ${socket.remoteAddress}`, { method: 'listen' });
         });
         
-        socket.on('error', (error) => {
-          this.warn(`Connection error from ${socket.remoteAddress}:`, error);
+        socket.on('error', () => {
+          this.warn('Connection error', { method: 'listen' });
         });
       });
     });
@@ -123,9 +123,9 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Stop the HTTP server
    */
-  async close(): Promise<void> {
+  public async close(): Promise<void> {
     if (!this.isRunning || !this.server) {
-      this.warn('HTTP server is not running');
+      this.warn('HTTP server is not running', { method: 'close' });
       return;
     }
 
@@ -133,7 +133,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       this.server!.close(() => {
         this.isRunning = false;
         this.server = null;
-        this.log('HTTP server stopped');
+        this.log('HTTP server stopped', { method: 'close' });
         resolve();
       });
     });
@@ -142,7 +142,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Add event listener
    */
-  on(event: string, callback: Function): void {
+  public on(event: string, callback: (...args: any[]) => void): void {
     if (this.server) {
       this.server.on(event, callback);
     }
@@ -151,7 +151,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Remove event listener
    */
-  off(event: string, callback: Function): void {
+  public off(event: string, callback: (...args: any[]) => void): void {
     if (this.server) {
       this.server.off(event, callback);
     }
@@ -160,32 +160,32 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Get active connections count
    */
-  getConnections(callback: (err: Error | null, count: number) => void): void {
+  public getConnections(callback: (err: Error | null, count: number) => void): void {
     if (this.server) {
       this.server.getConnections(callback);
     } else {
-      callback(null, 0);
+      callback(new Error('Server not running'), 0);
     }
   }
 
   /**
    * Get the Express application instance
    */
-  getApp(): Application {
+  public getApp(): ExpressApplication {
     return this.app;
   }
 
   /**
    * Check if server is running
    */
-  isServerRunning(): boolean {
+  public isServerRunning(): boolean {
     return this.isRunning;
   }
 
   /**
    * Request logging middleware
    */
-  private requestLogger(req: Request, res: Response, next: NextFunction): void {
+  private requestLogger(req: express.Request, res: express.Response, next: express.NextFunction): void {
     const start = Date.now();
     
     res.on('finish', () => {
@@ -196,7 +196,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       const userAgent = req.get('User-Agent') || 'Unknown';
       const ip = req.ip || req.connection.remoteAddress || 'Unknown';
       
-      this.debug(`${method} ${url} - ${status} - ${duration}ms - ${ip} - ${userAgent}`);
+      this.log(`${method} ${url} - ${status} - ${duration}ms - ${ip} - ${userAgent}`, { method: 'requestLogger' });
     });
     
     next();
@@ -205,8 +205,8 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Error handling middleware
    */
-  private errorHandler(error: Error, req: Request, res: Response, next: NextFunction): void {
-    this.error('Request error:', error);
+  private errorHandler(error: Error, req: express.Request, res: express.Response): void {
+    this.error('Request error', { method: 'errorHandler' });
     
     const status = (error as any).status || 500;
     const message = process.env.NODE_ENV === 'production' ? 'Internal Server Error' : error.message;
@@ -224,7 +224,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Health check endpoint
    */
-  private healthCheck(req: Request, res: Response): void {
+  private healthCheck(_req: express.Request, res: express.Response): void {
     const health = {
       status: this.isRunning ? 'healthy' : 'unhealthy',
       timestamp: Date.now(),
@@ -236,7 +236,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
     };
 
     if (this.server) {
-      this.getConnections((err, count) => {
+      this.getConnections((_err, count) => {
         health.connections = count;
         res.status(health.status === 'healthy' ? 200 : 503).json(health);
       });
@@ -248,7 +248,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Get server metrics
    */
-  private getMetrics(req: Request, res: Response): void {
+  private getMetrics(_req: express.Request, res: express.Response): void {
     const metrics = {
       timestamp: Date.now(),
       uptime: process.uptime(),
@@ -259,7 +259,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
     };
 
     if (this.server) {
-      this.getConnections((err, count) => {
+      this.getConnections((_err, count) => {
         metrics.connections = count;
         res.json(metrics);
       });
@@ -280,8 +280,8 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       body: req.body,
       query: req.query as Record<string, string>,
       timestamp: Date.now(),
-      clientId: req.get('X-Client-ID'),
-      virtualModel: req.get('X-Virtual-Model')
+      clientId: req.get('X-Client-ID') || undefined,
+      virtualModel: req.get('X-Virtual-Model') || undefined
     };
   }
 
@@ -343,16 +343,16 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Cleanup resources
    */
-  async cleanup(): Promise<void> {
-    this.log('Cleaning up HTTP server component');
+  public override async destroy(): Promise<void> {
+    this.log('Cleaning up HTTP server component', { method: 'destroy' });
     
     if (this.server) {
       await this.close();
     }
     
-    this.app = null;
+    this.app = express();
     this.config = null;
     
-    super.cleanup();
+    super.destroy();
   }
 }

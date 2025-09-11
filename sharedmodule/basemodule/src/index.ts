@@ -12,9 +12,17 @@ export { MessageCenter } from './MessageCenter';
 // Export BaseModule
 export { BaseModule } from './BaseModule';
 
+// Export DebugModule
+export { DebugModule } from './DebugModule';
+
 // Export all types from BaseModule
 export type {
   DebugLevel,
   DebugLogEntry,
   DebugConfig,
 } from './BaseModule';
+
+// Export all types from DebugModule
+export type {
+  TwoPhaseDebugConfig,
+} from './DebugModule';

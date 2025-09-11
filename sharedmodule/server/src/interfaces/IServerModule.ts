@@ -9,12 +9,25 @@ import {
   ServerStatus,
   RequestMetrics,
   ConnectionInfo,
-  MiddlewareConfig
+  MiddlewareConfig,
+  PipelineIntegrationConfig
 } from '../types/ServerTypes';
+
+import { UnderConstruction } from 'rcc-underconstruction';
+import { Application } from 'express';
+
+// Pipeline types are replaced with UnderConstruction
+// import { 
+//   IPipelineScheduler, 
+//   PipelineExecutionContext, 
+//   PipelineExecutionResult,
+//   PipelineExecutionStatus,
+//   ExecutionOptions 
+// } from '../../../pipeline/src/PipelineScheduler';
 
 export interface IServerModule {
   // Lifecycle methods
-  initialize(config: ServerConfig): Promise<void>;
+  initialize(): Promise<void>;
   start(): Promise<void>;
   stop(): Promise<void>;
   restart(): Promise<void>;
@@ -51,14 +64,24 @@ export interface IServerModule {
   // Configuration
   updateConfig(config: Partial<ServerConfig>): Promise<void>;
   getConfig(): ServerConfig;
+  
+  // Pipeline integration (replaced with UnderConstruction)
+  setUnderConstructionModule(underConstruction: UnderConstruction): Promise<void>;
+  processVirtualModelRequest(request: ClientRequest, model: VirtualModelConfig): Promise<ClientResponse>;
+  getPipelineIntegrationConfig(): PipelineIntegrationConfig;
 }
 
 export interface IHttpServer {
   listen(port: number, host?: string): Promise<void>;
   close(): Promise<void>;
-  on(event: string, callback: Function): void;
-  off(event: string, callback: Function): void;
-  getConnections(callback: (err: Error, count: number) => void): void;
+  on(event: string, callback: (...args: any[]) => void): void;
+  off(event: string, callback: (...args: any[]) => void): void;
+  getConnections(callback: (err: Error | null, count: number) => void): void;
+  destroy(): Promise<void>;
+  getApp(): Application;
+  isServerRunning(): boolean;
+  configure(config: ServerConfig): void;
+  initialize(): Promise<void>;
 }
 
 export interface IRequestProcessor {
@@ -74,6 +97,10 @@ export interface IVirtualModelRouter {
   unregisterModel(modelId: string): Promise<void>;
   updateRoutingRules(modelId: string, rules: any[]): Promise<void>;
   getModelMetrics(modelId: string): Promise<any>;
+  destroy(): Promise<void>;
+  getModels(): VirtualModelConfig[];
+  getModel(modelId: string): VirtualModelConfig | undefined;
+  getEnabledModels(): VirtualModelConfig[];
 }
 
 export interface IClientManager {

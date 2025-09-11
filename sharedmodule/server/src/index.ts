@@ -27,7 +27,10 @@ export type {
   ServerStatus,
   RequestMetrics,
   ConnectionInfo,
-  MiddlewareConfig
+  MiddlewareConfig,
+  PipelineRequestContext,
+  PipelineResponseContext,
+  PipelineIntegrationConfig
 } from './types/ServerTypes';
 
 // Virtual Model Router types
@@ -37,4 +40,4 @@ export type {
 } from './components/VirtualModelRouter';
 
 // Default exports
-export default ServerModule;
+export { default } from './ServerModule';

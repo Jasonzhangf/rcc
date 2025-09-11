@@ -27,16 +27,15 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   private virtualModels: Map<string, VirtualModelConfig> = new Map();
   private routingRules: Map<string, RoutingRule[]> = new Map();
   private modelMetrics: Map<string, ModelMetrics> = new Map();
-  private loadBalancingStrategy: 'round-robin' | 'weighted' | 'least-connections' = 'weighted';
 
   constructor() {
     const moduleInfo: ModuleInfo = {
       id: 'VirtualModelRouter',
       name: 'Virtual Model Router',
       version: '1.0.0',
-      description: 'Intelligent virtual model routing with load balancing',
+      description: 'Virtual model routing with rule evaluation',
       type: 'component',
-      capabilities: ['virtual-model-routing', 'load-balancing', 'rule-evaluation'],
+      capabilities: ['virtual-model-routing', 'rule-evaluation'],
       dependencies: ['rcc-basemodule'],
       config: {},
       metadata: {
@@ -51,25 +50,25 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   /**
    * Route a request to the appropriate virtual model
    */
-  async routeRequest(request: ClientRequest): Promise<VirtualModelConfig> {
-    this.log('Routing request:', { id: request.id, virtualModel: request.virtualModel });
+  public async routeRequest(request: ClientRequest): Promise<VirtualModelConfig> {
+    this.log('Routing request', { method: 'routeRequest' });
     
     // If specific virtual model is requested, use it
     if (request.virtualModel) {
       const model = this.virtualModels.get(request.virtualModel);
       if (model && model.enabled) {
-        this.log('Using specified virtual model:', request.virtualModel);
+        this.log('Using specified virtual model', { method: 'routeRequest' });
         await this.recordRequestMetrics(model.id, true);
         return model;
       }
       
-      this.warn('Requested virtual model not found or disabled:', request.virtualModel);
+      this.warn('Requested virtual model not found or disabled', { method: 'routeRequest' });
       throw new Error(`Virtual model '${request.virtualModel}' not found or disabled`);
     }
     
     // Use routing rules to determine the best model
     const decision = await this.makeRoutingDecision(request);
-    this.log('Routing decision:', { modelId: decision.model.id, confidence: decision.confidence });
+    this.log('Routing decision', { method: 'routeRequest' });
     
     await this.recordRequestMetrics(decision.model.id, true);
     return decision.model;
@@ -78,8 +77,8 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   /**
    * Register a new virtual model
    */
-  async registerModel(model: VirtualModelConfig): Promise<void> {
-    this.log('Registering virtual model:', model.id);
+  public async registerModel(model: VirtualModelConfig): Promise<void> {
+    this.log('Registering virtual model', { method: 'registerModel' });
     
     // Validate model configuration
     this.validateModelConfig(model);
@@ -108,14 +107,14 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       throughput: 0
     });
     
-    this.log('Virtual model registered successfully:', model.id);
+    this.log('Virtual model registered successfully', { method: 'registerModel' });
   }
 
   /**
    * Unregister a virtual model
    */
-  async unregisterModel(modelId: string): Promise<void> {
-    this.log('Unregistering virtual model:', modelId);
+  public async unregisterModel(modelId: string): Promise<void> {
+    this.log('Unregistering virtual model', { method: 'unregisterModel' });
     
     if (!this.virtualModels.has(modelId)) {
       throw new Error(`Virtual model '${modelId}' not found`);
@@ -126,14 +125,14 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     this.routingRules.delete(modelId);
     this.modelMetrics.delete(modelId);
     
-    this.log('Virtual model unregistered successfully:', modelId);
+    this.log('Virtual model unregistered successfully', { method: 'unregisterModel' });
   }
 
   /**
    * Update routing rules for a model
    */
-  async updateRoutingRules(modelId: string, rules: RoutingRule[]): Promise<void> {
-    this.log('Updating routing rules for model:', modelId);
+  public async updateRoutingRules(modelId: string, rules: RoutingRule[]): Promise<void> {
+    this.log('Updating routing rules for model', { method: 'updateRoutingRules' });
     
     if (!this.virtualModels.has(modelId)) {
       throw new Error(`Virtual model '${modelId}' not found`);
@@ -143,13 +142,13 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     rules.forEach(rule => this.validateRoutingRule(rule));
     
     this.routingRules.set(modelId, rules);
-    this.log('Routing rules updated for model:', modelId);
+    this.log('Routing rules updated for model', { method: 'updateRoutingRules' });
   }
 
   /**
    * Get model metrics
    */
-  async getModelMetrics(modelId: string): Promise<ModelMetrics> {
+  public async getModelMetrics(modelId: string): Promise<ModelMetrics> {
     const metrics = this.modelMetrics.get(modelId);
     
     if (!metrics) {
@@ -171,34 +170,27 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   /**
    * Get all registered models
    */
-  getModels(): VirtualModelConfig[] {
+  public getModels(): VirtualModelConfig[] {
     return Array.from(this.virtualModels.values());
   }
 
   /**
    * Get enabled models only
    */
-  getEnabledModels(): VirtualModelConfig[] {
+  public getEnabledModels(): VirtualModelConfig[] {
     return Array.from(this.virtualModels.values()).filter(model => model.enabled);
   }
 
   /**
    * Get model by ID
    */
-  getModel(modelId: string): VirtualModelConfig | undefined {
+  public getModel(modelId: string): VirtualModelConfig | undefined {
     return this.virtualModels.get(modelId);
   }
 
+  
   /**
-   * Set load balancing strategy
-   */
-  setLoadBalancingStrategy(strategy: 'round-robin' | 'weighted' | 'least-connections'): void {
-    this.loadBalancingStrategy = strategy;
-    this.log('Load balancing strategy set to:', strategy);
-  }
-
-  /**
-   * Make routing decision based on rules and load balancing
+   * Make routing decision based on rules
    */
   private async makeRoutingDecision(request: ClientRequest): Promise<RoutingDecision> {
     const enabledModels = this.getEnabledModels();
@@ -214,13 +206,17 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       throw new Error('No suitable virtual models found for this request');
     }
     
-    // Apply load balancing
-    const selected = this.applyLoadBalancing(candidates);
+    // Select first matching candidate (no load balancing)
+    const selected = candidates[0];
+    
+    if (!selected) {
+      throw new Error('No suitable model found');
+    }
     
     return {
       model: selected,
       confidence: this.calculateConfidence(selected, request),
-      reason: `Selected based on ${this.loadBalancingStrategy} strategy`,
+      reason: 'Selected based on routing rules',
       alternativeModels: candidates.filter(m => m.id !== selected.id)
     };
   }
@@ -241,7 +237,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       );
       
       if (!hasRequiredCapabilities) {
-        this.log('Model lacks required capabilities:', { modelId: model.id, requiredCapabilities });
+        this.log('Model lacks required capabilities', { method: 'routeRequest' });
         continue;
       }
       
@@ -273,11 +269,11 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       try {
         const matches = await this.evaluateRuleCondition(rule.condition, request);
         if (matches) {
-          this.log('Routing rule matched:', rule.name);
+          this.log('Routing rule matched', { method: 'routeRequest' });
           return true;
         }
       } catch (error) {
-        this.warn('Error evaluating routing rule:', { ruleName: rule.name, error });
+        this.warn('Error evaluating routing rule', { method: 'routeRequest' });
         continue;
       }
     }
@@ -302,7 +298,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     
     if (condition.startsWith('header:')) {
       const [headerName, expectedValue] = condition.substring(7).split('=');
-      const actualValue = request.headers[headerName];
+      const actualValue = request.headers[headerName as keyof typeof request.headers];
       return actualValue === expectedValue;
     }
     
@@ -310,68 +306,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     return false;
   }
 
-  /**
-   * Apply load balancing strategy
-   */
-  private applyLoadBalancing(models: VirtualModelConfig[]): VirtualModelConfig {
-    switch (this.loadBalancingStrategy) {
-      case 'round-robin':
-        return this.roundRobinSelection(models);
-      case 'weighted':
-        return this.weightedSelection(models);
-      case 'least-connections':
-        return this.leastConnectionsSelection(models);
-      default:
-        return models[0];
-    }
-  }
-
-  /**
-   * Round-robin selection
-   */
-  private roundRobinSelection(models: VirtualModelConfig[]): VirtualModelConfig {
-    // Simple implementation - can be enhanced with proper round-robin state
-    const index = Math.floor(Math.random() * models.length);
-    return models[index];
-  }
-
-  /**
-   * Weighted selection based on model priority
-   */
-  private weightedSelection(models: VirtualModelConfig[]): VirtualModelConfig {
-    const totalWeight = models.reduce((sum, model) => sum + model.priority, 0);
-    let random = Math.random() * totalWeight;
-    
-    for (const model of models) {
-      random -= model.priority;
-      if (random <= 0) {
-        return model;
-      }
-    }
-    
-    return models[0];
-  }
-
-  /**
-   * Least connections selection
-   */
-  private leastConnectionsSelection(models: VirtualModelConfig[]): VirtualModelConfig {
-    let selected = models[0];
-    let minConnections = Infinity;
-    
-    for (const model of models) {
-      const metrics = this.modelMetrics.get(model.id);
-      const connections = metrics?.totalRequests || 0;
-      
-      if (connections < minConnections) {
-        minConnections = connections;
-        selected = model;
-      }
-    }
-    
-    return selected;
-  }
-
+  
   /**
    * Calculate confidence score for model selection
    */
@@ -381,14 +316,11 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     const capabilityMatch = capabilities.filter(cap => model.capabilities.includes(cap)).length;
     const capabilityScore = capabilities.length > 0 ? capabilityMatch / capabilities.length : 1;
     
-    // Consider model priority
-    const priorityScore = model.priority / 10; // Normalize priority
-    
     // Consider model health (error rate)
     const metrics = this.modelMetrics.get(model.id);
     const healthScore = metrics ? (1 - metrics.errorRate) : 1;
     
-    return (capabilityScore * 0.5 + priorityScore * 0.3 + healthScore * 0.2);
+    return (capabilityScore * 0.7 + healthScore * 0.3);
   }
 
   /**
@@ -448,10 +380,6 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       throw new Error('Model configuration missing required fields');
     }
     
-    if (model.priority < 1 || model.priority > 10) {
-      throw new Error('Model priority must be between 1 and 10');
-    }
-    
     if (model.maxTokens < 1 || model.maxTokens > 100000) {
       throw new Error('Model maxTokens must be between 1 and 100000');
     }
@@ -485,8 +413,8 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   /**
    * Cleanup resources
    */
-  public async destroy(): Promise<void> {
-    this.log('Cleaning up Virtual Model Router');
+  public override async destroy(): Promise<void> {
+    this.log('Cleaning up Virtual Model Router', { method: 'destroy' });
     
     this.virtualModels.clear();
     this.routingRules.clear();

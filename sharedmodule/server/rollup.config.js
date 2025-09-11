@@ -3,6 +3,8 @@ import typescript from 'rollup-plugin-typescript2';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import dts from 'rollup-plugin-dts';
 
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 const packageJson = require('./package.json');
 
 export default [
@@ -36,7 +38,9 @@ export default [
       'compression',
       'body-parser',
       'uuid',
-      'rcc-basemodule'
+      'rcc-basemodule',
+      'rcc-underconstruction',
+      'rcc-virtual-model-rules'
     ]
   },
   // Type definitions
@@ -61,7 +65,9 @@ export default [
       'compression',
       'body-parser',
       'uuid',
-      'rcc-basemodule'
+      'rcc-basemodule',
+      'rcc-underconstruction',
+      'rcc-virtual-model-rules'
     ]
   }
 ];

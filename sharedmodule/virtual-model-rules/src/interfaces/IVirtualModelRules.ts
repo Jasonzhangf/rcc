@@ -7,13 +7,14 @@ import {
   RuleAction, 
   ModelSchedule, 
   EvaluationContext, 
-  EvaluationResult 
+  EvaluationResult,
+  RuleMetrics 
 } from '../types/VirtualModelRulesTypes';
 
 /**
  * Virtual Model Rules Module interface
  */
-export interface IVirtualModelRulesModule extends BaseModule {
+export interface IVirtualModelRules extends BaseModule {
   /**
    * Initialize the rules module with configuration
    */
@@ -77,7 +78,7 @@ export interface IVirtualModelRulesModule extends BaseModule {
   /**
    * Get rule metrics
    */
-  getRuleMetrics(ruleId: string): any;
+  getRuleMetrics(ruleId?: string): RuleMetrics[];
 }
 
 /**

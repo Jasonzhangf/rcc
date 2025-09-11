@@ -1,12 +1,12 @@
 {
   "name": "rcc-virtual-model-rules",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "RCC Virtual Model Rules Module - Claude Code Router rules implementation",
-  "main": "dist/index.js",
-  "module": "dist/index.esm.js",
+  "main": "dist/index.cjs",
+  "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm",
+    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm && npm run postbuild",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
     "build:cjs": "tsc --module commonjs --outDir dist",
     "build:esm": "tsc --module esnext --outDir dist/esm",
@@ -17,7 +17,7 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "postbuild": "node scripts/postbuild.js"
   },
   "keywords": [
     "rcc",
@@ -31,8 +31,8 @@
   "author": "RCC Development Team",
   "license": "MIT",
   "dependencies": {
-    "rcc-basemodule": "^1.0.0",
-    "rcc-pipeline": "^1.0.0"
+    "rcc-basemodule": "^0.1.4",
+    "rcc-underconstruction": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -55,5 +55,11 @@
   "bugs": {
     "url": "https://github.com/rcc/rcc-virtual-model-rules/issues"
   },
-  "homepage": "https://github.com/rcc/rcc-virtual-model-rules#readme"
+  "homepage": "https://github.com/rcc/rcc-virtual-model-rules#readme",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ]
 }

@@ -301,7 +301,7 @@ export class CompatibilityModule extends BasePipelineModule {
       
       return mappingTable;
     } catch (error) {
-      this.logError(`Failed to load mapping table: ${tableName}`, error, 'getMappingTable');
+      this.error(`Failed to load mapping table: ${tableName}`, error, 'getMappingTable');
       throw error;
     }
   }

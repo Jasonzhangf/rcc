@@ -1,0 +1,142 @@
+{
+  "version": "1.0.0",
+  "description": "OpenAI to LMStudio compatibility mapping table",
+  "formats": {
+    "source": "openai",
+    "target": "lmstudio"
+  },
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "updated": "2024-01-01T00:00:00Z",
+    "author": "RCC System"
+  },
+  "fieldMappings": {
+    "model": {
+      "targetField": "model",
+      "transform": "directMapping",
+      "required": true,
+      "description": "LMStudio uses the same model parameter format as OpenAI"
+    },
+    "messages": {
+      "targetField": "messages",
+      "transform": "directMapping",
+      "required": true,
+      "description": "LMStudio uses the same message structure as OpenAI"
+    },
+    "max_tokens": {
+      "targetField": "max_tokens",
+      "transform": "directMapping",
+      "description": "Maximum number of tokens to generate"
+    },
+    "temperature": {
+      "targetField": "temperature",
+      "transform": "directMapping",
+      "defaultValue": 0.7,
+      "description": "Temperature parameter for response randomness"
+    },
+    "top_p": {
+      "targetField": "top_p",
+      "transform": "directMapping",
+      "defaultValue": 1.0,
+      "description": "Nucleus sampling parameter"
+    },
+    "frequency_penalty": {
+      "targetField": "frequency_penalty",
+      "transform": "directMapping",
+      "defaultValue": 0.0,
+      "description": "Frequency penalty for token repetition"
+    },
+    "presence_penalty": {
+      "targetField": "presence_penalty",
+      "transform": "directMapping",
+      "defaultValue": 0.0,
+      "description": "Presence penalty for new topics"
+    },
+    "stop": {
+      "targetField": "stop",
+      "transform": "directMapping",
+      "description": "Stop sequences for generation"
+    },
+    "stream": {
+      "targetField": "stream",
+      "transform": "directMapping",
+      "defaultValue": false,
+      "description": "Enable streaming response"
+    },
+    "n": {
+      "targetField": "n",
+      "transform": "directMapping",
+      "defaultValue": 1,
+      "description": "Number of completions to generate"
+    },
+    "user": {
+      "targetField": "user",
+      "transform": "directMapping",
+      "description": "User identifier"
+    },
+    "tools": {
+      "targetField": "tools",
+      "transform": "directMapping",
+      "description": "LMStudio supports OpenAI-compatible tool calling"
+    },
+    "tool_choice": {
+      "targetField": "tool_choice",
+      "transform": "directMapping",
+      "defaultValue": "auto",
+      "description": "Tool choice strategy"
+    }
+  },
+  "validationRules": {
+    "required": ["model", "messages"],
+    "types": {
+      "model": "string",
+      "messages": "array",
+      "temperature": "number",
+      "max_tokens": "number",
+      "top_p": "number",
+      "frequency_penalty": "number",
+      "presence_penalty": "number",
+      "stream": "boolean",
+      "user": "string",
+      "tools": "array",
+      "tool_choice": "string"
+    },
+    "constraints": {
+      "model": {
+        "pattern": "^[a-zA-Z0-9-_]+$",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "messages": {
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "max_tokens": {
+        "min": 1,
+        "max": 200000
+      },
+      "temperature": {
+        "min": 0.0,
+        "max": 2.0
+      },
+      "top_p": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "frequency_penalty": {
+        "min": -2.0,
+        "max": 2.0
+      },
+      "presence_penalty": {
+        "min": -2.0,
+        "max": 2.0
+      }
+    }
+  },
+  "transformFunctions": {
+    "directMapping": {
+      "type": "direct",
+      "description": "No transformation needed - pass through as-is"
+    }
+  }
+}

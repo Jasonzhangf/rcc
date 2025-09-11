@@ -17,7 +17,7 @@ export const DEFAULT_OAUTH2_CONFIG = {
   /** Default polling interval hint for external components */
   defaultPollingInterval: 5000,
   /** Default maximum polling attempts hint for external components */
-  defaultMaxPollingAttempts: 60
+  defaultMaxPollingAttempts: 60,
 };
 
 /**
@@ -42,7 +42,7 @@ export const OAUTH2_ERROR_MESSAGES = {
   [7016]: 'Token storage failed',
   [7017]: 'Invalid configuration',
   [7018]: 'Invalid code verifier',
-  [7019]: 'Invalid code challenge'
+  [7019]: 'Invalid code challenge',
 };
 
 /**
@@ -53,7 +53,7 @@ export const OAUTH2_ERROR_CATEGORIES = {
   AUTHORIZATION: [7001, 7002, 7003, 7004, 7013, 7014],
   SERVER: [7007, 7008],
   TOKEN: [7015, 7016],
-  STORAGE: [7016]
+  STORAGE: [7016],
 };
 
 /**
@@ -78,7 +78,7 @@ export const OAUTH2_HTTP_STATUS = {
   [7016]: 500, // TOKEN_STORAGE_FAILED
   [7017]: 500, // CONFIGURATION_INVALID
   [7018]: 400, // INVALID_CODE_VERIFIER
-  [7019]: 400  // INVALID_CODE_CHALLENGE
+  [7019]: 400, // INVALID_CODE_CHALLENGE
 };
 
 /**
@@ -90,7 +90,7 @@ export const TOKEN_FILE_PATTERNS = {
   /** Token file prefix */
   prefix: 'oauth2-token-',
   /** Refresh token file suffix */
-  refreshTokenSuffix: '-refresh'
+  refreshTokenSuffix: '-refresh',
 };
 
 /**
@@ -98,7 +98,7 @@ export const TOKEN_FILE_PATTERNS = {
  */
 export const CONTENT_TYPES = {
   FORM_URL_ENCODED: 'application/x-www-form-urlencoded',
-  JSON: 'application/json'
+  JSON: 'application/json',
 };
 
 /**
@@ -106,7 +106,7 @@ export const CONTENT_TYPES = {
  */
 export const GRANT_TYPES = {
   DEVICE_CODE: 'urn:ietf:params:oauth:grant-type:device_code',
-  REFRESH_TOKEN: 'refresh_token'
+  REFRESH_TOKEN: 'refresh_token',
 };
 
 /**
@@ -114,5 +114,5 @@ export const GRANT_TYPES = {
  */
 export const PKCE_CHALLENGE_METHODS = {
   S256: 'S256',
-  PLAIN: 'plain'
+  PLAIN: 'plain',
 } as const;

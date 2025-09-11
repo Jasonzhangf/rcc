@@ -18,7 +18,7 @@ export {
   StoredTokenInfo,
   PKCEPair,
   OAuth2Stats,
-  OAuth2ErrorContext
+  OAuth2ErrorContext,
 } from './OAuth2Types';
 
 // Constants
@@ -30,7 +30,7 @@ export {
   TOKEN_FILE_PATTERNS,
   CONTENT_TYPES,
   GRANT_TYPES,
-  PKCE_CHALLENGE_METHODS
+  PKCE_CHALLENGE_METHODS,
 } from './OAuth2Constants';
 
 // Usage examples
@@ -41,7 +41,7 @@ export {
   tokenStorageExample,
   errorHandlingExample,
   messageCommunicationExample,
-  completeIntegrationExample
+  completeIntegrationExample,
 } from './examples/OAuth2UsageExamples';
 
 // Module version
@@ -60,7 +60,7 @@ export function createOAuth2Module(
     deviceAuthEndpoint: config.deviceAuthEndpoint || '',
     tokenEndpoint: config.tokenEndpoint || '',
     tokenStoragePath: config.tokenStoragePath || './tokens/',
-    enablePKCE: config.enablePKCE ?? true
+    enablePKCE: config.enablePKCE ?? true,
   };
 
   return new OAuth2Module(defaultConfig, errorHandlerCenter);
@@ -74,22 +74,22 @@ export async function quickStartOAuth2(config: OAuth2ModuleConfig) {
     // Import dependencies
     const { ErrorHandlerCenter } = await import('sharedmodule/pipeline');
     const { PipelineConfigManager } = await import('sharedmodule/pipeline');
-    
+
     // Create error handling center
     const errorHandlerCenter = new ErrorHandlerCenter(new PipelineConfigManager());
     await errorHandlerCenter.initialize();
-    
+
     // Create OAuth2 module
     const oauth2Module = createOAuth2Module(config, errorHandlerCenter);
     await oauth2Module.initialize();
-    
+
     return {
       oauth2Module,
       errorHandlerCenter,
       cleanup: async () => {
         await oauth2Module.destroy();
         await errorHandlerCenter.destroy();
-      }
+      },
     };
   } catch (error) {
     console.error('Failed to initialize OAuth2 module:', error);

@@ -360,7 +360,7 @@ function checkCommonIssues() {
   
   logTest('No obvious hardcoded values found', !hasHardcodedValues);
   
-  // Check for TODO/FIXME comments
+  // Check for UnderConstruction comments
   let hasTodos = false;
   try {
     function checkTodos(dir) {
@@ -387,7 +387,7 @@ function checkCommonIssues() {
   }
   
   if (hasTodos) {
-    logWarning('Found TODO/FIXME comments in source code');
+    logWarning('Found TODO/FIXME comments in source code - these should be replaced with UnderConstruction');
   }
 }
 

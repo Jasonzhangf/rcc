@@ -19,7 +19,7 @@ export async function basicOAuth2Flow() {
     deviceAuthEndpoint: 'https://auth.example.com/device/code',
     tokenEndpoint: 'https://auth.example.com/token',
     tokenStoragePath: './tokens/',
-    enablePKCE: true
+    enablePKCE: true,
   };
 
   // Create dependencies
@@ -34,7 +34,7 @@ export async function basicOAuth2Flow() {
     // Step 1: Initiate device authorization
     console.log('Starting device authorization...');
     const deviceAuth = await oauth2Module.initiateDeviceAuthorization();
-    
+
     console.log('Please complete authorization:');
     console.log(`1. Visit: ${deviceAuth.verification_uri_complete}`);
     console.log(`2. Enter code: ${deviceAuth.user_code}`);
@@ -42,7 +42,9 @@ export async function basicOAuth2Flow() {
 
     // Step 2: External polling (would be handled by external component)
     console.log('\nWaiting for user authorization...');
-    console.log('(In a real implementation, this would be handled by an external polling component)');
+    console.log(
+      '(In a real implementation, this would be handled by an external polling component)'
+    );
 
     // For demonstration, we'll simulate successful token request
     // In practice, you would poll the token endpoint until the user completes authorization
@@ -50,11 +52,10 @@ export async function basicOAuth2Flow() {
 
     // Step 3: Request token (normally done by polling component)
     // const token = await oauth2Module.requestToken(deviceAuth.device_code, codeVerifier);
-    
+
     // For this example, we'll directly load a token if available
     const tokenStatus = oauth2Module.getTokenStatus();
     console.log('Token status:', tokenStatus);
-
   } catch (error) {
     console.error('OAuth2 flow failed:', error);
   } finally {
@@ -73,7 +74,7 @@ export async function tokenManagementExample() {
     deviceAuthEndpoint: 'https://auth.example.com/device/code',
     tokenEndpoint: 'https://auth.example.com/token',
     tokenStoragePath: './tokens/',
-    enablePKCE: true
+    enablePKCE: true,
   };
 
   const errorHandlerCenter = new ErrorHandlerCenter(new PipelineConfigManager());
@@ -93,7 +94,7 @@ export async function tokenManagementExample() {
       console.log('Using existing token:', {
         tokenType: currentToken?.tokenType,
         scope: currentToken?.scope,
-        expiresAt: new Date(currentToken?.expiresAt || 0).toISOString()
+        expiresAt: new Date(currentToken?.expiresAt || 0).toISOString(),
       });
     } else {
       console.log('No valid token available, starting new authorization flow...');
@@ -103,7 +104,6 @@ export async function tokenManagementExample() {
     // Get OAuth2 statistics
     const stats = oauth2Module.getStats();
     console.log('OAuth2 statistics:', stats);
-
   } finally {
     await oauth2Module.destroy();
     await errorHandlerCenter.destroy();
@@ -120,7 +120,7 @@ export async function tokenStorageExample() {
     deviceAuthEndpoint: 'https://auth.example.com/device/code',
     tokenEndpoint: 'https://auth.example.com/token',
     tokenStoragePath: './tokens/',
-    enablePKCE: true
+    enablePKCE: true,
   };
 
   const errorHandlerCenter = new ErrorHandlerCenter(new PipelineConfigManager());
@@ -138,7 +138,7 @@ export async function tokenStorageExample() {
       refreshToken: 'sample-refresh-token',
       tokenType: 'Bearer',
       expiresAt: Date.now() + 3600000, // 1 hour from now
-      scope: 'openid profile email'
+      scope: 'openid profile email',
     });
 
     console.log(`Token saved for ${userEmail}`);
@@ -149,7 +149,7 @@ export async function tokenStorageExample() {
       console.log('Token loaded successfully:', {
         tokenType: loadedToken.tokenType,
         scope: loadedToken.scope,
-        expiresAt: new Date(loadedToken.expiresAt).toISOString()
+        expiresAt: new Date(loadedToken.expiresAt).toISOString(),
       });
     } else {
       console.log('No token found for user');
@@ -162,7 +162,6 @@ export async function tokenStorageExample() {
     // Invalidate token
     oauth2Module.invalidateToken();
     console.log('Token invalidated');
-
   } finally {
     await oauth2Module.destroy();
     await errorHandlerCenter.destroy();
@@ -179,7 +178,7 @@ export async function errorHandlingExample() {
     deviceAuthEndpoint: 'https://auth.example.com/device/code',
     tokenEndpoint: 'https://auth.example.com/token',
     tokenStoragePath: './tokens/',
-    enablePKCE: true
+    enablePKCE: true,
   };
 
   const errorHandlerCenter = new ErrorHandlerCenter(new PipelineConfigManager());
@@ -202,7 +201,6 @@ export async function errorHandlingExample() {
     // Get error statistics from error handling center
     const errorStats = errorHandlerCenter.getErrorStats();
     console.log('Error handling statistics:', errorStats);
-
   } finally {
     await oauth2Module.destroy();
     await errorHandlerCenter.destroy();
@@ -219,7 +217,7 @@ export async function messageCommunicationExample() {
     deviceAuthEndpoint: 'https://auth.example.com/device/code',
     tokenEndpoint: 'https://auth.example.com/token',
     tokenStoragePath: './tokens/',
-    enablePKCE: true
+    enablePKCE: true,
   };
 
   const errorHandlerCenter = new ErrorHandlerCenter(new PipelineConfigManager());
@@ -247,7 +245,6 @@ export async function messageCommunicationExample() {
     // Check status after invalidation
     const finalStatusResponse = await oauth2Module.sendMessage('get_token_status', {});
     console.log('Final token status:', finalStatusResponse);
-
   } finally {
     await oauth2Module.destroy();
     await errorHandlerCenter.destroy();
@@ -267,7 +264,7 @@ export async function completeIntegrationExample() {
     deviceAuthEndpoint: 'https://auth.example.com/device/code',
     tokenEndpoint: 'https://auth.example.com/token',
     tokenStoragePath: './tokens/',
-    enablePKCE: true
+    enablePKCE: true,
   };
 
   // Initialize components
@@ -314,7 +311,6 @@ export async function completeIntegrationExample() {
     console.log('✓ Message-based communication');
     console.log('✓ Statistics and monitoring');
     console.log('✓ External polling support');
-
   } finally {
     await oauth2Module.destroy();
     await errorHandlerCenter.destroy();
@@ -328,7 +324,7 @@ export const OAuth2Examples = {
   tokenStorageExample,
   errorHandlingExample,
   messageCommunicationExample,
-  completeIntegrationExample
+  completeIntegrationExample,
 };
 
 // Run examples if this file is executed directly

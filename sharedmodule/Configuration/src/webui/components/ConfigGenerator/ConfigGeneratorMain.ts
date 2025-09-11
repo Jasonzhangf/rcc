@@ -12,6 +12,9 @@ import {
   VirtualModelConfig, 
   RouteConfig 
 } from '../../types/ui.types';
+import { ProviderConfigEditor } from './ProviderConfigEditor';
+import { VirtualModelMapper } from './VirtualModelMapper';
+import { ConfigPreviewPanel } from './ConfigPreviewPanel';
 
 /**
  * 配置生成器主组件
@@ -22,10 +25,9 @@ export class ConfigGeneratorMain implements UIComponent {
   private storageService: any;
   
   // 子组件引用
-  private providerForm: any = null;
-  private modelForm: any = null;
-  private virtualModelForm: any = null;
-  private configPreview: any = null;
+  private providerEditor: ProviderConfigEditor;
+  private virtualModelMapper: VirtualModelMapper;
+  private configPreview: ConfigPreviewPanel;
   
   // 数据状态
   private providers: ProviderConfig[] = [];
@@ -37,6 +39,9 @@ export class ConfigGeneratorMain implements UIComponent {
   constructor() {
     this.configService = null;
     this.storageService = null;
+    this.providerEditor = new ProviderConfigEditor();
+    this.virtualModelMapper = new VirtualModelMapper();
+    this.configPreview = new ConfigPreviewPanel();
   }
 
   /**
@@ -70,8 +75,8 @@ export class ConfigGeneratorMain implements UIComponent {
    * 初始化子组件
    */
   private async initializeSubComponents(): Promise<void> {
-    // 暂时不需要初始化复杂的子组件，直接使用基础的HTML表单
-    console.log('Sub-components initialized (simplified)');
+    // 子组件在构造函数中已初始化
+    console.log('Sub-components initialized');
   }
 
   /**
@@ -160,44 +165,120 @@ export class ConfigGeneratorMain implements UIComponent {
    * 渲染子组件
    */
   private async renderSubComponents(): Promise<void> {
-    // 渲染简化的表单内容
-    this.renderProviderForm();
-    this.renderModelForm();
-    this.renderVirtualModelForm();
-    this.renderRoutesForm();
-    this.renderPoolForm();
-    this.renderConfigPreview();
+    // 渲染供应商配置编辑器
+    const providerContainer = this.container?.querySelector('#provider-form-container');
+    if (providerContainer) {
+      await this.providerEditor.render({
+        container: providerContainer as HTMLElement,
+        onUpdate: (data) => {
+          this.providers = data.providers;
+          this.updateVirtualModelMapperProviders();
+          this.updateConfigPreview();
+        }
+      });
+    }
+
+    // 渲染虚拟模型映射器
+    const vmContainer = this.container?.querySelector('#virtual-model-form-container');
+    if (vmContainer) {
+      this.virtualModelMapper.setData({
+        virtualModels: this.virtualModels.reduce((acc, vm) => {
+          acc[vm.name] = vm;
+          return acc;
+        }, {} as Record<string, any>),
+        providers: this.providers.reduce((acc, provider) => {
+          acc[provider.id] = provider;
+          return acc;
+        }, {} as Record<string, any>)
+      });
+      
+      await this.virtualModelMapper.render({
+        container: vmContainer as HTMLElement,
+        onUpdate: (data) => {
+          this.virtualModels = Object.values(data.virtualModels);
+          this.updateConfigPreview();
+        }
+      });
+    }
+
+    // 渲染配置预览面板
+    const previewContainer = this.container?.querySelector('#config-preview-container');
+    if (previewContainer) {
+      await this.configPreview.render();
+    }
   }
 
   /**
-   * 渲染供应商表单
+   * 更新虚拟模型映射器的供应商数据
    */
-  private renderProviderForm(): void {
-    const container = this.container?.querySelector('#provider-form-container');
-    if (!container) return;
+  private updateVirtualModelMapperProviders(): void {
+    this.virtualModelMapper.setData({
+      virtualModels: this.virtualModels.reduce((acc, vm) => {
+        acc[vm.name] = vm;
+        return acc;
+      }, {} as Record<string, any>),
+      providers: this.providers.reduce((acc, provider) => {
+        acc[provider.id] = provider;
+        return acc;
+      }, {} as Record<string, any>)
+    });
+  }
 
-    container.innerHTML = `
-      <div class="form-section">
-        <h3>供应商配置</h3>
-        <div class="provider-list">
-          ${this.providers.map((provider, index) => `
-            <div class="provider-item" data-index="${index}">
-              <div class="provider-header">
-                <h4>${provider.name}</h4>
-                <button class="btn-remove" data-action="remove-provider" data-index="${index}">删除</button>
-              </div>
-              <div class="provider-details">
-                <p>类型: ${provider.type}</p>
-                <p>端点: ${provider.endpoint || 'N/A'}</p>
-                <p>模型数量: ${provider.models.length}</p>
-                <p>密钥数量: ${provider.auth.keys.length}</p>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-        <button class="btn btn-primary" data-action="add-provider">添加供应商</button>
-      </div>
-    `;
+  /**
+   * 更新配置预览
+   */
+  private updateConfigPreview(): void {
+    const config = this.generateCurrentConfig();
+    this.configPreview.setData(config);
+  }
+
+  /**
+   * 生成当前配置
+   */
+  private generateCurrentConfig(): any {
+    const now = new Date().toISOString();
+    
+    return {
+      version: "2.0.0",
+      metadata: {
+        name: "RCC Configuration",
+        description: "Auto-generated RCC configuration",
+        createdAt: this.currentConfig?.metadata?.createdAt || now,
+        updatedAt: now,
+        author: "RCC Configuration System"
+      },
+      providers: this.providers.reduce((acc, provider) => {
+        acc[provider.id] = {
+          name: provider.name,
+          type: provider.type,
+          endpoint: provider.endpoint,
+          models: provider.models,
+          auth: provider.auth
+        };
+        return acc;
+      }, {} as Record<string, any>),
+      virtualModels: this.virtualModels.reduce((acc, vm) => {
+        acc[vm.name] = {
+          targetProvider: vm.targetProvider,
+          targetModel: vm.targetModel,
+          enabled: vm.enabled,
+          displayName: vm.displayName,
+          description: vm.description
+        };
+        return acc;
+      }, {} as Record<string, any>),
+      routes: this.routes.reduce((acc, route) => {
+        acc[route.id] = route;
+        return acc;
+      }, {} as Record<string, any>),
+      globalSettings: {
+        loadBalancing: "round_robin",
+        rateLimiting: {
+          enabled: false,
+          requestsPerMinute: 100
+        }
+      }
+    };
   }
 
   /**
@@ -507,16 +588,10 @@ export class ConfigGeneratorMain implements UIComponent {
    */
   private async generateConfiguration(): Promise<void> {
     try {
-      this.currentConfig = await this.configService.generateConfig({
-        providers: this.providers,
-        virtualModels: this.virtualModels,
-        routes: this.routes
-      });
+      this.currentConfig = this.generateCurrentConfig();
 
       // 更新预览
-      if (this.configPreview) {
-        await this.configPreview.updateConfig(this.currentConfig);
-      }
+      this.updateConfigPreview();
 
       await this.saveData();
     } catch (error) {

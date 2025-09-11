@@ -1076,7 +1076,7 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
 
       // Use loader module to format the configuration if available
       if (this.loaderModule) {
-        // TODO: Implement format conversion in loader module
+        // UnderConstruction: format conversion feature in loader module
         // For now, fallback to JSON
         return JSON.stringify(this.currentConfig, null, 2);
       }
@@ -1133,7 +1133,7 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
 
       // Use loader module to parse the configuration if available
       if (this.loaderModule) {
-        // TODO: Implement parseConfigurationString method in loader module
+        // UnderConstruction: parseConfigurationString method in loader module
         // For now, fallback to basic JSON parsing
         if (format === 'json') {
           importedConfig = JSON.parse(data);

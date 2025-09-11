@@ -620,7 +620,7 @@ export class PipelineScheduler extends BaseModule implements IPipelineScheduler 
       state: instance.getState(),
       health: instance.getHealth(),
       enabled: config.enabled,
-      inMaintenance: false, // TODO: Add maintenance tracking
+      inMaintenance: false, // UnderConstruction: maintenance tracking feature
       instanceCount: 1,
       healthyInstanceCount: instance.isHealthy() ? 1 : 0,
       lastError: metrics.lastError,

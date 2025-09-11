@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "APIKEY": "rcc4-proxy-key",
+  "Providers": [
+    {
+      "name": "test-provider",
+      "api_base_url": "http://localhost:5506",
+      "models": [
+        "gpt-4",
+        "claude-3"
+      ]
+    }
+  ],
+  "Router": {
+    "default_model": "gpt-4",
+    "rules": []
+  },
+  "server": {
+    "port": 5506,
+    "host": "0.0.0.0",
+    "debug": true
+  }
+}

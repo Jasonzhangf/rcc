@@ -28,17 +28,17 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
   beforeEach(async () => {
     // 创建测试模块
     testModule = new ErrorHandlingTestModule();
-    
+
     // 创建消息中心
     messageCenter = MessageCenter.getInstance();
-    
+
     // 创建错误处理中心组件
     errorClassifier = new ErrorClassifier();
     errorQueueManager = new ErrorQueueManager();
     responseTemplateManager = new ResponseTemplateManager();
     moduleRegistryManager = new ModuleRegistryManager();
     policyEngine = new PolicyEngine();
-    
+
     // 创建需要依赖的组件
     const defaultHandler = {
       handleId: 'default-handler',
@@ -49,11 +49,11 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
       execute: async (error: any) => ({
         responseId: 'default-response',
         errorId: error.errorId || 'unknown',
-        result: { 
-          status: 'success' as any, 
+        result: {
+          status: 'success' as any,
           message: 'Default handler executed',
           details: 'Default handler processed the error',
-          code: 'DEFAULT_SUCCESS'
+          code: 'DEFAULT_SUCCESS',
         },
         timestamp: new Date(),
         processingTime: 0,
@@ -62,13 +62,13 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           moduleId: 'default-handler',
           response: { message: 'Default handler response' },
           config: {},
-          metadata: {}
+          metadata: {},
         },
         actions: [],
-        annotations: []
-      })
+        annotations: [],
+      }),
     };
-    
+
     responseRouterEngine = new ResponseRouterEngine(defaultHandler);
     responseExecutor = new ResponseExecutor(policyEngine);
     errorInterfaceGateway = new ErrorInterfaceGateway(errorQueueManager, responseRouterEngine);
@@ -142,11 +142,11 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         return {
           responseId: 'custom-response',
           errorId: error.errorId,
-          result: { 
-            status: 'success' as any, 
+          result: {
+            status: 'success' as any,
             message: 'Custom handler executed',
             details: 'Custom handler processed the error',
-            code: 'CUSTOM_HANDLER'
+            code: 'CUSTOM_HANDLER',
           },
           timestamp: new Date(),
           processingTime: 0,
@@ -155,18 +155,18 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
             moduleId: 'custom-handler',
             response: { message: 'Custom handler response' },
             config: error.config || {},
-            metadata: { 
+            metadata: {
               handlerType: 'custom',
-              timestamp: Date.now()
-            }
+              timestamp: Date.now(),
+            },
           },
           actions: [],
-          annotations: []
+          annotations: [],
         };
       };
 
       testModule.registerErrorHandler('custom-error', customHandler);
-      
+
       const stats = testModule.getStatistics();
       expect(stats.registeredErrorHandlers).toBe(6); // 5 default + 1 custom
     });
@@ -178,7 +178,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
       };
 
       testModule.registerMessageHandler('custom-message', customMessageHandler);
-      
+
       const stats = testModule.getStatistics();
       expect(stats.registeredMessageHandlers).toBe(5); // 4 default + 1 custom
     });
@@ -192,7 +192,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -200,10 +200,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -222,7 +222,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -230,10 +230,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -251,7 +251,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -259,10 +259,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -280,7 +280,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -288,10 +288,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -311,7 +311,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -319,16 +319,16 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       let callbackCallCount = 0;
       const callback = (response: any) => {
         callbackCallCount++;
-        
+
         if (callbackCallCount === 1) {
           // 第一次回调应该是部分响应
           expect(response.result.status).toBe('partial');
@@ -351,7 +351,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -359,16 +359,16 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       // 不提供回调，应该不会报错
       expect(() => {
         testModule.handleErrorNonBlocking(errorContext);
-        
+
         // 等待一段时间让异步处理完成
         setTimeout(() => {
           const stats = testModule.getStatistics();
@@ -385,7 +385,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -393,23 +393,23 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       // 注册一个会失败的处理器
       const failingHandler = async () => {
         throw new Error('Handler failed intentionally');
       };
-      
+
       testModule.registerErrorHandler('failing-error', failingHandler);
 
       let callbackCallCount = 0;
       const callback = (response: any) => {
         callbackCallCount++;
-        
+
         if (callbackCallCount === 1) {
           // 第一次回调应该是部分响应
           expect(response.result.status).toBe('partial');
@@ -430,7 +430,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
       const pingMessage = {
         id: 'test-ping-1',
         type: 'ping',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       const response = await testModule.handleMessage(pingMessage);
@@ -446,10 +446,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         id: 'test-error-1',
         type: 'error-test',
         error: {
-          message: 'Test error from message'
+          message: 'Test error from message',
         },
         config: { test: true },
-        metadata: { source: 'message-test' }
+        metadata: { source: 'message-test' },
       };
 
       const response = await testModule.handleMessage(errorMessage);
@@ -468,8 +468,8 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         errors: [
           { id: 'batch-error-1', message: 'Batch error 1' },
           { id: 'batch-error-2', message: 'Batch error 2' },
-          { id: 'batch-error-3', message: 'Batch error 3' }
-        ]
+          { id: 'batch-error-3', message: 'Batch error 3' },
+        ],
       };
 
       const response = await testModule.handleMessage(batchErrorMessage);
@@ -478,7 +478,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
       expect(response.originalId).toBe('test-batch-1');
       expect(response.count).toBe(3);
       expect(response.responses).toHaveLength(3);
-      
+
       // 验证所有错误都被处理
       response.responses.forEach((resp: any) => {
         expect(resp.result.status).toBe('success');
@@ -488,7 +488,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
     test('should handle status query message', async () => {
       const statusMessage = {
         id: 'test-status-1',
-        type: 'status-query'
+        type: 'status-query',
       };
 
       const response = await testModule.handleMessage(statusMessage);
@@ -504,7 +504,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
     test('should handle unknown message type gracefully', async () => {
       const unknownMessage = {
         id: 'test-unknown-1',
-        type: 'unknown-type'
+        type: 'unknown-type',
       };
 
       const response = await testModule.handleMessage(unknownMessage);
@@ -524,7 +524,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
           moduleType: testModule.getInfo().type,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         config: {},
@@ -534,9 +534,9 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           severity: 'medium' as any,
           impact: 'single_module' as any,
           recoverability: 'recoverable' as any,
-          source: 'system' as any
+          source: 'system' as any,
         },
-        data: {}
+        data: {},
       };
 
       // 通过错误接口网关处理错误
@@ -552,8 +552,8 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         id: 'test-message-center-error',
         type: 'error-test',
         error: {
-          message: 'Message center test error'
-        }
+          message: 'Message center test error',
+        },
       };
 
       // 通过消息中心发送消息
@@ -563,7 +563,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: 'test-sender',
         target: testModule.getInfo().id,
         payload: errorMessage,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       expect(response).toBeDefined();
@@ -583,7 +583,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -591,10 +591,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       });
 
       await testModule.handleErrorBlocking({
@@ -603,7 +603,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -611,14 +611,14 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       });
 
       const finalStats = testModule.getStatistics();
-      
+
       expect(finalStats.errorCount).toBe(initialErrorCount + 2);
       expect(finalStats.handledErrors).toBe(initialStats.handledErrors + 2);
       expect(finalStats.responseCount).toBe(initialStats.responseCount + 2);
@@ -632,7 +632,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -640,17 +640,17 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       });
 
       // 重置统计
       testModule.resetStatistics();
 
       const stats = testModule.getStatistics();
-      
+
       expect(stats.errorCount).toBe(0);
       expect(stats.handledErrors).toBe(0);
       expect(stats.responseCount).toBe(0);
@@ -665,7 +665,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -673,10 +673,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -692,7 +692,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -700,10 +700,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -719,7 +719,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -727,10 +727,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -746,7 +746,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -754,10 +754,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);
@@ -773,7 +773,7 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
         source: {
           moduleId: testModule.getInfo().id,
           moduleName: testModule.getInfo().name,
-          version: '1.0.0'
+          version: '1.0.0',
         },
         timestamp: new Date(),
         classification: {
@@ -781,10 +781,10 @@ describe('ErrorHandlingTestModule Integration Tests', () => {
           type: 'technical' as any,
           severity: 'medium' as any,
           impact: 'single_module' as any,
-          recoverability: 'recoverable' as any
+          recoverability: 'recoverable' as any,
         },
         data: {},
-        config: {}
+        config: {},
       };
 
       const response = await testModule.handleErrorBlocking(errorContext);

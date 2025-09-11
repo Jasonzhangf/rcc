@@ -10,6 +10,7 @@ import {
   PipelineConfig, 
   ParseResult 
 } from '../types/ui.types';
+import { FileSystemService } from './FileSystemService';
 
 /**
  * 配置解析器类
@@ -23,12 +24,18 @@ import {
 export class ParserService implements UIService {
   private initialized = false;
   private parseRules: any = {};
+  private fileSystemService: FileSystemService | null = null;
 
   /**
    * 初始化服务
    */
-  public async initialize(): Promise<void> {
+  public async initialize(fileSystemService?: FileSystemService): Promise<void> {
     try {
+      // 设置文件系统服务
+      if (fileSystemService) {
+        this.fileSystemService = fileSystemService;
+      }
+      
       // 初始化解析规则
       this.initializeParseRules();
       
@@ -101,6 +108,65 @@ export class ParserService implements UIService {
         }
       }
     };
+  }
+
+  // 已移除自动加载逻辑，由ConfigLoadingManager统一管理
+
+  /**
+   * 转换配置数据为用户配置格式
+   */
+  private convertConfigDataToUserConfig(configData: any): UserConfig {
+    // 这里实现将ConfigData转换为UserConfig的逻辑
+    // 根据实际数据结构调整转换逻辑
+    
+    const userConfig: UserConfig = {
+      providers: {}
+    };
+    
+    // 从configData.settings.providers提取供应商信息
+    if (configData.settings && configData.settings.providers) {
+      for (const [providerId, providerData] of Object.entries(configData.settings.providers)) {
+        // 确保providerData是对象且有必要的属性
+        if (typeof providerData === 'object' && providerData !== null) {
+          const providerAny: any = providerData;
+          
+          userConfig.providers[providerId] = {
+            models: {}
+          };
+          
+          // 处理模型和密钥
+          if (providerAny.models) {
+            for (const [modelId, modelData] of Object.entries(providerAny.models)) {
+              const modelAny: any = modelData;
+              
+              // 提取密钥信息（假设在auth中）
+              let keys: string[] = [];
+              if (providerAny.auth && Array.isArray(providerAny.auth.keys)) {
+                keys = providerAny.auth.keys;
+              }
+              
+              userConfig.providers[providerId].models[modelId] = {
+                keys: keys
+              };
+            }
+          }
+        }
+      }
+    }
+    
+    // 处理虚拟模型（如果存在）
+    if (configData.settings && configData.settings.virtualModels) {
+      userConfig.virtualModels = {};
+      for (const [vmName, vmData] of Object.entries(configData.settings.virtualModels)) {
+        const vmAny: any = vmData;
+        userConfig.virtualModels[vmName] = {
+          targetProvider: vmAny.targetProvider || '',
+          targetModel: vmAny.targetModel || ''
+        };
+      }
+    }
+    
+    return userConfig;
   }
 
   /**

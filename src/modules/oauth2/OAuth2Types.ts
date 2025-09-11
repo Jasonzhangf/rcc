@@ -78,7 +78,7 @@ export enum OAuth2ErrorCode {
   TOKEN_STORAGE_FAILED = 7016,
   CONFIGURATION_INVALID = 7017,
   INVALID_CODE_VERIFIER = 7018,
-  INVALID_CODE_CHALLENGE = 7019
+  INVALID_CODE_CHALLENGE = 7019,
 }
 
 /**
@@ -89,7 +89,7 @@ export enum AuthState {
   INITIALIZING = 'initializing',
   PENDING_AUTHORIZATION = 'pending_authorization',
   AUTHORIZED = 'authorized',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 /**

@@ -6,11 +6,11 @@
 import { BaseModule } from 'rcc-basemodule';
 import { ModuleInfo, Message, MessageResponse } from 'rcc-basemodule';
 import { ErrorHandlerCenter } from 'sharedmodule/pipeline';
-import { 
-  PipelineError, 
-  PipelineErrorCode, 
+import {
+  PipelineError,
+  PipelineErrorCode,
   PipelineExecutionContext,
-  ErrorHandlingAction
+  ErrorHandlingAction,
 } from 'sharedmodule/pipeline';
 
 import {
@@ -22,7 +22,7 @@ import {
   AuthState,
   PKCEPair,
   OAuth2Stats,
-  OAuth2ErrorContext
+  OAuth2ErrorContext,
 } from './OAuth2Types';
 
 import {
@@ -32,7 +32,7 @@ import {
   OAUTH2_HTTP_STATUS,
   CONTENT_TYPES,
   GRANT_TYPES,
-  PKCE_CHALLENGE_METHODS
+  PKCE_CHALLENGE_METHODS,
 } from './OAuth2Constants';
 
 import { TokenStorage } from './TokenStorage';
@@ -58,14 +58,14 @@ export class OAuth2Module extends BaseModule {
       description: 'Simplified OAuth2 authentication module',
       type: 'authentication',
       dependencies: ['error-handler-center'],
-      config: config
+      config: config,
     };
 
     super(moduleInfo);
 
     this.config = {
       ...config,
-      enablePKCE: config.enablePKCE ?? DEFAULT_OAUTH2_CONFIG.enablePKCE
+      enablePKCE: config.enablePKCE ?? DEFAULT_OAUTH2_CONFIG.enablePKCE,
     };
 
     this.errorHandlerCenter = errorHandlerCenter;
@@ -74,7 +74,7 @@ export class OAuth2Module extends BaseModule {
       totalAuthAttempts: 0,
       successfulAuths: 0,
       failedAuths: 0,
-      tokenRefreshes: 0
+      tokenRefreshes: 0,
     };
 
     this.logInfo('OAuth2 module created', { config: this.config }, 'constructor');
@@ -101,10 +101,14 @@ export class OAuth2Module extends BaseModule {
       // Try to load existing token
       await this.loadExistingToken();
 
-      this.logInfo('OAuth2 module initialized successfully', { 
-        state: this.authState,
-        hasToken: !!this.currentToken 
-      }, 'initialize');
+      this.logInfo(
+        'OAuth2 module initialized successfully',
+        {
+          state: this.authState,
+          hasToken: !!this.currentToken,
+        },
+        'initialize'
+      );
     } catch (error) {
       this.logError('Failed to initialize OAuth2 module', error, 'initialize');
       this.authState = AuthState.ERROR;
@@ -127,21 +131,29 @@ export class OAuth2Module extends BaseModule {
       // Generate PKCE codes if enabled
       if (this.config.enablePKCE) {
         pkcePair = await this.generatePKCEPair();
-        this.logDebug('PKCE codes generated', { 
-          hasCodeVerifier: !!pkcePair 
-        }, 'initiateDeviceAuthorization');
+        this.logDebug(
+          'PKCE codes generated',
+          {
+            hasCodeVerifier: !!pkcePair,
+          },
+          'initiateDeviceAuthorization'
+        );
       }
 
       // Request device authorization
       const response = await this.requestDeviceAuthorization(pkcePair?.codeChallenge);
-      
+
       this.authState = AuthState.PENDING_AUTHORIZATION;
 
-      this.logInfo('Device authorization initiated', {
-        deviceCode: response.device_code,
-        userCode: response.user_code,
-        verificationUri: response.verification_uri
-      }, 'initiateDeviceAuthorization');
+      this.logInfo(
+        'Device authorization initiated',
+        {
+          deviceCode: response.device_code,
+          userCode: response.user_code,
+          verificationUri: response.verification_uri,
+        },
+        'initiateDeviceAuthorization'
+      );
 
       return response;
     } catch (error) {
@@ -149,9 +161,9 @@ export class OAuth2Module extends BaseModule {
       this.stats.failedAuths++;
 
       // Handle error through error handling center
-      await this.handleError(error, { 
-        operation: 'device_auth', 
-        retryCount: 0 
+      await this.handleError(error, {
+        operation: 'device_auth',
+        retryCount: 0,
       });
 
       throw error;
@@ -168,7 +180,7 @@ export class OAuth2Module extends BaseModule {
       const params: Record<string, string> = {
         client_id: this.config.clientId,
         device_code: deviceCode,
-        grant_type: GRANT_TYPES.DEVICE_CODE
+        grant_type: GRANT_TYPES.DEVICE_CODE,
       };
 
       if (codeVerifier) {
@@ -177,8 +189,8 @@ export class OAuth2Module extends BaseModule {
 
       const response = await axios.post(this.config.tokenEndpoint, params, {
         headers: {
-          'Content-Type': CONTENT_TYPES.FORM_URL_ENCODED
-        }
+          'Content-Type': CONTENT_TYPES.FORM_URL_ENCODED,
+        },
       });
 
       const tokenData = this.processTokenResponse(response.data);
@@ -188,10 +200,14 @@ export class OAuth2Module extends BaseModule {
       this.authState = AuthState.AUTHORIZED;
       this.stats.successfulAuths++;
 
-      this.logInfo('Token received successfully', {
-        expiresIn: tokenData.expiresAt - Date.now(),
-        scope: tokenData.scope
-      }, 'requestToken');
+      this.logInfo(
+        'Token received successfully',
+        {
+          expiresIn: tokenData.expiresAt - Date.now(),
+          scope: tokenData.scope,
+        },
+        'requestToken'
+      );
 
       return tokenData;
     } catch (error: any) {
@@ -200,19 +216,19 @@ export class OAuth2Module extends BaseModule {
       // Handle OAuth2 specific errors
       if (axios.isAxiosError(error) && error.response) {
         const oauth2Error = this.handleOAuth2Error(error.response.data.error);
-        await this.handleError(oauth2Error, { 
+        await this.handleError(oauth2Error, {
           operation: 'token_request',
           deviceCode,
-          retryCount: 0
+          retryCount: 0,
         });
         throw oauth2Error;
       }
 
       // Handle other errors
-      await this.handleError(error, { 
+      await this.handleError(error, {
         operation: 'token_request',
         deviceCode,
-        retryCount: 0
+        retryCount: 0,
       });
       throw error;
     }
@@ -228,13 +244,13 @@ export class OAuth2Module extends BaseModule {
       const params = {
         client_id: this.config.clientId,
         refresh_token: refreshToken,
-        grant_type: GRANT_TYPES.REFRESH_TOKEN
+        grant_type: GRANT_TYPES.REFRESH_TOKEN,
       };
 
       const response = await axios.post(this.config.tokenEndpoint, params, {
         headers: {
-          'Content-Type': CONTENT_TYPES.FORM_URL_ENCODED
-        }
+          'Content-Type': CONTENT_TYPES.FORM_URL_ENCODED,
+        },
       });
 
       const tokenData = this.processTokenResponse(response.data);
@@ -243,10 +259,14 @@ export class OAuth2Module extends BaseModule {
       this.currentToken = tokenData;
       this.stats.tokenRefreshes++;
 
-      this.logInfo('Token refreshed successfully', {
-        expiresIn: tokenData.expiresAt - Date.now(),
-        scope: tokenData.scope
-      }, 'refreshToken');
+      this.logInfo(
+        'Token refreshed successfully',
+        {
+          expiresIn: tokenData.expiresAt - Date.now(),
+          scope: tokenData.scope,
+        },
+        'refreshToken'
+      );
 
       return tokenData;
     } catch (error: any) {
@@ -255,17 +275,17 @@ export class OAuth2Module extends BaseModule {
       // Handle OAuth2 specific errors
       if (axios.isAxiosError(error) && error.response) {
         const oauth2Error = this.handleOAuth2Error(error.response.data.error);
-        await this.handleError(oauth2Error, { 
+        await this.handleError(oauth2Error, {
           operation: 'token_refresh',
-          retryCount: 0
+          retryCount: 0,
         });
         throw oauth2Error;
       }
 
       // Handle other errors
-      await this.handleError(error, { 
+      await this.handleError(error, {
         operation: 'token_refresh',
-        retryCount: 0
+        retryCount: 0,
       });
       throw error;
     }
@@ -282,9 +302,11 @@ export class OAuth2Module extends BaseModule {
       hasToken: !!this.currentToken,
       isExpired,
       expiresAt: this.currentToken?.expiresAt,
-      timeUntilExpiry: this.currentToken ? Math.max(0, this.currentToken.expiresAt - now) : undefined,
+      timeUntilExpiry: this.currentToken
+        ? Math.max(0, this.currentToken.expiresAt - now)
+        : undefined,
       tokenType: this.currentToken?.tokenType,
-      scope: this.currentToken?.scope
+      scope: this.currentToken?.scope,
     };
   }
 
@@ -300,7 +322,7 @@ export class OAuth2Module extends BaseModule {
    */
   public invalidateToken(): void {
     this.logInfo('Invalidating current token', {}, 'invalidateToken');
-    
+
     this.currentToken = null;
     this.authState = AuthState.UNINITIALIZED;
   }
@@ -313,10 +335,10 @@ export class OAuth2Module extends BaseModule {
       await this.tokenStorage.saveToken(email, tokenData);
       this.logInfo('Token saved for email', { email }, 'saveTokenForEmail');
     } catch (error) {
-      await this.handleError(error, { 
+      await this.handleError(error, {
         operation: 'token_storage',
         email,
-        retryCount: 0
+        retryCount: 0,
       });
       throw error;
     }
@@ -335,10 +357,10 @@ export class OAuth2Module extends BaseModule {
       }
       return tokenData;
     } catch (error) {
-      await this.handleError(error, { 
+      await this.handleError(error, {
         operation: 'token_storage',
         email,
-        retryCount: 0
+        retryCount: 0,
       });
       throw error;
     }
@@ -354,10 +376,12 @@ export class OAuth2Module extends BaseModule {
   /**
    * Request device authorization
    */
-  private async requestDeviceAuthorization(codeChallenge?: string): Promise<DeviceAuthorizationResponse> {
+  private async requestDeviceAuthorization(
+    codeChallenge?: string
+  ): Promise<DeviceAuthorizationResponse> {
     const params: Record<string, string> = {
       client_id: this.config.clientId,
-      scope: this.config.scope
+      scope: this.config.scope,
     };
 
     if (codeChallenge) {
@@ -367,8 +391,8 @@ export class OAuth2Module extends BaseModule {
 
     const response = await axios.post(this.config.deviceAuthEndpoint, params, {
       headers: {
-        'Content-Type': CONTENT_TYPES.FORM_URL_ENCODED
-      }
+        'Content-Type': CONTENT_TYPES.FORM_URL_ENCODED,
+      },
     });
 
     return response.data;
@@ -382,8 +406,8 @@ export class OAuth2Module extends BaseModule {
       accessToken: responseData.access_token,
       refreshToken: responseData.refresh_token,
       tokenType: responseData.token_type,
-      expiresAt: Date.now() + (responseData.expires_in * 1000),
-      scope: responseData.scope
+      expiresAt: Date.now() + responseData.expires_in * 1000,
+      scope: responseData.scope,
     };
   }
 
@@ -392,9 +416,7 @@ export class OAuth2Module extends BaseModule {
    */
   private async generatePKCEPair(): Promise<PKCEPair> {
     const codeVerifier = randomBytes(32).toString('base64url');
-    const codeChallenge = createHash('sha256')
-      .update(codeVerifier)
-      .digest('base64url');
+    const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
 
     return { codeVerifier, codeChallenge };
   }
@@ -453,8 +475,8 @@ export class OAuth2Module extends BaseModule {
       timestamp: Date.now(),
       details: {
         oauth2Context: context,
-        originalError: error instanceof Error ? error.stack : String(error)
-      }
+        originalError: error instanceof Error ? error.stack : String(error),
+      },
     };
 
     // Send to error handling center
@@ -462,7 +484,7 @@ export class OAuth2Module extends BaseModule {
       executionId: '',
       pipelineId: this.moduleInfo.id,
       instanceId: this.moduleInfo.id,
-      retryCount: context.retryCount
+      retryCount: context.retryCount,
     });
   }
 
@@ -513,7 +535,7 @@ export class OAuth2Module extends BaseModule {
    * Handle token expired error
    */
   private async handleTokenExpired(
-    error: PipelineError, 
+    error: PipelineError,
     context: PipelineExecutionContext
   ): Promise<ErrorHandlingAction> {
     this.logInfo('Handling token expired error', { error, context }, 'handleTokenExpired');
@@ -525,14 +547,14 @@ export class OAuth2Module extends BaseModule {
         return {
           action: 'retry',
           shouldRetry: true,
-          message: 'Token refreshed successfully'
+          message: 'Token refreshed successfully',
         };
       } catch (refreshError) {
         this.logError('Token refresh failed', refreshError, 'handleTokenExpired');
         return {
           action: 'maintenance',
           shouldRetry: false,
-          message: 'Token expired and refresh failed'
+          message: 'Token expired and refresh failed',
         };
       }
     }
@@ -540,7 +562,7 @@ export class OAuth2Module extends BaseModule {
     return {
       action: 'maintenance',
       shouldRetry: false,
-      message: 'Token expired and no refresh token available'
+      message: 'Token expired and no refresh token available',
     };
   }
 
@@ -548,15 +570,19 @@ export class OAuth2Module extends BaseModule {
    * Handle authentication failed error
    */
   private async handleAuthenticationFailed(
-    error: PipelineError, 
+    error: PipelineError,
     context: PipelineExecutionContext
   ): Promise<ErrorHandlingAction> {
-    this.logInfo('Handling authentication failed error', { error, context }, 'handleAuthenticationFailed');
+    this.logInfo(
+      'Handling authentication failed error',
+      { error, context },
+      'handleAuthenticationFailed'
+    );
 
     return {
       action: 'maintenance',
       shouldRetry: false,
-      message: 'Authentication failed - requires user interaction'
+      message: 'Authentication failed - requires user interaction',
     };
   }
 
@@ -567,14 +593,14 @@ export class OAuth2Module extends BaseModule {
     this.registerMessageHandler('get_token_status', async (message: Message) => {
       return {
         success: true,
-        data: this.getTokenStatus()
+        data: this.getTokenStatus(),
       };
     });
 
     this.registerMessageHandler('get_current_token', async (message: Message) => {
       return {
         success: true,
-        data: this.getCurrentToken()
+        data: this.getCurrentToken(),
       };
     });
 
@@ -582,14 +608,14 @@ export class OAuth2Module extends BaseModule {
       this.invalidateToken();
       return {
         success: true,
-        data: { message: 'Token invalidated' }
+        data: { message: 'Token invalidated' },
       };
     });
 
     this.registerMessageHandler('get_oauth2_stats', async (message: Message) => {
       return {
         success: true,
-        data: this.getStats()
+        data: this.getStats(),
       };
     });
 
@@ -598,12 +624,12 @@ export class OAuth2Module extends BaseModule {
         const deviceAuth = await this.initiateDeviceAuthorization();
         return {
           success: true,
-          data: deviceAuth
+          data: deviceAuth,
         };
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         };
       }
     });
@@ -633,7 +659,7 @@ export class OAuth2Module extends BaseModule {
     this.errorHandlerCenter.unregisterCustomHandler(PipelineErrorCode.AUTHENTICATION_FAILED);
 
     await super.destroy();
-    
+
     this.logInfo('OAuth2 module destroyed', {}, 'destroy');
   }
 }

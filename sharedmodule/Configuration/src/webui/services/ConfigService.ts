@@ -11,6 +11,7 @@ import {
   RouteConfig 
 } from '../types/ui.types';
 import { ConfigData } from '../../interfaces/IConfigurationSystem';
+import { FileSystemService } from './FileSystemService';
 
 /**
  * 配置服务类
@@ -19,17 +20,26 @@ export class ConfigService implements UIService {
   private initialized = false;
   private templates: Record<string, any> = {};
   private providerDefaults: Record<string, any> = {};
+  private fileSystemService: FileSystemService | null = null;
 
   /**
    * 初始化服务
    */
-  public async initialize(): Promise<void> {
+  public async initialize(fileSystemService?: FileSystemService): Promise<void> {
     try {
+      // 设置文件系统服务
+      if (fileSystemService) {
+        this.fileSystemService = fileSystemService;
+      }
+      
       // 加载默认模板
       await this.loadDefaultTemplates();
       
       // 加载供应商默认配置
       await this.loadProviderDefaults();
+      
+      // 尝试加载默认配置文件
+      await this.loadDefaultConfigFiles();
       
       this.initialized = true;
       console.log('ConfigService initialized successfully');
@@ -240,6 +250,34 @@ export class ConfigService implements UIService {
         limits: { rateLimit: 1000, maxTokens: 4096, timeout: 60000 }
       }
     };
+  }
+
+  /**
+   * 加载默认配置文件
+   */
+  private async loadDefaultConfigFiles(): Promise<void> {
+    if (!this.fileSystemService) {
+      console.log('文件系统服务未初始化，跳过默认配置文件加载');
+      return;
+    }
+
+    try {
+      const configFiles = await this.fileSystemService.findDefaultConfigFiles();
+      console.log(`找到 ${configFiles.length} 个默认配置文件`);
+      
+      // 这里可以处理找到的配置文件
+      for (const configFile of configFiles) {
+        try {
+          const configData = await this.fileSystemService.readConfigFile(configFile);
+          console.log(`成功加载配置文件: ${configFile}`);
+          // 可以在这里处理配置数据
+        } catch (error) {
+          console.error(`加载配置文件失败 ${configFile}:`, error);
+        }
+      }
+    } catch (error) {
+      console.warn('查找默认配置文件时出错:', error);
+    }
   }
 
   /**

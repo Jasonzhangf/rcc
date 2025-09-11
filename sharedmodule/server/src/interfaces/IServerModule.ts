@@ -1,0 +1,107 @@
+// Server module interfaces
+
+import {
+  ServerConfig,
+  ClientRequest,
+  ClientResponse,
+  VirtualModelConfig,
+  RouteConfig,
+  ServerStatus,
+  RequestMetrics,
+  ConnectionInfo,
+  MiddlewareConfig
+} from '../types/ServerTypes';
+
+export interface IServerModule {
+  // Lifecycle methods
+  initialize(config: ServerConfig): Promise<void>;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  restart(): Promise<void>;
+  
+  // Request handling
+  handleRequest(request: ClientRequest): Promise<ClientResponse>;
+  handleWebSocket(connection: ConnectionInfo): Promise<void>;
+  
+  // Route management
+  registerRoute(route: RouteConfig): Promise<void>;
+  unregisterRoute(routeId: string): Promise<void>;
+  getRoutes(): RouteConfig[];
+  
+  // Virtual model management
+  registerVirtualModel(model: VirtualModelConfig): Promise<void>;
+  unregisterVirtualModel(modelId: string): Promise<void>;
+  getVirtualModel(modelId: string): VirtualModelConfig | undefined;
+  getVirtualModels(): VirtualModelConfig[];
+  
+  // Middleware management
+  registerMiddleware(middleware: MiddlewareConfig): Promise<void>;
+  unregisterMiddleware(middlewareId: string): Promise<void>;
+  
+  // Monitoring and metrics
+  getStatus(): ServerStatus;
+  getMetrics(): RequestMetrics[];
+  getConnections(): ConnectionInfo[];
+  getHealth(): Promise<{
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    checks: Record<string, boolean>;
+    timestamp: number;
+  }>;
+  
+  // Configuration
+  updateConfig(config: Partial<ServerConfig>): Promise<void>;
+  getConfig(): ServerConfig;
+}
+
+export interface IHttpServer {
+  listen(port: number, host?: string): Promise<void>;
+  close(): Promise<void>;
+  on(event: string, callback: Function): void;
+  off(event: string, callback: Function): void;
+  getConnections(callback: (err: Error, count: number) => void): void;
+}
+
+export interface IRequestProcessor {
+  process(request: ClientRequest): Promise<ClientResponse>;
+  validate(request: ClientRequest): Promise<boolean>;
+  sanitize(request: ClientRequest): ClientRequest;
+  enrich(request: ClientRequest): ClientRequest;
+}
+
+export interface IVirtualModelRouter {
+  routeRequest(request: ClientRequest): Promise<VirtualModelConfig>;
+  registerModel(model: VirtualModelConfig): Promise<void>;
+  unregisterModel(modelId: string): Promise<void>;
+  updateRoutingRules(modelId: string, rules: any[]): Promise<void>;
+  getModelMetrics(modelId: string): Promise<any>;
+}
+
+export interface IClientManager {
+  addConnection(connection: ConnectionInfo): Promise<void>;
+  removeConnection(connectionId: string): Promise<void>;
+  getConnection(connectionId: string): ConnectionInfo | undefined;
+  getConnections(): ConnectionInfo[];
+  broadcast(message: any): Promise<void>;
+  sendToClient(connectionId: string, message: any): Promise<void>;
+}
+
+export interface IMiddlewareManager {
+  registerMiddleware(middleware: MiddlewareConfig): Promise<void>;
+  unregisterMiddleware(middlewareId: string): Promise<void>;
+  executePreMiddleware(request: ClientRequest): Promise<ClientRequest>;
+  executePostMiddleware(request: ClientRequest, response: ClientResponse): Promise<ClientResponse>;
+  executeErrorMiddleware(error: Error, request: ClientRequest): Promise<ClientResponse>;
+}
+
+export interface IServerMetrics {
+  recordRequest(metrics: RequestMetrics): Promise<void>;
+  getMetrics(timeRange?: { start: number; end: number }): Promise<RequestMetrics[]>;
+  getAggregatedMetrics(timeRange?: { start: number; end: number }): Promise<{
+    totalRequests: number;
+    averageResponseTime: number;
+    errorRate: number;
+    requestsPerSecond: number;
+    bandwidth: number;
+  }>;
+  resetMetrics(): Promise<void>;
+}

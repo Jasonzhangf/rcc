@@ -5,6 +5,7 @@
  */
 
 import { UIService, STORAGE_KEYS } from '../types/ui.types';
+import { FileSystemService } from './FileSystemService';
 
 /**
  * 存储服务类
@@ -13,17 +14,26 @@ export class StorageService implements UIService {
   private initialized = false;
   private isLocalStorageAvailable = false;
   private memoryStorage = new Map<string, any>();
+  private fileSystemService: FileSystemService | null = null;
 
   /**
    * 初始化服务
    */
-  public async initialize(): Promise<void> {
+  public async initialize(fileSystemService?: FileSystemService): Promise<void> {
     try {
+      // 设置文件系统服务
+      if (fileSystemService) {
+        this.fileSystemService = fileSystemService;
+      }
+      
       // 检测 localStorage 是否可用
       this.isLocalStorageAvailable = this.checkLocalStorageAvailability();
       
       // 加载用户偏好设置
       await this.loadUserPreferences();
+      
+      // 尝试同步文件系统配置
+      await this.syncWithFileSystem();
       
       this.initialized = true;
       console.log('StorageService initialized successfully');
@@ -188,6 +198,37 @@ export class StorageService implements UIService {
     if (preferences) {
       // 应用用户偏好设置
       console.log('User preferences loaded:', preferences);
+    }
+  }
+
+  /**
+   * 与文件系统同步配置
+   */
+  private async syncWithFileSystem(): Promise<void> {
+    if (!this.fileSystemService) {
+      console.log('文件系统服务未初始化，跳过同步');
+      return;
+    }
+
+    try {
+      // 查找配置文件
+      const configFiles = await this.fileSystemService.findDefaultConfigFiles();
+      console.log(`找到 ${configFiles.length} 个配置文件用于同步`);
+      
+      // 这里可以实现具体的同步逻辑
+      // 例如：将文件系统中的配置同步到本地存储
+      for (const configFile of configFiles) {
+        try {
+          const configData = await this.fileSystemService.readConfigFile(configFile);
+          // 保存到本地存储以供WebUI使用
+          await this.setValue(`config_file_${configFile}`, configData);
+          console.log(`配置文件已同步到本地存储: ${configFile}`);
+        } catch (error) {
+          console.error(`同步配置文件失败 ${configFile}:`, error);
+        }
+      }
+    } catch (error) {
+      console.warn('与文件系统同步时出错:', error);
     }
   }
 

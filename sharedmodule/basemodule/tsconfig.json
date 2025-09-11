@@ -19,6 +19,7 @@
     "allowSyntheticDefaultImports": true,
     "allowJs": false,
     "isolatedModules": true,
+    "composite": true,
     "noEmit": false,
     "noEmitOnError": true,
     "noImplicitAny": true,

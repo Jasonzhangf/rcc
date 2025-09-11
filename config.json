@@ -1,7 +1,67 @@
 {
-  "version": "2.0.0",
-  "providers": [],
-  "routes": [],
-  "model_blacklist": [],
-  "last_updated": "2025-09-09T10:40:50.063Z"
+  "metadata": {
+    "name": "RCC4 Configuration",
+    "description": "RCC Claude Code Router Configuration - Converted from v2.0.0 to v4.0.0",
+    "createdAt": "2025-09-09T10:40:50.063Z",
+    "updatedAt": "2025-09-11T00:22:57.979Z",
+    "author": "Configuration System",
+    "environment": "development"
+  },
+  "settings": {
+    "general": {
+      "port": {
+        "value": 5506,
+        "type": "number",
+        "required": true,
+        "description": "Server port for RCC4 system"
+      },
+      "host": {
+        "value": "0.0.0.0",
+        "type": "string",
+        "required": false,
+        "description": "Server host address"
+      },
+      "debug": {
+        "value": true,
+        "type": "boolean",
+        "required": false,
+        "description": "Enable debug mode"
+      }
+    },
+    "providers": {},
+    "routes": {},
+    "security": {
+      "rateLimiting": {
+        "enabled": {
+          "value": false,
+          "type": "boolean",
+          "required": false
+        }
+      },
+      "authentication": {
+        "required": {
+          "value": false,
+          "type": "boolean",
+          "required": false
+        }
+      }
+    },
+    "monitoring": {
+      "logging": {
+        "level": {
+          "value": "info",
+          "type": "string",
+          "required": false
+        }
+      },
+      "metrics": {
+        "enabled": {
+          "value": false,
+          "type": "boolean",
+          "required": false
+        }
+      }
+    }
+  },
+  "version": "4.0.0"
 }

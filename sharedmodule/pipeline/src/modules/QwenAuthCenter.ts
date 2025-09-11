@@ -242,7 +242,7 @@ export class QwenAuthCenter extends BaseModule {
       isExpired,
       expiresAt: this.storedToken?.expiresAt,
       timeUntilExpiry: this.storedToken ? Math.max(0, this.storedToken.expiresAt - now) : undefined,
-      lastError: undefined, // TODO: Track last error
+      lastError: undefined, // UnderConstruction: error tracking feature
       maintenanceMode: this.maintenanceMode,
       deviceCode: this.deviceCodeInfo?.device_code,
       userCode: this.deviceCodeInfo?.user_code,

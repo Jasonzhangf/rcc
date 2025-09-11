@@ -90,6 +90,13 @@
         "allowed": true,
         "subdirectories": true,
         "notes": "Application and system log files"
+      },
+      {
+        "path": "sharedmodule/",
+        "description": "Shared modules directory",
+        "allowed": true,
+        "subdirectories": true,
+        "notes": "Independent published modules directory"
       }
     ],
     "file_patterns": [

@@ -20,6 +20,7 @@ function checkDirectoryStructure() {
     'src/webui/components/ConfigParser',
     'src/webui/components/Common',
     'src/webui/services',
+    'src/webui/managers',
     'src/webui/types',
     'src/webui/utils',
     'src/webui/assets'
@@ -62,7 +63,9 @@ function checkRequiredFiles() {
     'src/webui/components/Common/index.ts',
     'src/webui/services/ConfigService.ts',
     'src/webui/services/ParserService.ts',
-    'src/webui/services/StorageService.ts'
+    'src/webui/services/StorageService.ts',
+    'src/webui/services/FileSystemService.ts',
+    'src/webui/managers/ConfigLoadingManager.ts'
   ];
   
   const missingFiles = [];
@@ -117,7 +120,9 @@ function checkCodeQuality() {
     'src/webui/types/ui.types.ts',
     'src/webui/services/ConfigService.ts',
     'src/webui/services/ParserService.ts',
-    'src/webui/services/StorageService.ts'
+    'src/webui/services/StorageService.ts',
+    'src/webui/services/FileSystemService.ts',
+    'src/webui/managers/ConfigLoadingManager.ts'
   ];
   
   let totalLines = 0;

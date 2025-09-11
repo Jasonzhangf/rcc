@@ -11,6 +11,8 @@ import {
   UserConfig, 
   ParseResult 
 } from '../../types/ui.types';
+import { FileSystemService } from '../../services/FileSystemService';
+import { PipelineConfigGenerator } from '../../services/PipelineConfigGenerator';
 
 /**
  * 配置解析器主组件
@@ -19,26 +21,32 @@ export class ConfigParserMain implements UIComponent {
   private container: HTMLElement | null = null;
   private parserService: any;
   private storageService: any;
+  private fileSystemService: FileSystemService | null = null;
+  private pipelineConfigGenerator: PipelineConfigGenerator;
   
   // 数据状态
   private userConfig: UserConfig | null = null;
   private parseResult: ParseResult | null = null;
   private currentStep: 'upload' | 'parse' | 'result' = 'upload';
   private parseHistory: ParseResult[] = [];
+  private configLoadingManager: any = null;
 
   constructor() {
     this.parserService = null;
     this.storageService = null;
+    this.fileSystemService = null;
+    this.pipelineConfigGenerator = new PipelineConfigGenerator();
   }
 
   /**
    * 初始化组件
    */
-  public async initialize(options: ConfigParserOptions): Promise<void> {
+  public async initialize(options: ConfigParserOptions & { configLoadingManager?: any }): Promise<void> {
     try {
       this.parserService = options.parserService;
       this.storageService = options.storageService;
-
+      this.configLoadingManager = options.configLoadingManager;
+      
       // 获取容器元素
       this.container = document.getElementById(options.containerId);
       if (!this.container) {
@@ -50,6 +58,17 @@ export class ConfigParserMain implements UIComponent {
 
       // 加载保存的数据
       await this.loadSavedData();
+      
+      // 如果有配置加载管理器，添加状态监听器
+      if (this.configLoadingManager) {
+        this.configLoadingManager.addStateListener((state: any) => {
+          this.handleConfigLoadingStateChange(state);
+        });
+        
+        // 获取当前状态
+        const currentState = this.configLoadingManager.getState();
+        this.handleConfigLoadingStateChange(currentState);
+      }
 
       console.log('ConfigParserMain initialized successfully');
     } catch (error) {
@@ -59,11 +78,108 @@ export class ConfigParserMain implements UIComponent {
   }
 
   /**
-   * 初始化子组件
+   * 处理配置加载状态变化
    */
-  private async initializeSubComponents(): Promise<void> {
-    // 暂时不需要初始化复杂的子组件，直接使用基础的HTML表单
-    console.log('Sub-components initialized (simplified)');
+  private handleConfigLoadingStateChange(state: any): void {
+    // 更新UI状态显示
+    const statusText = this.container?.querySelector('#current-step-text');
+    const progressFill = this.container?.querySelector('.progress-fill') as HTMLElement;
+    
+    if (statusText) {
+      statusText.textContent = state.statusText || '未知状态';
+    }
+    
+    // 根据状态更新界面
+    if (state.isLoading || state.isParsing) {
+      if (this.currentStep !== 'parse') {
+        this.currentStep = 'parse';
+        this.render();
+      }
+    } else if (state.hasConfig) {
+      // 尝试加载解析结果
+      this.loadParseResultFromManager();
+    } else if (!state.isLoading && !state.isParsing && !state.hasConfig) {
+      // 回到上传界面
+      if (this.currentStep !== 'upload') {
+        this.currentStep = 'upload';
+        this.render();
+      }
+    }
+  }
+
+  /**
+   * 从管理器加载解析结果
+   */
+  private async loadParseResultFromManager(): Promise<void> {
+    if (this.configLoadingManager) {
+      try {
+        const parseResult = await this.configLoadingManager.loadRecentParseResult();
+        if (parseResult) {
+          await this.handleParseComplete(parseResult);
+        }
+      } catch (error) {
+        console.error('从管理器加载解析结果失败:', error);
+      }
+    }
+  }
+
+  // 已移除自动加载默认配置逻辑，由ConfigLoadingManager统一管理
+
+  /**
+   * 转换配置数据为用户配置格式
+   */
+  private convertConfigDataToUserConfig(configData: any): UserConfig {
+    // 这里实现将ConfigData转换为UserConfig的逻辑
+    // 根据实际数据结构调整转换逻辑
+    
+    const userConfig: UserConfig = {
+      providers: {}
+    };
+    
+    // 从configData.settings.providers提取供应商信息
+    if (configData.settings && configData.settings.providers) {
+      for (const [providerId, providerData] of Object.entries(configData.settings.providers)) {
+        // 确保providerData是对象且有必要的属性
+        if (typeof providerData === 'object' && providerData !== null) {
+          const providerAny: any = providerData;
+          
+          userConfig.providers[providerId] = {
+            models: {}
+          };
+          
+          // 处理模型和密钥
+          if (providerAny.models) {
+            for (const [modelId, modelData] of Object.entries(providerAny.models)) {
+              const modelAny: any = modelData;
+              
+              // 提取密钥信息（假设在auth中）
+              let keys: string[] = [];
+              if (providerAny.auth && Array.isArray(providerAny.auth.keys)) {
+                keys = providerAny.auth.keys;
+              }
+              
+              userConfig.providers[providerId].models[modelId] = {
+                keys: keys
+              };
+            }
+          }
+        }
+      }
+    }
+    
+    // 处理虚拟模型（如果存在）
+    if (configData.settings && configData.settings.virtualModels) {
+      userConfig.virtualModels = {};
+      for (const [vmName, vmData] of Object.entries(configData.settings.virtualModels)) {
+        const vmAny: any = vmData;
+        userConfig.virtualModels[vmName] = {
+          targetProvider: vmAny.targetProvider || '',
+          targetModel: vmAny.targetModel || ''
+        };
+      }
+    }
+    
+    return userConfig;
   }
 
   /**
@@ -229,15 +345,30 @@ export class ConfigParserMain implements UIComponent {
       return;
     }
 
+    // 生成流水线配置用于可视化
+    let pipelineConfig: any = null;
+    if (this.pipelineConfigGenerator) {
+      try {
+        pipelineConfig = this.pipelineConfigGenerator.generatePipelineConfigs(this.parseResult);
+      } catch (error) {
+        console.error('生成流水线配置失败:', error);
+      }
+    }
+
     container.innerHTML = `
       <div class="pipeline-section">
-        <h3>生成的流水线 (${this.parseResult.pipelines.length})</h3>
+        <div class="section-header">
+          <h3>生成的流水线 (${this.parseResult.pipelines.length})</h3>
+          <button class="btn btn-secondary" id="generate-pipeline-config-btn">
+            生成流水线配置
+          </button>
+        </div>
         <div class="pipeline-list">
           ${this.parseResult.pipelines.map((pipeline, index) => `
             <div class="pipeline-item" data-index="${index}">
               <div class="pipeline-header">
                 <h4>${pipeline.id}</h4>
-                <span class="pipeline-provider">${pipeline.llmswitch.provider}</span>
+                <span class="pipeline-provider ${pipeline.llmswitch.provider}">${pipeline.llmswitch.provider}</span>
               </div>
               <div class="pipeline-details">
                 <div class="detail-row">
@@ -256,8 +387,84 @@ export class ConfigParserMain implements UIComponent {
             </div>
           `).join('')}
         </div>
+        
+        ${pipelineConfig ? `
+          <div class="pipeline-config-preview">
+            <h4>流水线配置预览</h4>
+            <div class="config-info">
+              <div class="info-item">
+                <span class="info-label">供应商:</span>
+                <span class="info-value">${pipelineConfig.providers.length}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">虚拟模型:</span>
+                <span class="info-value">${pipelineConfig.virtualModels.length}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">路由:</span>
+                <span class="info-value">${pipelineConfig.routes.length}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">流水线:</span>
+                <span class="info-value">${pipelineConfig.pipelines.length}</span>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="export-pipeline-config-btn">
+              导出流水线配置
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
+    
+    // 绑定生成流水线配置按钮事件
+    const generateBtn = this.container?.querySelector('#generate-pipeline-config-btn');
+    if (generateBtn) {
+      generateBtn.addEventListener('click', async () => {
+        try {
+          const pipelineConfig = await this.generatePipelineConfig();
+          if (pipelineConfig) {
+            alert('流水线配置已生成，可通过导出功能保存');
+          } else {
+            alert('生成流水线配置失败');
+          }
+        } catch (error) {
+          console.error('生成流水线配置失败:', error);
+          alert(`生成失败: ${error}`);
+        }
+      });
+    }
+    
+    // 绑定导出流水线配置按钮事件
+    const exportBtn = this.container?.querySelector('#export-pipeline-config-btn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', async () => {
+        try {
+          const exportData = await this.exportPipelineConfig();
+          if (exportData) {
+            // 创建下载链接
+            const blob = new Blob([exportData], {
+              type: 'application/json'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rcc-pipeline-config-${new Date().toISOString().split('T')[0]}.json`;
+            a.style.display = 'none';
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } else {
+            alert('导出流水线配置失败');
+          }
+        } catch (error) {
+          console.error('导出流水线配置失败:', error);
+          alert(`导出失败: ${error}`);
+        }
+      });
+    }
   }
 
   /**
@@ -278,6 +485,17 @@ export class ConfigParserMain implements UIComponent {
     }
 
     const stats = this.parseResult.statistics;
+    
+    // 生成流水线配置用于统计
+    let pipelineConfig: any = null;
+    if (this.pipelineConfigGenerator) {
+      try {
+        pipelineConfig = this.pipelineConfigGenerator.generatePipelineConfigs(this.parseResult);
+      } catch (error) {
+        console.error('生成流水线配置失败:', error);
+      }
+    }
+    
     container.innerHTML = `
       <div class="stats-section">
         <h3>解析统计</h3>
@@ -299,6 +517,30 @@ export class ConfigParserMain implements UIComponent {
             <div class="stat-label">密钥</div>
           </div>
         </div>
+        
+        ${pipelineConfig ? `
+          <div class="pipeline-stats">
+            <h4>流水线配置统计</h4>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value">${pipelineConfig.providers.length}</div>
+                <div class="stat-label">配置供应商</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">${pipelineConfig.virtualModels.length}</div>
+                <div class="stat-label">虚拟模型</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">${pipelineConfig.routes.length}</div>
+                <div class="stat-label">路由配置</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">${pipelineConfig.pipelines.length}</div>
+                <div class="stat-label">流水线</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
         
         ${this.parseResult.errors?.length ? `
           <div class="errors-section">
@@ -536,11 +778,26 @@ export class ConfigParserMain implements UIComponent {
     if (!this.parseResult) return;
 
     try {
-      const exportData = {
-        pipelines: this.parseResult.pipelines,
-        statistics: this.parseResult.statistics,
-        timestamp: new Date().toISOString()
-      };
+      // 创建导出选项对话框
+      const exportType = prompt('选择导出类型:\n1. 解析结果\n2. 流水线配置', '1');
+      
+      let exportData: any;
+      let filename: string;
+      
+      if (exportType === '2' && this.pipelineConfigGenerator) {
+        // 导出流水线配置
+        const pipelineConfig = this.pipelineConfigGenerator.generatePipelineConfigs(this.parseResult);
+        exportData = pipelineConfig;
+        filename = `rcc-pipeline-config-${new Date().toISOString().split('T')[0]}.json`;
+      } else {
+        // 导出解析结果
+        exportData = {
+          pipelines: this.parseResult.pipelines,
+          statistics: this.parseResult.statistics,
+          timestamp: new Date().toISOString()
+        };
+        filename = `rcc-pipelines-${new Date().toISOString().split('T')[0]}.json`;
+      }
 
       // 创建下载链接
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -549,7 +806,7 @@ export class ConfigParserMain implements UIComponent {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `rcc-pipelines-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = filename;
       a.style.display = 'none';
       
       document.body.appendChild(a);
@@ -558,6 +815,7 @@ export class ConfigParserMain implements UIComponent {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to export results:', error);
+      alert(`导出失败: ${error}`);
     }
   }
 
@@ -566,37 +824,56 @@ export class ConfigParserMain implements UIComponent {
    */
   private async handleFileSelected(file: File): Promise<void> {
     try {
-      this.currentStep = 'parse';
-      await this.render();
-      
-      // 更新解析状态
-      this.updateParseStatus('读取文件内容...', 10);
-      
-      const content = await file.text();
-      this.updateParseStatus('解析文件格式...', 30);
-      
-      // 解析文件内容
-      let config: any;
-      if (file.name.endsWith('.json')) {
-        config = JSON.parse(content);
-      } else if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
-        // 这里需要引入YAML解析器
-        config = JSON.parse(content); // 临时用JSON格式
-      } else {
-        throw new Error(`不支持的文件格式: ${file.name}`);
-      }
-      
-      this.userConfig = config;
-      this.updateParseStatus('开始解析配置...', 50);
-      
-      // 调用解析服务
-      const parseResult = await this.parserService.parseUserConfig(config, {
-        onProgress: (step: string, progress: number) => {
-          this.updateParseStatus(step, 50 + progress * 0.5);
+      if (this.configLoadingManager) {
+        // 使用配置加载管理器处理文件
+        this.currentStep = 'parse';
+        await this.render();
+        
+        const parseResult = await this.configLoadingManager.loadAndParseConfigFile(file);
+        
+        if (parseResult) {
+          await this.handleParseComplete(parseResult);
+        } else {
+          // 解析失败，返回上传界面
+          setTimeout(async () => {
+            this.currentStep = 'upload';
+            await this.render();
+          }, 2000);
         }
-      });
-      
-      await this.handleParseComplete(parseResult);
+      } else {
+        // 如果没有配置加载管理器，使用原来的逻辑
+        this.currentStep = 'parse';
+        await this.render();
+        
+        // 更新解析状态
+        this.updateParseStatus('读取文件内容...', 10);
+        
+        const content = await file.text();
+        this.updateParseStatus('解析文件格式...', 30);
+        
+        // 解析文件内容
+        let config: any;
+        if (file.name.endsWith('.json')) {
+          config = JSON.parse(content);
+        } else if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+          // 这里需要引入YAML解析器
+          config = JSON.parse(content); // 临时用JSON格式
+        } else {
+          throw new Error(`不支持的文件格式: ${file.name}`);
+        }
+        
+        this.userConfig = config;
+        this.updateParseStatus('开始解析配置...', 50);
+        
+        // 调用解析服务
+        const parseResult = await this.parserService.parseUserConfig(config, {
+          onProgress: (step: string, progress: number) => {
+            this.updateParseStatus(step, 50 + progress * 0.5);
+          }
+        });
+        
+        await this.handleParseComplete(parseResult);
+      }
     } catch (error) {
       console.error('Failed to handle file selection:', error);
       this.updateParseStatus(`解析失败: ${error}`, 0);
@@ -613,7 +890,7 @@ export class ConfigParserMain implements UIComponent {
   /**
    * 处理解析完成
    */
-  private async handleParseComplete(result: ParseResult): Promise<void> {
+  public async handleParseComplete(result: ParseResult): Promise<void> {
     this.parseResult = result;
     
     // 添加到历史记录
@@ -688,6 +965,40 @@ export class ConfigParserMain implements UIComponent {
    */
   public async getParseResults(): Promise<ParseResult | null> {
     return this.parseResult;
+  }
+
+  /**
+   * 生成流水线配置
+   */
+  public async generatePipelineConfig(): Promise<any | null> {
+    if (!this.parseResult) {
+      return null;
+    }
+
+    try {
+      const pipelineConfig = this.pipelineConfigGenerator.generatePipelineConfigs(this.parseResult);
+      return pipelineConfig;
+    } catch (error) {
+      console.error('Failed to generate pipeline config:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 导出流水线配置
+   */
+  public async exportPipelineConfig(format: 'json' | 'yaml' = 'json'): Promise<string | null> {
+    const pipelineConfig = await this.generatePipelineConfig();
+    if (!pipelineConfig) {
+      return null;
+    }
+
+    try {
+      return this.pipelineConfigGenerator.exportPipelineConfig(pipelineConfig, format);
+    } catch (error) {
+      console.error('Failed to export pipeline config:', error);
+      return null;
+    }
   }
 
   /**
@@ -1025,10 +1336,21 @@ export class ConfigParserMain implements UIComponent {
         padding: 1.5rem;
       }
 
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+
+      .section-header h3 {
+        margin: 0;
+        color: var(--text-primary, #212529);
+      }
+
       .pipeline-list {
         display: grid;
         gap: 1rem;
-        margin-top: 1rem;
       }
 
       .pipeline-item {
@@ -1058,6 +1380,18 @@ export class ConfigParserMain implements UIComponent {
         font-size: 0.875rem;
       }
 
+      .pipeline-provider.openai {
+        background: #19c37d;
+      }
+
+      .pipeline-provider.anthropic {
+        background: #d09a3f;
+      }
+
+      .pipeline-provider.google {
+        background: #4285f4;
+      }
+
       .detail-row {
         display: flex;
         margin-bottom: 0.5rem;
@@ -1074,6 +1408,45 @@ export class ConfigParserMain implements UIComponent {
       }
 
       .detail-row .value {
+        color: var(--text-primary, #212529);
+      }
+
+      /* 流水线配置预览 */
+      .pipeline-config-preview {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: var(--bg-primary, #f8f9fa);
+        border-radius: 0.5rem;
+        border: 1px solid var(--border-color, #dee2e6);
+      }
+
+      .pipeline-config-preview h4 {
+        margin: 0 0 1rem 0;
+        color: var(--text-primary, #212529);
+      }
+
+      .config-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem;
+        background: var(--bg-secondary, #ffffff);
+        border-radius: 0.375rem;
+      }
+
+      .info-label {
+        font-weight: 500;
+        color: var(--text-secondary, #6c757d);
+      }
+
+      .info-value {
+        font-weight: 500;
         color: var(--text-primary, #212529);
       }
 
@@ -1108,6 +1481,17 @@ export class ConfigParserMain implements UIComponent {
         color: var(--text-secondary, #6c757d);
       }
 
+      .pipeline-stats {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color, #dee2e6);
+      }
+
+      .pipeline-stats h4 {
+        margin: 0 0 1rem 0;
+        color: var(--text-primary, #212529);
+      }
+
       .errors-section,
       .warnings-section {
         margin-top: 1.5rem;
@@ -1137,6 +1521,61 @@ export class ConfigParserMain implements UIComponent {
       .warning-item {
         color: #856404;
         margin-bottom: 0.5rem;
+      }
+      
+      /* 配置中心UI样式 */
+      .config-center-ui {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .config-center-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-secondary, #ffffff);
+        border-bottom: 1px solid var(--border-color, #dee2e6);
+      }
+      
+      .config-center-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--text-primary, #212529);
+      }
+      
+      .config-center-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        background: var(--bg-primary, #f8f9fa);
+      }
+      
+      .config-center-status.success {
+        background: var(--success-bg, #d1e7dd);
+        color: var(--success-color, #198754);
+      }
+      
+      .config-center-status.error {
+        background: var(--error-bg, #f8d7da);
+        color: var(--error-color, #dc3545);
+      }
+      
+      .status-spinner {
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      .config-center-content {
+        flex: 1;
+        overflow: auto;
       }
     `;
 

@@ -3,6 +3,7 @@ import { ConnectionInfo, DataTransfer } from './interfaces/Connection';
 import { ValidationRule, ValidationResult } from './interfaces/Validation';
 import { Message, MessageResponse, MessageHandler } from './interfaces/Message';
 import { MessageCenter } from './MessageCenter';
+import { TwoPhaseDebugSystem, TwoPhaseDebugConfig } from '../../debug/TwoPhaseDebugSystem';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -140,6 +141,16 @@ export abstract class BaseModule implements MessageHandler {
   protected debugLogs: DebugLogEntry[] = [];
   
   /**
+   * Two-phase debug system
+   */
+  protected twoPhaseDebugSystem: TwoPhaseDebugSystem;
+  
+  /**
+   * Whether to use two-phase debug system
+   */
+  protected useTwoPhaseDebug: boolean = false;
+  
+  /**
    * Pending message requests
    */
   protected pendingRequests: Map<string, {
@@ -164,6 +175,9 @@ export abstract class BaseModule implements MessageHandler {
       consoleOutput: true,
       trackDataFlow: true
     };
+    
+    // Initialize two-phase debug system
+    this.twoPhaseDebugSystem = new TwoPhaseDebugSystem();
   }
   
   /**
@@ -193,6 +207,35 @@ export abstract class BaseModule implements MessageHandler {
   }
   
   /**
+   * Enable two-phase debug system
+   * @param baseDirectory - Base directory for debug logs
+   */
+  public enableTwoPhaseDebug(baseDirectory: string = './debug-logs'): void {
+    this.useTwoPhaseDebug = true;
+    this.twoPhaseDebugSystem = new TwoPhaseDebugSystem(baseDirectory);
+    this.logInfo('Two-phase debug system enabled', { baseDirectory }, 'enableTwoPhaseDebug');
+  }
+  
+  /**
+   * Switch debug system to port mode
+   * @param port - Port number
+   */
+  public switchDebugToPortMode(port: number): void {
+    if (this.useTwoPhaseDebug) {
+      this.twoPhaseDebugSystem.switchToPortMode(port);
+      this.logInfo('Debug system switched to port mode', { port }, 'switchDebugToPortMode');
+    }
+  }
+  
+  /**
+   * Get two-phase debug system
+   * @returns Two-phase debug system instance
+   */
+  public getTwoPhaseDebugSystem(): TwoPhaseDebugSystem {
+    return this.twoPhaseDebugSystem;
+  }
+  
+  /**
    * Logs a debug message
    * @param level - Log level
    * @param message - Log message
@@ -200,6 +243,12 @@ export abstract class BaseModule implements MessageHandler {
    * @param method - Method name where the log was generated
    */
   protected debug(level: DebugLevel, message: string, data?: any, method?: string): void {
+    // Use two-phase debug system if enabled
+    if (this.useTwoPhaseDebug) {
+      this.twoPhaseDebugSystem.log(level, message, data, method);
+      return;
+    }
+    
     // Check if debug is enabled and level is appropriate
     if (!this.debugConfig.enabled) return;
     

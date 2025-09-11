@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "phase": "port",
+  "Providers": [
+    {
+      "name": "lmstudio",
+      "api_base_url": "http://localhost:1234",
+      "models": [
+        "llama-2",
+        "mistral"
+      ]
+    }
+  ],
+  "Router": {
+    "default_model": "llama-2"
+  },
+  "server": {
+    "port": 5506,
+    "host": "0.0.0.0",
+    "debug": true
+  }
+}

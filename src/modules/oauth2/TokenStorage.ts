@@ -33,7 +33,10 @@ export class TokenStorage {
    */
   private getTokenFilePath(email: string): string {
     const sanitizedEmail = this.sanitizeEmail(email);
-    return path.join(this.storagePath, `${TOKEN_FILE_PATTERNS.prefix}${sanitizedEmail}${TOKEN_FILE_PATTERNS.extension}`);
+    return path.join(
+      this.storagePath,
+      `${TOKEN_FILE_PATTERNS.prefix}${sanitizedEmail}${TOKEN_FILE_PATTERNS.extension}`
+    );
   }
 
   /**
@@ -53,12 +56,14 @@ export class TokenStorage {
         ...tokenData,
         email,
         storedAt: Date.now(),
-        version: 1
+        version: 1,
       };
 
       await fs.promises.writeFile(filePath, JSON.stringify(storageData, null, 2));
     } catch (error) {
-      throw new Error(`Failed to save token: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to save token: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -97,7 +102,9 @@ export class TokenStorage {
         await fs.promises.unlink(filePath);
       }
     } catch (error) {
-      throw new Error(`Failed to delete token: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to delete token: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -108,10 +115,17 @@ export class TokenStorage {
     try {
       const files = fs.readdirSync(this.storagePath);
       return files
-        .filter(file => file.startsWith(TOKEN_FILE_PATTERNS.prefix) && file.endsWith(TOKEN_FILE_PATTERNS.extension))
-        .map(file => {
+        .filter(
+          (file) =>
+            file.startsWith(TOKEN_FILE_PATTERNS.prefix) &&
+            file.endsWith(TOKEN_FILE_PATTERNS.extension)
+        )
+        .map((file) => {
           const prefixRemoved = file.substring(TOKEN_FILE_PATTERNS.prefix.length);
-          return prefixRemoved.substring(0, prefixRemoved.length - TOKEN_FILE_PATTERNS.extension.length);
+          return prefixRemoved.substring(
+            0,
+            prefixRemoved.length - TOKEN_FILE_PATTERNS.extension.length
+          );
         });
     } catch (error) {
       return [];
@@ -139,9 +153,10 @@ export class TokenStorage {
   async clearAllTokens(): Promise<void> {
     try {
       const files = fs.readdirSync(this.storagePath);
-      const tokenFiles = files.filter(file => 
-        file.startsWith(TOKEN_FILE_PATTERNS.prefix) && 
-        file.endsWith(TOKEN_FILE_PATTERNS.extension)
+      const tokenFiles = files.filter(
+        (file) =>
+          file.startsWith(TOKEN_FILE_PATTERNS.prefix) &&
+          file.endsWith(TOKEN_FILE_PATTERNS.extension)
       );
 
       for (const file of tokenFiles) {
@@ -149,7 +164,9 @@ export class TokenStorage {
         await fs.promises.unlink(filePath);
       }
     } catch (error) {
-      throw new Error(`Failed to clear tokens: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to clear tokens: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -163,9 +180,10 @@ export class TokenStorage {
   } {
     try {
       const files = fs.readdirSync(this.storagePath);
-      const tokenFiles = files.filter(file => 
-        file.startsWith(TOKEN_FILE_PATTERNS.prefix) && 
-        file.endsWith(TOKEN_FILE_PATTERNS.extension)
+      const tokenFiles = files.filter(
+        (file) =>
+          file.startsWith(TOKEN_FILE_PATTERNS.prefix) &&
+          file.endsWith(TOKEN_FILE_PATTERNS.extension)
       );
 
       let totalSize = 0;
@@ -178,13 +196,13 @@ export class TokenStorage {
       return {
         totalTokens: tokenFiles.length,
         storagePath: this.storagePath,
-        totalSize
+        totalSize,
       };
     } catch (error) {
       return {
         totalTokens: 0,
         storagePath: this.storagePath,
-        totalSize: 0
+        totalSize: 0,
       };
     }
   }

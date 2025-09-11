@@ -22,9 +22,9 @@ describe('BaseModule', () => {
       name: 'Test Module',
       version: '1.0.0',
       description: 'A test module',
-      type: 'test'
+      type: 'test',
     };
-    
+
     testModule = new TestModule(mockModuleInfo);
   });
 
@@ -42,14 +42,14 @@ describe('BaseModule', () => {
   test('should handle configuration', () => {
     const config = { setting1: 'value1', setting2: 42 };
     testModule.configure(config);
-    
+
     const retrievedConfig = testModule.getConfig();
     expect(retrievedConfig).toEqual(config);
   });
 
   test('should throw error if configured after initialization', async () => {
     await testModule.initialize();
-    
+
     expect(() => {
       testModule.configure({ setting: 'value' });
     }).toThrow('Cannot configure module after initialization');
@@ -62,12 +62,12 @@ describe('BaseModule', () => {
       recordStack: false,
       maxLogEntries: 500,
       consoleOutput: false,
-      trackDataFlow: false
+      trackDataFlow: false,
     };
-    
+
     testModule.setDebugConfig(debugConfig);
     const retrievedConfig = testModule.getDebugConfig();
-    
+
     expect(retrievedConfig).toMatchObject(debugConfig);
   });
 
@@ -76,13 +76,13 @@ describe('BaseModule', () => {
       id: 'input-1',
       type: 'input' as const,
       sourceModuleId: 'test-module',
-      targetModuleId: 'module-1'
+      targetModuleId: 'module-1',
     };
-    
+
     testModule.addInputConnection(connection);
     const connections = testModule.getInputConnections();
     expect(connections).toContain(connection);
-    
+
     testModule.removeInputConnection('input-1');
     const connectionsAfterRemove = testModule.getInputConnections();
     expect(connectionsAfterRemove).not.toContain(connection);
@@ -93,13 +93,13 @@ describe('BaseModule', () => {
       id: 'output-1',
       type: 'output' as const,
       sourceModuleId: 'test-module',
-      targetModuleId: 'module-1'
+      targetModuleId: 'module-1',
     };
-    
+
     testModule.addOutputConnection(connection);
     const connections = testModule.getOutputConnections();
     expect(connections).toContain(connection);
-    
+
     testModule.removeOutputConnection('output-1');
     const connectionsAfterRemove = testModule.getOutputConnections();
     expect(connectionsAfterRemove).not.toContain(connection);
@@ -110,20 +110,20 @@ describe('BaseModule', () => {
       id: 'invalid-1',
       type: 'output' as const,
       sourceModuleId: 'test-module',
-      targetModuleId: 'module-1'
+      targetModuleId: 'module-1',
     };
-    
+
     expect(() => {
       testModule.addInputConnection(invalidInputConnection);
     }).toThrow('Invalid connection type for input');
-    
+
     const invalidOutputConnection = {
       id: 'invalid-2',
       type: 'input' as const,
       sourceModuleId: 'test-module',
-      targetModuleId: 'module-1'
+      targetModuleId: 'module-1',
     };
-    
+
     expect(() => {
       testModule.addOutputConnection(invalidOutputConnection);
     }).toThrow('Invalid connection type for output');
@@ -131,32 +131,32 @@ describe('BaseModule', () => {
 
   test('should validate input data', () => {
     testModule.configure({}); // Configure to allow testing
-    
+
     // Add validation rules
     (testModule as any).validationRules = [
       {
         field: 'name',
         type: 'required' as const,
-        message: 'Name is required'
+        message: 'Name is required',
       },
       {
         field: 'age',
         type: 'number' as const,
-        message: 'Age must be a number'
-      }
+        message: 'Age must be a number',
+      },
     ];
-    
+
     const validData = { name: 'John', age: 30 };
     const invalidData = { age: 'thirty' };
     const missingData = { age: 30 };
-    
+
     const validResult = (testModule as any).validateInput(validData);
     expect(validResult.isValid).toBe(true);
-    
+
     const invalidResult = (testModule as any).validateInput(invalidData);
     expect(invalidResult.isValid).toBe(false);
     expect(invalidResult.errors).toContain('Age must be a number');
-    
+
     const missingResult = (testModule as any).validateInput(missingData);
     expect(missingResult.isValid).toBe(false);
     expect(missingResult.errors).toContain('Name is required');
@@ -164,16 +164,16 @@ describe('BaseModule', () => {
 
   test('should handle messages', async () => {
     await testModule.initialize();
-    
+
     const message = {
       id: 'test-message',
       type: 'ping',
       source: 'test-sender',
       target: 'test-module',
       payload: {},
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
+
     const response = await testModule.handleMessage(message);
     expect(response).toBeDefined();
     if (response && 'success' in response) {
@@ -184,24 +184,24 @@ describe('BaseModule', () => {
 
   test('should destroy correctly', async () => {
     await testModule.initialize();
-    
+
     // Add some test data
     testModule.addInputConnection({
       id: 'input-1',
       type: 'input' as const,
       sourceModuleId: 'test-module',
-      targetModuleId: 'module-1'
+      targetModuleId: 'module-1',
     });
-    
+
     testModule.addOutputConnection({
       id: 'output-1',
       type: 'output' as const,
       sourceModuleId: 'test-module',
-      targetModuleId: 'module-1'
+      targetModuleId: 'module-1',
     });
-    
+
     await testModule.destroy();
-    
+
     expect(testModule.getInputConnections()).toHaveLength(0);
     expect(testModule.getOutputConnections()).toHaveLength(0);
     // Debug logs should contain only the destroy message

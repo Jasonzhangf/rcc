@@ -11,7 +11,7 @@ import {
   ConfigValidationResult, 
   ValidationRule,
   ConstraintRule 
-} from './IConfigurationSystem';
+} from '../core/ConfigData';
 
 /**
  * Validation types

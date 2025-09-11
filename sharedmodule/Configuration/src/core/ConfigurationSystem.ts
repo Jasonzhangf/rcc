@@ -7,8 +7,10 @@
 
 import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { 
-  IConfigurationSystem,
-  ConfigData,
+  ConfigData, 
+  ProviderConfig, 
+  VirtualModelConfig, 
+  VirtualModelTarget,
   ConfigSource,
   ConfigSchema,
   ConfigValidationResult,
@@ -16,7 +18,60 @@ import {
   ConfigChangeEvent,
   BackupOptions,
   EncryptionOptions
-} from '../interfaces/IConfigurationSystem';
+} from './ConfigData';
+
+// Define simplified interface for ConfigurationSystem that matches our ConfigData structure
+export interface IConfigurationSystemCore {
+  initialize(config?: Record<string, any>): Promise<void>;
+  loadConfiguration(source: string | ConfigSource): Promise<ConfigData>;
+  loadMultipleConfigurations(
+    sources: (string | ConfigSource)[],
+    mergeStrategy?: 'shallow' | 'deep' | 'replace'
+  ): Promise<ConfigData>;
+  saveConfiguration(
+    config: ConfigData,
+    target?: string,
+    options?: ConfigPersistenceOptions
+  ): Promise<void>;
+  validateConfiguration(
+    config: ConfigData,
+    schema?: ConfigSchema
+  ): Promise<ConfigValidationResult>;
+  getConfiguration(): ConfigData;
+  updateConfiguration(
+    updates: Partial<ConfigData>,
+    validate?: boolean
+  ): Promise<ConfigData>;
+  watchConfiguration(
+    callback: (event: ConfigChangeEvent) => void,
+    sources?: (string | ConfigSource)[]
+  ): void;
+  stopWatching(sources?: (string | ConfigSource)[]): void;
+  createBackup(options?: BackupOptions): Promise<string>;
+  restoreFromBackup(backupPath: string, validate?: boolean): Promise<ConfigData>;
+  getSchema(): ConfigSchema | undefined;
+  setSchema(schema: ConfigSchema): void;
+  encryptConfiguration(
+    config: ConfigData,
+    options: EncryptionOptions
+  ): Promise<ConfigData>;
+  decryptConfiguration(
+    config: ConfigData,
+    options: EncryptionOptions
+  ): Promise<ConfigData>;
+  getConfigurationHistory(limit?: number): Promise<ConfigData[]>;
+  revertToVersion(version: string, validate?: boolean): Promise<ConfigData>;
+  exportConfiguration(
+    format: 'json' | 'yaml' | 'toml' | 'env',
+    options?: Record<string, any>
+  ): Promise<string>;
+  importConfiguration(
+    data: string,
+    format: 'json' | 'yaml' | 'toml' | 'env',
+    validate?: boolean
+  ): Promise<ConfigData>;
+  destroy(): Promise<void>;
+}
 import { IConfigLoaderModule } from '../interfaces/IConfigLoaderModule';
 // import { IConfigUIModule } from '../interfaces/IConfigUIModule'; // Commented out - unused
 import { IConfigPersistenceModule } from '../interfaces/IConfigPersistenceModule';
@@ -24,6 +79,10 @@ import { IConfigValidatorModule } from '../interfaces/IConfigValidatorModule';
 import { 
   CONFIGURATION_SYSTEM_CONSTANTS
 } from '../constants/ConfigurationConstants';
+
+// 导入新的简化配置模块
+import { ConfigurationModule } from './ConfigurationModule';
+import { PipelineTable } from './PipelineTable';
 // Define error classes locally to avoid circular imports
 class ConfigurationError extends Error {
   constructor(
@@ -73,7 +132,7 @@ class LoadError extends ConfigurationError {
 /**
  * Configuration System module that orchestrates all configuration operations
  */
-export class ConfigurationSystem extends BaseModule implements IConfigurationSystem {
+export class ConfigurationSystem extends BaseModule implements IConfigurationSystemCore {
   private static instanceCounter = 0;
   private currentConfig: ConfigData | null = null;
   private currentSchema: ConfigSchema | undefined;
@@ -81,6 +140,8 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
   private loaderModule: IConfigLoaderModule | null = null;
   private persistenceModule: IConfigPersistenceModule | null = null;
   private validatorModule: IConfigValidatorModule | null = null;
+  private configurationModule: ConfigurationModule | null = null;
+  private pipelineTable: PipelineTable | null = null;
 
   constructor(info?: Partial<ModuleInfo>) {
     ConfigurationSystem.instanceCounter++;
@@ -129,6 +190,14 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
         this.config = config;
       }
 
+      // Initialize the new simplified configuration module
+      this.configurationModule = new ConfigurationModule({
+        configPath: config?.['configPath'] || './config.json',
+        autoLoad: config?.['autoLoad'] || false
+      });
+      
+      await this.configurationModule.initialize();
+
       // Initialize sub-modules if provided in config
       if (config?.['modules']) {
         await this.initializeSubModules(config['modules']);
@@ -163,54 +232,31 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
         this.debugModule.log('Loading configuration', 2, { source });
       }
 
-      if (!this.loaderModule) {
+      if (!this.configurationModule) {
         throw new LoadError(
-          'Loader module not available',
+          'Configuration module not available',
           typeof source === 'string' ? source : source.type
         );
       }
 
-      // Convert string source to ConfigSource object
-      const configSource: ConfigSource = typeof source === 'string' 
-        ? { type: 'file', path: source }
-        : source;
+      // Convert string source to path string
+      const configPath: string = typeof source === 'string' 
+        ? source
+        : (source as any).path || './config.json';
 
-      // Load configuration using loader module
-      const loadResult = await this.loaderModule.loadFromSource(configSource);
+      // Load configuration using new configuration module
+      const configData = await this.configurationModule.loadConfiguration(configPath);
       
-      if (!loadResult.data) {
-        throw new LoadError(
-          'Failed to load configuration data',
-          typeof source === 'string' ? source : source.type
-        );
-      }
-
-      // Validate configuration if validator is available
-      if (this.validatorModule && this.currentSchema) {
-        const validationResult = await this.validatorModule.validate(
-          loadResult.data,
-          this.currentSchema
-        );
-
-        if (!validationResult.result.isValid) {
-          if (this.debugModule) {
-            this.debugModule.log('Configuration validation failed', 1, { 
-              errors: validationResult.result.errors 
-            });
-          }
-        }
-      }
-
       // Update current configuration
-      this.currentConfig = loadResult.data;
+      this.currentConfig = configData;
 
       // Emit configuration loaded event
       this.broadcastMessage(
         CONFIGURATION_SYSTEM_CONSTANTS.MESSAGE_TYPES['CONFIG_LOADED'],
         {
           config: this.currentConfig,
-          source: configSource,
-          metadata: loadResult.metadata
+          source: typeof source === 'string' ? { type: 'file', path: source } : source,
+          metadata: { timestamp: new Date().toISOString() }
         }
       );
 
@@ -232,7 +278,7 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
       
       throw new LoadError(
         'Configuration loading failed',
-        typeof source === 'string' ? source : source.type || 'unknown'
+        typeof source === 'string' ? source : (source as any).type || 'unknown'
       );
     }
   }
@@ -324,9 +370,9 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
         this.debugModule.log('Saving configuration', 2, { target, options });
       }
 
-      if (!this.persistenceModule) {
+      if (!this.configurationModule) {
         throw new PersistenceError(
-          'Persistence module not available',
+          'Configuration module not available',
           'save',
           target
         );
@@ -335,37 +381,19 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
       // Use default target if not specified
       const saveTarget = target || CONFIGURATION_SYSTEM_CONSTANTS.DEFAULT_CONFIG_FILE;
 
-      // Validate configuration before saving if validator is available
-      if (this.validatorModule && (!options || options.validate !== false)) {
-        const validationResult = await this.validatorModule.validate(
-          config,
-          this.currentSchema
-        );
-
-        if (!validationResult.result.isValid) {
-          throw new ValidationError(
-            'Configuration validation failed before save',
-            'root',
-            'valid configuration',
-            config
-          );
-        }
-      }
-
-      // Save configuration using persistence module
-      const saveResult = await this.persistenceModule.save(
-        config,
-        saveTarget,
-        options
-      );
-
-      if (!saveResult.success) {
-        throw new PersistenceError(
-          'Save operation failed',
-          'save',
-          saveTarget
+      // Validate configuration before saving using new configuration module
+      const validationResult = await this.configurationModule.validateConfiguration(config);
+      if (!validationResult.valid) {
+        throw new ValidationError(
+          'Configuration validation failed before save',
+          'root',
+          'valid configuration',
+          config
         );
       }
+
+      // Save configuration using new configuration module
+      await this.configurationModule.saveConfiguration(config, saveTarget);
 
       // Update current configuration if this was a save of current config
       if (this.currentConfig === config || !this.currentConfig) {
@@ -379,14 +407,13 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
           config,
           target: saveTarget,
           options,
-          metadata: saveResult.metadata
+          metadata: { timestamp: new Date().toISOString() }
         }
       );
 
       if (this.debugModule) {
         this.debugModule.log('Configuration saved successfully', 2, { 
-          target: saveTarget,
-          metadata: saveResult.metadata
+          target: saveTarget
         });
       }
     } catch (error) {
@@ -525,21 +552,13 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
       // Create updated configuration by merging
       // Ensure updatedAt is always newer than the current timestamp
       const currentTime = Date.now();
-      const previousTime = new Date(this.currentConfig.metadata.updatedAt).getTime();
+      const previousTime = new Date(this.currentConfig.updatedAt).getTime();
       const newTimestamp = currentTime > previousTime ? currentTime : previousTime + 1;
       
       const updatedConfig: ConfigData = {
         ...this.currentConfig,
         ...updates,
-        settings: {
-          ...this.currentConfig.settings,
-          ...updates.settings
-        },
-        metadata: {
-          ...this.currentConfig.metadata,
-          ...updates.metadata,
-          updatedAt: new Date(newTimestamp).toISOString()
-        }
+        updatedAt: new Date(newTimestamp).toISOString()
       };
 
       // Validate updated configuration if requested
@@ -968,6 +987,64 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
   }
 
   /**
+   * Generate pipeline table from current configuration
+   */
+  public async generatePipelineTable(mappings?: any): Promise<PipelineTable> {
+    try {
+      if (this.debugModule) {
+        this.debugModule.log('Generating pipeline table', 2, {});
+      }
+
+      if (!this.configurationModule) {
+        throw new ConfigurationError(
+          'Configuration module not available',
+          'PIPELINE_GENERATION_FAILED'
+        );
+      }
+
+      // Generate pipeline table using new configuration module
+      const pipelineTable = await this.configurationModule.generatePipelineTable();
+      
+      // Store pipeline table
+      this.pipelineTable = pipelineTable;
+
+      // Emit pipeline table generated event
+      this.broadcastMessage(
+        'pipeline-table-generated',
+        {
+          pipelineTable,
+          timestamp: new Date().toISOString()
+        }
+      );
+
+      if (this.debugModule) {
+        this.debugModule.log('Pipeline table generated successfully', 2, { 
+          entryCount: pipelineTable.size
+        });
+      }
+
+      return pipelineTable;
+    } catch (error) {
+      if (this.debugModule) {
+        this.debugModule.log('Failed to generate pipeline table', 0, { error });
+      }
+      
+      throw new ConfigurationError(
+        'Pipeline table generation failed',
+        'PIPELINE_GENERATION_FAILED',
+        { originalError: error }
+      );
+    }
+  }
+
+  /**
+   * Get current pipeline table
+   */
+  public getPipelineTable(): PipelineTable | null {
+    return this.pipelineTable;
+  }
+
+  /**
    * Get configuration history/versions
    */
   public async getConfigurationHistory(limit?: number): Promise<ConfigData[]> {
@@ -1246,10 +1323,17 @@ export class ConfigurationSystem extends BaseModule implements IConfigurationSys
         await this.persistenceModule.close();
       }
 
+      // Clean up new configuration module
+      if (this.configurationModule) {
+        await this.configurationModule.destroy();
+      }
+
       // Clear current state
       this.currentConfig = null;
       this.currentSchema = undefined;
       this.watchers.clear();
+      this.configurationModule = null;
+      this.pipelineTable = null;
 
       // Call parent cleanup
       await super.destroy();

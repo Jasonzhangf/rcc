@@ -311,20 +311,22 @@ export const TypeGuards = {
   /**
    * Check if value is a valid configuration data object
    */
-  isConfigData(value: any): value is import('../interfaces/IConfigurationSystem').ConfigData {
+  isConfigData(value: any): value is import('../core/ConfigData').ConfigData {
     return (
       typeof value === 'object' &&
       value !== null &&
-      typeof value.metadata === 'object' &&
-      typeof value.settings === 'object' &&
-      typeof value.version === 'string'
+      typeof value.version === 'string' &&
+      typeof value.providers === 'object' &&
+      typeof value.virtualModels === 'object' &&
+      typeof value.createdAt === 'string' &&
+      typeof value.updatedAt === 'string'
     );
   },
 
   /**
    * Check if value is a valid configuration schema
    */
-  isConfigSchema(value: any): value is import('../interfaces/IConfigurationSystem').ConfigSchema {
+  isConfigSchema(value: any): value is import('../core/ConfigData').ConfigSchema {
     return (
       typeof value === 'object' &&
       value !== null &&
@@ -337,7 +339,7 @@ export const TypeGuards = {
   /**
    * Check if value is a valid configuration source
    */
-  isConfigSource(value: any): value is import('../interfaces/IConfigurationSystem').ConfigSource {
+  isConfigSource(value: any): value is import('../core/ConfigData').ConfigSource {
     return (
       typeof value === 'object' &&
       value !== null &&
@@ -349,7 +351,7 @@ export const TypeGuards = {
   /**
    * Check if value is a validation result
    */
-  isValidationResult(value: any): value is import('../interfaces/IConfigurationSystem').ConfigValidationResult {
+  isValidationResult(value: any): value is import('../core/ConfigData').ConfigValidationResult {
     return (
       typeof value === 'object' &&
       value !== null &&

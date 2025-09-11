@@ -4,7 +4,7 @@
  * Defines the contract for validating configuration data integrity,
  * including schema validation, business rules, dependencies, and security checks.
  */
-import { ConfigData, ConfigSchema, ConfigValidationResult, ValidationRule, ConstraintRule } from './IConfigurationSystem';
+import { ConfigData, ConfigSchema, ConfigValidationResult, ValidationRule, ConstraintRule } from '../core/ConfigData';
 /**
  * Validation types
  */

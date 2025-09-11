@@ -8,22 +8,36 @@
 
 // Export core system
 export { ConfigurationSystem } from './core/ConfigurationSystem';
+export { EnhancedConfigurationSystem } from './core/EnhancedConfigurationSystem';
 // Also import for default export
 import { ConfigurationSystem } from './core/ConfigurationSystem';
+import { EnhancedConfigurationSystem } from './core/EnhancedConfigurationSystem';
+
+// Export integration module
+import { ConfigurationToPipelineModule } from './integration/ConfigurationToPipelineModule';
+export type {
+  VirtualModelMapping,
+  VirtualModelPipelineConfig,
+  PipelineTableConfig,
+  PipelineAssemblyResult
+} from './integration/ConfigurationToPipelineModule';
+
+// Re-export the class as a type and value
+export { ConfigurationToPipelineModule };
 
 // Export core interfaces
-export * from './interfaces/IConfigurationSystem';
+// export * from './interfaces/IConfigurationSystem'; // Removed - using simplified structures from core/ConfigData
 export * from './interfaces/IConfigLoaderModule';
-export * from './interfaces/IConfigUIModule';
+// export * from './interfaces/IConfigUIModule'; // Removed - not needed for minimal configuration
 export * from './interfaces/IConfigPersistenceModule';
 export * from './interfaces/IConfigValidatorModule';
 
 // Export constants only (types are already exported from interfaces)
 export * from './constants/ConfigurationConstants';
 
-// Export Web UI module with namespace to avoid conflicts
-import * as WebUI from './webui';
-export { WebUI };
+// Web UI module removed for minimal configuration
+// import * as WebUI from './webui';
+// export { WebUI };
 
 // Export individual module implementations (when available)
 // These would be actual implementations of the interface modules
@@ -72,28 +86,88 @@ export const MODULE_CAPABILITIES = [
 ];
 
 /**
+ * Configuration system creation options
+ */
+export interface ConfigurationSystemOptions {
+  /** System identifier */
+  id?: string;
+  /** System name */
+  name?: string;
+  /** Initial configuration data or source */
+  initialConfig?: any;
+  /** Module configurations */
+  modules?: Record<string, any>;
+  /** Whether to enable pipeline integration */
+  enablePipelineIntegration?: boolean;
+  /** Pipeline integration configuration */
+  pipelineIntegration?: {
+    enabled?: boolean;
+    strategy?: 'static' | 'dynamic' | 'hybrid';
+    cache?: {
+      enabled?: boolean;
+      ttl?: number;
+      maxSize?: number;
+    };
+    validation?: {
+      strict?: boolean;
+      failOnError?: boolean;
+      warnOnUnknown?: boolean;
+    };
+  };
+}
+
+/**
  * Quick start factory function for creating a configuration system
  * 
  * @param options Configuration system options
  * @returns Initialized configuration system instance
  */
-export async function createConfigurationSystem(options?: {
-  id?: string;
-  name?: string;
-  initialConfig?: any;
-  modules?: Record<string, any>;
-}): Promise<ConfigurationSystem> {
-  const system = new ConfigurationSystem({
-    id: options?.id || `configuration-system-${Date.now()}`,
-    name: options?.name || 'ConfigurationSystem',
-    version: MODULE_VERSION,
-    description: 'Configuration management system',
-    type: 'configuration-system'
-  });
+export async function createConfigurationSystem(options?: ConfigurationSystemOptions): Promise<ConfigurationSystem> {
+  const useEnhanced = options?.enablePipelineIntegration || options?.pipelineIntegration?.enabled;
+  
+  const system = useEnhanced 
+    ? new EnhancedConfigurationSystem(
+        undefined, // Use default PipelineAssembler
+        undefined, // Use default VirtualModelRulesModule
+        options?.pipelineIntegration as any
+      )
+    : new ConfigurationSystem({
+        id: options?.id || `configuration-system-${Date.now()}`,
+        name: options?.name || 'ConfigurationSystem',
+        version: MODULE_VERSION,
+        description: 'Configuration management system',
+        type: 'configuration-system'
+      });
 
   await system.initialize({
     initialConfig: options?.initialConfig,
-    modules: options?.modules
+    modules: options?.modules,
+    pipelineIntegration: options?.pipelineIntegration
+  });
+
+  return system;
+}
+
+/**
+ * Factory function for creating enhanced configuration system with pipeline integration
+ * 
+ * @param options Enhanced configuration system options
+ * @returns Initialized enhanced configuration system instance
+ */
+export async function createEnhancedConfigurationSystem(options?: Omit<ConfigurationSystemOptions, 'enablePipelineIntegration'>): Promise<EnhancedConfigurationSystem> {
+  const system = new EnhancedConfigurationSystem(
+    undefined, // Use default PipelineAssembler
+    undefined, // Use default VirtualModelRulesModule
+    options?.pipelineIntegration as any
+  );
+
+  await system.initialize({
+    initialConfig: options?.initialConfig,
+    modules: options?.modules,
+    pipelineIntegration: {
+      enabled: true,
+      ...options?.pipelineIntegration
+    }
   });
 
   return system;
@@ -110,33 +184,31 @@ export function isValidConfigurationStructure(config: any): boolean {
     return false;
   }
 
-  // Check for required top-level properties
-  const requiredProps = ['metadata', 'settings', 'version'];
+  // Check for required top-level properties for simplified config
+  const requiredProps = ['version', 'providers', 'virtualModels', 'createdAt', 'updatedAt'];
   for (const prop of requiredProps) {
     if (!(prop in config)) {
       return false;
     }
   }
 
-  // Check metadata structure
-  if (!config.metadata || typeof config.metadata !== 'object') {
-    return false;
-  }
-
-  const requiredMetadataProps = ['name', 'createdAt', 'updatedAt'];
-  for (const prop of requiredMetadataProps) {
-    if (!(prop in config.metadata)) {
-      return false;
-    }
-  }
-
-  // Check settings structure
-  if (!config.settings || typeof config.settings !== 'object') {
-    return false;
-  }
-
   // Check version
   if (typeof config.version !== 'string') {
+    return false;
+  }
+
+  // Check providers structure
+  if (!config.providers || typeof config.providers !== 'object') {
+    return false;
+  }
+
+  // Check virtualModels structure
+  if (!config.virtualModels || typeof config.virtualModels !== 'object') {
+    return false;
+  }
+
+  // Check timestamps
+  if (typeof config.createdAt !== 'string' || typeof config.updatedAt !== 'string') {
     return false;
   }
 
@@ -153,26 +225,15 @@ export function isValidConfigurationStructure(config: any): boolean {
 export function createConfigurationTemplate(
   name: string,
   description?: string
-): import('./interfaces/IConfigurationSystem').ConfigData {
+): import('./core/ConfigData').ConfigData {
   const now = new Date().toISOString();
   
   return {
-    metadata: {
-      name,
-      description: description || `Configuration for ${name}`,
-      createdAt: now,
-      updatedAt: now,
-      author: 'RCC Configuration Module',
-      environment: 'development'
-    },
-    settings: {
-      general: {},
-      application: {},
-      database: {},
-      security: {},
-      performance: {}
-    },
-    version: '1.0.0'
+    version: '1.0.0',
+    providers: {},
+    virtualModels: {},
+    createdAt: now,
+    updatedAt: now
   };
 }
 
@@ -185,10 +246,10 @@ export function createConfigurationTemplate(
  * @returns Merged configuration object
  */
 export function mergeConfigurations(
-  target: import('./interfaces/IConfigurationSystem').ConfigData,
-  source: import('./interfaces/IConfigurationSystem').ConfigData,
+  target: import('./core/ConfigData').ConfigData,
+  source: import('./core/ConfigData').ConfigData,
   strategy: 'shallow' | 'deep' | 'replace' = 'deep'
-): import('./interfaces/IConfigurationSystem').ConfigData {
+): import('./core/ConfigData').ConfigData {
   if (strategy === 'replace') {
     return { ...source };
   }
@@ -197,8 +258,7 @@ export function mergeConfigurations(
     return {
       ...target,
       ...source,
-      metadata: { ...target.metadata, ...source.metadata, updatedAt: new Date().toISOString() },
-      settings: { ...target.settings, ...source.settings }
+      updatedAt: new Date().toISOString()
     };
   }
 
@@ -227,7 +287,7 @@ export function mergeConfigurations(
   }
 
   const merged = deepMerge(target, source);
-  merged.metadata.updatedAt = new Date().toISOString();
+  merged.updatedAt = new Date().toISOString();
   
   return merged;
 }
@@ -317,7 +377,10 @@ export function setConfigurationValue(
  */
 export default {
   ConfigurationSystem,
+  EnhancedConfigurationSystem,
+  ConfigurationToPipelineModule,
   createConfigurationSystem,
+  createEnhancedConfigurationSystem,
   isValidConfigurationStructure,
   createConfigurationTemplate,
   mergeConfigurations,

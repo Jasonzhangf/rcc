@@ -10,8 +10,7 @@ import {
   ConfigPersistenceOptions, 
   BackupOptions, 
   EncryptionOptions
-  // VersioningOptions // Commented out - unused
-} from './IConfigurationSystem';
+} from '../core/ConfigData';
 
 /**
  * Storage backend types

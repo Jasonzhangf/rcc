@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置模块WebUI测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #config-ui-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #000;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>配置模块WebUI测试</h1>
+        
+        <div class="test-section">
+            <h2>测试控制</h2>
+            <button onclick="initializeUI()">初始化WebUI</button>
+            <button onclick="destroyUI()">销毁WebUI</button>
+            <button onclick="loadTestConfig()">加载测试配置</button>
+            <button onclick="clearLog()">清空日志</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>操作日志</h2>
+            <div id="log" class="log"></div>
+        </div>
+        
+        <div id="config-ui-container">
+            <p style="text-align: center; color: #666;">WebUI将在此处初始化</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeSimpleConfigurationUI } from './webui-simple/index.js';
+        
+        let configUI = null;
+        
+        // 日志函数
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // 清空日志
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // 初始化WebUI
+        async function initializeUI() {
+            try {
+                log('正在初始化WebUI...');
+                configUI = await initializeSimpleConfigurationUI({
+                    containerId: 'config-ui-container',
+                    configPath: './test-config.json',
+                    autoLoad: false
+                });
+                log('✓ WebUI初始化成功');
+            } catch (error) {
+                log(`❌ WebUI初始化失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 销毁WebUI
+        async function destroyUI() {
+            try {
+                if (configUI) {
+                    log('正在销毁WebUI...');
+                    await configUI.destroy();
+                    configUI = null;
+                    document.getElementById('config-ui-container').innerHTML = '<p style="text-align: center; color: #666;">WebUI已销毁</p>';
+                    log('✓ WebUI销毁成功');
+                } else {
+                    log('⚠ WebUI未初始化');
+                }
+            } catch (error) {
+                log(`❌ WebUI销毁失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 加载测试配置
+        async function loadTestConfig() {
+            try {
+                if (!configUI) {
+                    log('⚠ 请先初始化WebUI');
+                    return;
+                }
+                
+                log('正在创建测试配置...');
+                
+                // 获取配置模块
+                const configModule = configUI['configurationModule']; // 私有属性在测试中直接访问
+                
+                // 创建测试配置
+                const testConfig = configModule.createEmptyConfig();
+                testConfig.providers = {
+                    'openai-provider': {
+                        id: 'openai-provider',
+                        name: 'OpenAI',
+                        type: 'openai',
+                        models: {
+                            'gpt-4': {
+                                id: 'gpt-4',
+                                name: 'GPT-4'
+                            },
+                            'gpt-3.5-turbo': {
+                                id: 'gpt-3.5-turbo',
+                                name: 'GPT-3.5 Turbo'
+                            }
+                        },
+                        auth: {
+                            type: 'api-key',
+                            keys: ['sk-test-key-123']
+                        }
+                    }
+                };
+                
+                testConfig.virtualModels = {
+                    'default': {
+                        id: 'default',
+                        targetProvider: 'openai-provider',
+                        targetModel: 'gpt-4',
+                        enabled: true,
+                        priority: 1
+                    },
+                    'longcontext': {
+                        id: 'longcontext',
+                        targetProvider: 'openai-provider',
+                        targetModel: 'gpt-3.5-turbo',
+                        enabled: true,
+                        priority: 2
+                    },
+                    'thinking': {
+                        id: 'thinking',
+                        targetProvider: 'openai-provider',
+                        targetModel: 'gpt-4',
+                        enabled: false,
+                        priority: 3
+                    }
+                };
+                
+                // 设置当前配置并更新UI
+                configUI['currentConfig'] = testConfig; // 私有属性在测试中直接设置
+                configUI['updateConfigInfo']();
+                configUI['updateProvidersList']();
+                configUI['updateVirtualModelsList']();
+                configUI['enableConfigActions']();
+                
+                log('✓ 测试配置加载成功');
+            } catch (error) {
+                log(`❌ 测试配置加载失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        log('WebUI测试页面已加载');
+    </script>
+</body>
+</html>

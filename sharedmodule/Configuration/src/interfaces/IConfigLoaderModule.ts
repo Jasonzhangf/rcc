@@ -5,7 +5,11 @@
  * including files, environment variables, remote APIs, and databases.
  */
 
-import { ConfigData, ConfigSource, ConfigValidationResult } from './IConfigurationSystem';
+import { 
+  ConfigData, 
+  ConfigSource, 
+  ConfigValidationResult 
+} from '../core/ConfigData';
 
 /**
  * Configuration loading options

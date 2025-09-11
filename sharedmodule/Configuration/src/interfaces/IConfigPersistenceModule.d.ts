@@ -4,7 +4,7 @@
  * Defines the contract for persisting configuration data to various storage backends
  * including file systems, databases, cloud storage, and memory stores.
  */
-import { ConfigData, ConfigPersistenceOptions, BackupOptions, EncryptionOptions } from './IConfigurationSystem';
+import { ConfigData, ConfigPersistenceOptions, BackupOptions, EncryptionOptions } from '../core/ConfigData';
 /**
  * Storage backend types
  */

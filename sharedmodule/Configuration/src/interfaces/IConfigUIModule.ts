@@ -5,7 +5,7 @@
  * for configuration management including editors, viewers, and wizards.
  */
 
-import { ConfigData, ConfigSchema, ConfigValidationResult } from './IConfigurationSystem';
+import { ConfigData, ConfigSchema, ConfigValidationResult } from '../core/ConfigData';
 
 /**
  * UI component types

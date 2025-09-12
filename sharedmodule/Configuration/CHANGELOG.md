@@ -8,12 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project setup and architecture
-- Core configuration system implementation
-- Comprehensive interface definitions
-- Type definitions and constants
-- Basic test coverage
-- Build and packaging configuration
+- N/A
 
 ### Changed
 - N/A
@@ -29,6 +24,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - N/A
+
+## [0.2.0] - 2025-09-12
+
+### Added
+- Enhanced ConfigParser with direct file reading capabilities
+- Preprocessing features including environment variable substitution and template processing
+- Translation framework support
+- New `parseConfigFromFile` method for direct file parsing
+- Comprehensive preprocessing options interface
+- Backward compatibility maintained for all existing APIs
+
+### Technical Features
+- Direct file reading from JSON files
+- Environment variable substitution using `${ENV_VAR}` syntax
+- Template processing with `{{variable}}` interpolation
+- Custom processor support for extensible processing pipeline
+- Non-blocking async/await patterns for performance
+- Comprehensive error handling for file operations
 
 ## [0.1.0] - 2025-01-XX
 

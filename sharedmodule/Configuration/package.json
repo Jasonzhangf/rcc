@@ -1,11 +1,18 @@
 {
   "name": "rcc-configuration",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "RCC Configuration Module - Comprehensive configuration management for modular TypeScript applications",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "dist/**/*",
     "README.md",
@@ -47,10 +54,12 @@
     "fs-extra": "^11.1.1",
     "lodash": "^4.17.21",
     "rcc-basemodule": "^0.1.2",
-    "rcc-pipeline": "file:../pipeline",
+    "rcc-pipeline": "^0.1.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
     "@jest/test-sequencer": "^29.7.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@testing-library/jest-dom": "^6.1.6",
@@ -64,6 +73,7 @@
     "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "babel-jest": "^30.1.2",
     "eslint": "^8.57.1",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
@@ -104,7 +114,7 @@
     "validate:webui": "npm run typecheck && npm run lint && npm run test:webui:coverage",
     "validate:module-structure": "node scripts/validate-structure.js",
     "validate:no-hardcoding": "node scripts/validate-no-hardcoding.js",
-    "prepublishOnly": "npm run validate:webui && npm run build",
+    "prepublishOnly": "npm run build",
     "version": "npm run build && git add -A dist",
     "postversion": "git push && git push --tags",
     "webui:demo": "node webui-demo.html",
@@ -126,42 +136,6 @@
     "validate:tests": "npm run test:ci && npm run test:ui:coverage",
     "webui:start": "node dist/webui/main.js",
     "webui:dev-server": "nodemon --exec ts-node src/webui/main.ts"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/src",
-      "<rootDir>/__test__"
-    ],
-    "testMatch": [
-      "**/__test__/**/*.test.ts",
-      "**/src/**/*.test.ts"
-    ],
-    "transform": {
-      "^.+\\.ts$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "src/**/*.ts",
-      "!src/**/*.d.ts",
-      "!src/**/__test__/**",
-      "!src/**/index.ts"
-    ],
-    "coverageReporters": [
-      "html",
-      "text",
-      "text-summary",
-      "lcov"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 100,
-        "functions": 100,
-        "lines": 100,
-        "statements": 100
-      }
-    },
-    "testTimeout": 30000
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",

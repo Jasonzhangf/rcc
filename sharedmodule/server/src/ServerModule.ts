@@ -16,10 +16,16 @@ import {
   ConnectionInfo, 
   MiddlewareConfig,
   PipelineIntegrationConfig,
+  PipelineRequestContext,
+  PipelineResponseContext,
+  PipelineExecutionResult,
+  PipelineExecutionStatus
   } from './types/ServerTypes';
 
 import { UnderConstruction } from 'rcc-underconstruction';
 import { VirtualModelRulesModule } from 'rcc-virtual-model-rules';
+import { ConfigurationSystem, createConfigurationSystem } from 'rcc-configuration';
+import { PipelineScheduler, IPipelineScheduler } from 'rcc-pipeline';
 
 export class ServerModule extends BaseModule implements IServerModule {
   private httpServer: HttpServerComponent;
@@ -30,6 +36,12 @@ export class ServerModule extends BaseModule implements IServerModule {
   private isInitialized: boolean = false;
   private isRunning: boolean = false;
   private messageHandlers: Map<string, (message: any) => Promise<void>> = new Map();
+  
+  // Configuration System Integration
+  private configurationSystem: ConfigurationSystem | null = null;
+  
+  // Pipeline Scheduler Integration
+  private pipelineScheduler: IPipelineScheduler | null = null;
   
   // Virtual Model Rules Integration
   private virtualModelRulesModule: VirtualModelRulesModule | null = null;
@@ -49,8 +61,8 @@ export class ServerModule extends BaseModule implements IServerModule {
       version: '1.0.0',
       description: 'HTTP server with virtual model routing and rule evaluation for RCC framework',
       type: 'server',
-      capabilities: ['http-server', 'virtual-model-routing', 'websocket', 'underconstruction-integration'] as string[],
-      dependencies: ['rcc-basemodule', 'rcc-underconstruction'],
+      capabilities: ['http-server', 'virtual-model-routing', 'websocket', 'configuration-integration', 'pipeline-integration'] as string[],
+      dependencies: ['rcc-basemodule', 'rcc-configuration', 'rcc-pipeline'],
       config: {},
       metadata: {
         author: 'RCC Development Team',
@@ -88,6 +100,12 @@ export class ServerModule extends BaseModule implements IServerModule {
     try {
       // Call parent initialize first
       await super.initialize();
+      
+      // Initialize Configuration System
+      await this.initializeConfigurationSystem();
+      
+      // Initialize Pipeline Scheduler
+      await this.initializePipelineScheduler();
       
       // Validate configuration
       if (this.config) {
@@ -570,6 +588,49 @@ export class ServerModule extends BaseModule implements IServerModule {
   }
 
   /**
+   * Initialize Configuration System
+   */
+  private async initializeConfigurationSystem(): Promise<void> {
+    this.log('Initializing Configuration System');
+    
+    try {
+      // Initialize Configuration System with default options
+      this.configurationSystem = await createConfigurationSystem({
+        id: 'server-configuration-system',
+        name: 'Server Configuration System',
+        enablePipelineIntegration: true
+      });
+      
+      this.logInfo('Configuration System initialized successfully');
+      
+    } catch (error) {
+      this.error('Failed to initialize Configuration System');
+      // Don't throw error - allow server to start without configuration system
+      this.warn('Configuration System initialization failed, continuing without it');
+    }
+  }
+  
+  /**
+   * Initialize Pipeline Scheduler
+   */
+  private async initializePipelineScheduler(): Promise<void> {
+    this.log('Initializing Pipeline Scheduler');
+    
+    try {
+      // Initialize Pipeline Scheduler
+      this.pipelineScheduler = new PipelineScheduler();
+      await this.pipelineScheduler.initialize();
+      
+      this.logInfo('Pipeline Scheduler initialized successfully');
+      
+    } catch (error) {
+      this.error('Failed to initialize Pipeline Scheduler');
+      // Don't throw error - allow server to start without pipeline scheduler
+      this.warn('Pipeline Scheduler initialization failed, continuing without it');
+    }
+  }
+  
+  /**
    * Initialize Virtual Model Rules Integration
    */
   private async initializeVirtualModelRulesIntegration(): Promise<void> {
@@ -579,18 +640,6 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Initialize Virtual Model Rules Module
       this.virtualModelRulesModule = new VirtualModelRulesModule();
       await this.virtualModelRulesModule.initialize();
-      
-      // Mark pipeline integration as under construction
-      if (this.underConstruction) {
-        this.underConstruction.callUnderConstructionFeature('pipeline-integration', {
-          caller: 'ServerModule.initializeVirtualModelRulesIntegration',
-          parameters: { 
-            integrationType: 'virtual-model-rules',
-            status: 'under-construction'
-          },
-          purpose: '虚拟模型规则集成替代pipeline集成'
-        });
-      }
       
       this.logInfo('Virtual Model Rules Integration initialized successfully');
       
@@ -604,8 +653,29 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * Get Virtual Model Configuration
    */
-  private _getVirtualModelConfig(virtualModelId: string): any {
-    // Mark as under construction feature
+  private async _getVirtualModelConfig(virtualModelId: string): Promise<any> {
+    // Check if pipeline scheduler is available
+    if (this.pipelineScheduler) {
+      try {
+        // Get pipeline configuration for the virtual model
+        const pipelineConfig = await this.pipelineScheduler.getPipelineConfig(virtualModelId);
+        return {
+          id: virtualModelId,
+          name: virtualModelId,
+          provider: pipelineConfig?.provider || 'default',
+          endpoint: pipelineConfig?.endpoint || '',
+          model: pipelineConfig?.model || virtualModelId,
+          capabilities: pipelineConfig?.capabilities || [],
+          enabled: pipelineConfig?.enabled !== undefined ? pipelineConfig.enabled : true,
+          priority: pipelineConfig?.priority || 'medium',
+          config: pipelineConfig
+        };
+      } catch (error) {
+        this.warn(`Failed to get pipeline config for virtual model ${virtualModelId}, using default`);
+      }
+    }
+    
+    // Mark as under construction feature if pipeline scheduler is not available
     if (this.underConstruction) {
       this.underConstruction.callUnderConstructionFeature('get-virtual-model-config', {
         caller: 'ServerModule.getVirtualModelConfig',
@@ -614,7 +684,7 @@ export class ServerModule extends BaseModule implements IServerModule {
       });
     }
     
-    // Placeholder implementation
+    // Fallback implementation
     return {
       id: virtualModelId,
       name: virtualModelId,
@@ -633,88 +703,129 @@ export class ServerModule extends BaseModule implements IServerModule {
   public async processVirtualModelRequest(request: ClientRequest, model: VirtualModelConfig): Promise<ClientResponse> {
     this.log('Processing request with virtual model');
     
-    // Mark pipeline processing as under construction
-    if (this.underConstruction) {
-      this.underConstruction.callUnderConstructionFeature('virtual-model-request-processing', {
-        caller: 'ServerModule.processVirtualModelRequest',
-        parameters: { 
-          requestId: request.id, 
+    // Check if pipeline scheduler is available
+    if (this.pipelineScheduler) {
+      try {
+        // Process request through pipeline scheduler
+        const executionContext = {
+          requestId: request.id,
+          method: request.method,
+          path: request.path,
+          headers: request.headers,
+          body: request.body,
+          query: request.query,
+          timestamp: request.timestamp,
+          clientId: request.clientId,
+          virtualModelId: model.id,
+          metadata: {
+            source: 'server-module'
+          }
+        };
+        
+        const executionResult = await this.pipelineScheduler.executePipeline(model.id, executionContext);
+        
+        // Convert execution result to client response
+        return {
+          id: request.id,
+          status: executionResult.error ? 500 : 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Virtual-Model': model.id,
+            'X-Provider': model.provider,
+            'X-Processing-Method': 'pipeline',
+            'X-Pipeline-Execution-Id': executionResult.executionId || 'unknown',
+            'X-Integration-Status': 'rcc-v4-unified'
+          },
+          body: executionResult.result || executionResult.error || { message: 'Request processed successfully' },
+          timestamp: Date.now(),
+          processingTime: executionResult.duration || 0,
+          requestId: request.id
+        };
+      } catch (error) {
+        this.error('Pipeline processing failed', {
           modelId: model.id,
-          provider: model.provider
-        },
-        purpose: '虚拟模型请求处理（原Pipeline调度器功能）'
-      });
+          error: error instanceof Error ? error.message : String(error),
+          method: 'processVirtualModelRequest'
+        });
+        
+        // Fall back to direct processing
+        return await this.processDirectly(request, model);
+      }
     }
     
-    // Use direct processing (pipeline functionality is under construction)
+    // Use direct processing if pipeline scheduler is not available
     return await this.processDirectly(request, model);
   }
 
   /**
-   * Process request via UnderConstruction (formerly Pipeline Scheduler)
+   * Process request via Pipeline Scheduler
    */
-  private async _processViaUnderConstruction(request: ClientRequest, model: VirtualModelConfig): Promise<ClientResponse> {
-    this.log('Processing via UnderConstruction (formerly Pipeline)');
+  private async _processViaPipelineScheduler(request: ClientRequest, model: VirtualModelConfig): Promise<ClientResponse> {
+    this.log('Processing via Pipeline Scheduler');
     
-    if (!this.underConstruction) {
-      throw new Error('UnderConstruction module not available');
+    if (!this.pipelineScheduler) {
+      throw new Error('Pipeline Scheduler not available');
     }
     
     try {
-      // Mark pipeline processing as under construction
-      this.underConstruction.callUnderConstructionFeature('pipeline-scheduler-replacement', {
-        caller: 'ServerModule.processViaUnderConstruction',
-        parameters: { 
-          requestId: request.id,
-          modelId: model.id,
-          provider: model.provider,
-          originalMethod: 'processViaPipelineScheduler'
-        },
-        purpose: '替代Pipeline调度器的UnderConstruction实现'
-      });
+      // Process request through pipeline scheduler
+      const executionContext = {
+        requestId: request.id,
+        method: request.method,
+        path: request.path,
+        headers: request.headers,
+        body: request.body,
+        query: request.query,
+        timestamp: request.timestamp,
+        clientId: request.clientId,
+        virtualModelId: model.id,
+        metadata: {
+          source: 'server-module-internal'
+        }
+      };
       
-      // Simulate pipeline processing with under construction
-      const processingTime = Math.random() * 100 + 50; // 50-150ms
+      const executionResult = await this.pipelineScheduler.executePipeline(model.id, executionContext);
       
-      // Return mock pipeline response
+      // Return pipeline processing response
       return {
         id: request.id,
-        status: 200,
+        status: executionResult.error ? 500 : 200,
         headers: {
           'Content-Type': 'application/json',
           'X-Virtual-Model': model.id,
           'X-Provider': model.provider,
-          'X-Processing-Method': 'underconstruction-pipeline',
+          'X-Processing-Method': 'pipeline-scheduler',
+          'X-Pipeline-Execution-Id': executionResult.executionId || 'unknown',
           'X-Integration-Status': 'rcc-v4-unified'
         },
         body: {
-          message: 'Request processed via UnderConstruction (Pipeline replacement)',
+          message: 'Request processed via Pipeline Scheduler',
           model: model.id,
           provider: model.provider,
-          processingMethod: 'underconstruction-pipeline',
+          processingMethod: 'pipeline-scheduler',
           originalRequest: {
             method: request.method,
             path: request.path,
             timestamp: request.timestamp
           },
+          executionResult: executionResult,
           timestamp: Date.now(),
           integration: {
             unified: true,
             version: 'v4',
-            errorHandler: 'unified-pipeline-error-handling',
-            status: 'under-construction'
+            errorHandler: 'unified-pipeline-error-handling'
           }
         },
         timestamp: Date.now(),
-        processingTime,
+        processingTime: executionResult.duration || 0,
         requestId: request.id
       };
       
     } catch (error) {
-      this.error('UnderConstruction processing failed', {
+      this.error('Pipeline Scheduler processing failed', {
         modelId: model.id,
         error: error instanceof Error ? error.message : String(error),
-        method: 'processViaUnderConstruction'
+        method: 'processViaPipelineScheduler'
       });
       
       // Re-throw to trigger fallback mechanism
@@ -731,19 +842,6 @@ export class ServerModule extends BaseModule implements IServerModule {
     const startTime = Date.now();
     
     try {
-      // Mark this as a fallback implementation
-      if (this.underConstruction) {
-        this.underConstruction.callUnderConstructionFeature('direct-virtual-model-processing', {
-          caller: 'ServerModule.processDirectly',
-          parameters: { 
-            requestId: request.id, 
-            modelId: model.id,
-            provider: model.provider
-          },
-          purpose: '直接处理虚拟模型请求，绕过Pipeline调度器'
-        });
-      }
-      
       // Basic request processing without Pipeline
       const processingTime = Date.now() - startTime;
       
@@ -823,24 +921,12 @@ export class ServerModule extends BaseModule implements IServerModule {
   }
 
   /**
-   * Set UnderConstruction Module (formerly Pipeline Scheduler)
+   * Set UnderConstruction Module
    */
   public async setUnderConstructionModule(underConstructionModule: UnderConstruction): Promise<void> {
     this.log('Setting UnderConstruction Module');
     
     try {
-      // Mark underconstruction module setup as under construction
-      if (this.underConstruction) {
-        this.underConstruction.callUnderConstructionFeature('underconstruction-module-setup', {
-          caller: 'ServerModule.setUnderConstructionModule',
-          parameters: { 
-            moduleType: 'UnderConstruction',
-            enabled: true
-          },
-          purpose: '设置UnderConstruction模块替代Pipeline调度器'
-        });
-      }
-      
       // Initialize the module if not already initialized
       if (typeof underConstructionModule.initialize === 'function') {
         await underConstructionModule.initialize();
@@ -854,7 +940,6 @@ export class ServerModule extends BaseModule implements IServerModule {
       }
       
       this.underConstruction = underConstructionModule;
-      this.pipelineIntegrationConfig.enabled = true;
       
       this.logInfo('UnderConstruction Module set successfully');
       

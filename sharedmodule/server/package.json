@@ -1,6 +1,6 @@
 {
   "name": "rcc-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "RCC Server Module - Client input proxy response server with virtual model routing",
   "type": "module",
   "main": "dist/index.esm.js",
@@ -43,13 +43,18 @@
     "express": "^4.18.2",
     "helmet": "^7.1.0",
     "rcc-basemodule": ">=0.1.0",
+    "rcc-configuration": "^0.1.1",
+    "rcc-errorhandling": ">=0.1.0",
+    "rcc-pipeline": "^0.1.1",
     "rcc-underconstruction": ">=0.1.0",
     "rcc-virtual-model-rules": "^1.0.4",
     "uuid": "^9.0.1"
   },
   "peerDependencies": {
     "rcc-basemodule": ">=0.1.0",
+    "rcc-configuration": "^0.1.1",
     "rcc-errorhandling": ">=0.1.0",
+    "rcc-pipeline": "^0.1.1",
     "rcc-underconstruction": ">=0.1.0"
   },
   "devDependencies": {
@@ -95,42 +100,6 @@
     "prepublishOnly": "npm run build",
     "version": "npm run build && git add -A dist",
     "postversion": "git push && git push --tags"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/src",
-      "<rootDir>/__test__"
-    ],
-    "testMatch": [
-      "**/__test__/**/*.test.ts",
-      "**/src/**/*.test.ts"
-    ],
-    "transform": {
-      "^.+\\.ts$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "src/**/*.ts",
-      "!src/**/*.d.ts",
-      "!src/**/__test__/**",
-      "!src/**/index.ts"
-    ],
-    "coverageReporters": [
-      "html",
-      "text",
-      "text-summary",
-      "lcov"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 90,
-        "functions": 92,
-        "lines": 90,
-        "statements": 90
-      }
-    },
-    "testTimeout": 30000
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",

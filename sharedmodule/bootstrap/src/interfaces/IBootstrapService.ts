@@ -1,12 +1,11 @@
-// Interface definitions for RCC Bootstrap Service
+// Simplified Interface definitions for RCC Bootstrap Service
 
-import { BaseModule } from 'rcc-basemodule';
 import { BootstrapConfig, ServiceConfig, ServiceStatus, SystemHealth, ServiceInstance } from '../types/BootstrapTypes';
 
 /**
  * Bootstrap Service interface
  */
-export interface IBootstrapService extends BaseModule {
+export interface IBootstrapService {
   /**
    * Initialize the bootstrap service with configuration
    */
@@ -71,7 +70,7 @@ export interface IBootstrapService extends BaseModule {
 /**
  * Service Coordinator interface
  */
-export interface IServiceCoordinator extends BaseModule {
+export interface IServiceCoordinator {
   /**
    * Coordinate service startup sequence
    */
@@ -101,7 +100,7 @@ export interface IServiceCoordinator extends BaseModule {
 /**
  * Configuration Manager interface
  */
-export interface IConfigManager extends BaseModule {
+export interface IConfigManager {
   /**
    * Load configuration from file
    */
@@ -131,7 +130,7 @@ export interface IConfigManager extends BaseModule {
 /**
  * Health Monitor interface
  */
-export interface IHealthMonitor extends BaseModule {
+export interface IHealthMonitor {
   /**
    * Start health monitoring
    */

@@ -83,6 +83,21 @@ export interface BootstrapConfig {
      */
     resolveDependencies: boolean;
   };
+
+  /**
+   * Startup timeout in milliseconds
+   */
+  startupTimeout: number;
+
+  /**
+   * Shutdown timeout in milliseconds
+   */
+  shutdownTimeout: number;
+
+  /**
+   * Health check interval in milliseconds
+   */
+  healthCheckInterval: number;
 }
 
 /**
@@ -213,6 +228,41 @@ export interface ServiceConfig {
    * Environment variables
    */
   environment?: Record<string, string>;
+
+  /**
+   * Startup timeout in milliseconds
+   */
+  startupTimeout: number;
+
+  /**
+   * Shutdown timeout in milliseconds
+   */
+  shutdownTimeout: number;
+
+  /**
+   * Service conditions for startup and execution
+   */
+  conditions?: {
+    /**
+     * Pre-startup conditions
+     */
+    preStartup?: Array<{
+      type: 'file_exists' | 'port_available' | 'dependency_running' | 'custom';
+      target: string;
+      timeout?: number;
+      required: boolean;
+    }>;
+
+    /**
+     * Runtime conditions
+     */
+    runtime?: Array<{
+      type: 'memory_usage' | 'cpu_usage' | 'response_time' | 'custom';
+      operator: 'less_than' | 'greater_than' | 'equals' | 'not_equals';
+      value: number;
+      action: 'warn' | 'restart' | 'scale' | 'custom';
+    }>;
+  };
 }
 
 /**
@@ -283,6 +333,26 @@ export interface ServiceStatus {
      */
     avgResponseTime?: number;
   };
+
+  /**
+   * Status code for quick reference
+   */
+  status: number;
+
+  /**
+   * Service startup time
+   */
+  startupTime: number;
+
+  /**
+   * Last health check timestamp
+   */
+  lastCheck: number;
+
+  /**
+   * Error count
+   */
+  errorCount: number;
 }
 
 /**
@@ -393,6 +463,173 @@ export interface ServiceInstance {
    * Instance configuration
    */
   config: ServiceConfig;
+}
+
+/**
+ * Service health details
+ */
+export interface ServiceHealth {
+  /**
+   * Overall health status
+   */
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+
+  /**
+   * Health score (0-100)
+   */
+  score: number;
+
+  /**
+   * Last health check timestamp
+   */
+  lastCheck: number;
+
+  /**
+   * Health check details
+   */
+  details: {
+    /**
+     * Basic health check status
+     */
+    basic: boolean;
+
+    /**
+     * Detailed health check status
+     */
+    detailed?: boolean;
+
+    /**
+     * Custom health check results
+     */
+    custom?: Record<string, boolean>;
+  };
+
+  /**
+   * Health metrics
+   */
+  metrics: {
+    /**
+     * Response time
+     */
+    responseTime?: number;
+
+    /**
+     * Error rate
+     */
+    errorRate?: number;
+
+    /**
+     * Availability percentage
+     */
+    availability?: number;
+  };
+
+  /**
+   * Health checks performed
+   */
+  checks: {
+    /**
+     * Basic check status
+     */
+    basic: boolean;
+
+    /**
+     * Detailed check status
+     */
+    detailed: boolean;
+
+    /**
+     * Custom check results
+     */
+    custom: Record<string, boolean>;
+  };
+
+  /**
+   * Timestamp of last check
+   */
+  timestamp: number;
+
+  /**
+   * Error information
+   */
+  errors: {
+    /**
+     * Number of errors
+     */
+    count: number;
+
+    /**
+     * Error messages
+     */
+    messages: string[];
+  };
+}
+
+/**
+ * Bootstrap state
+ */
+export interface BootstrapState {
+  /**
+   * Current phase
+   */
+  phase: 'initializing' | 'starting' | 'running' | 'stopping' | 'error' | 'restarting';
+
+  /**
+   * Progress percentage (0-100)
+   */
+  progress: number;
+
+  /**
+   * Current operation
+   */
+  currentOperation?: string;
+
+  /**
+   * Total services
+   */
+  totalServices: number;
+
+  /**
+   * Completed services
+   */
+  completedServices: number;
+
+  /**
+   * Failed services
+   */
+  failedServices: number;
+
+  /**
+   * Start time
+   */
+  startTime: number;
+
+  /**
+   * Estimated completion time
+   */
+  estimatedCompletion?: number;
+
+  /**
+   * System health
+   */
+  systemHealth: SystemHealth;
+
+  /**
+   * Active alerts
+   */
+  alerts: Array<{
+    id: string;
+    type: 'info' | 'warning' | 'error' | 'critical';
+    message: string;
+    timestamp: number;
+    serviceId?: string;
+    resolved: boolean;
+  }>;
+
+  /**
+   * Initialization status
+   */
+  isInitialized: boolean;
 }
 
 /**

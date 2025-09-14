@@ -1,6 +1,6 @@
 {
   "name": "rcc-configuration",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "RCC Configuration Module - Comprehensive configuration management for modular TypeScript applications",
   "type": "module",
   "main": "dist/index.js",

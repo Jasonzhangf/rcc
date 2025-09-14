@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "module": "pipeline",
+    "type": "static-config",
+    "description": "Pipeline module default configuration",
+    "createdAt": "2025-09-14T10:30:45Z"
+  },
+  "defaultSettings": {
+    "maxConcurrentRequests": 100,
+    "timeout": 30000,
+    "retryAttempts": 3,
+    "enableCaching": true
+  },
+  "moduleRegistry": [],
+  "routingRules": [],
+  "assemblyStrategies": []
+}

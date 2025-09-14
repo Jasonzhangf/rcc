@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "module": "config",
+    "type": "static-config",
+    "description": "Configuration module default settings",
+    "createdAt": "2025-09-14T10:30:45Z"
+  },
+  "defaultPaths": {
+    "userConfig": "~/.rcc/config/user/",
+    "runtimeConfig": "dist/config/runtime/",
+    "cacheDir": "dist/config/cache/"
+  },
+  "validation": {
+    "enableSchemaValidation": true,
+    "strictMode": false
+  }
+}

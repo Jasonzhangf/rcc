@@ -19,6 +19,19 @@ class PipelineScheduler {
     console.log(`Executing pipeline ${pipelineId}`, payload);
     return { success: true, pipelineId, result: 'Mock execution result' };
   }
+
+  async executePipeline(modelId, context) {
+    if (!this.initialized) {
+      throw new Error('PipelineScheduler not initialized');
+    }
+    console.log(`Executing pipeline for model ${modelId}`, context);
+    return {
+      success: true,
+      modelId,
+      result: 'Pipeline execution result',
+      processingMethod: 'pipeline'
+    };
+  }
 }
 
 class ErrorHandlerCenter {

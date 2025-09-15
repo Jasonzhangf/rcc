@@ -1,6 +1,6 @@
 {
   "name": "rcc-bootstrap",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "RCC Bootstrap Service - System initialization and service coordination",
   "type": "module",
   "main": "dist/index.js",

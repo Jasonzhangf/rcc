@@ -20,9 +20,19 @@ export interface BootstrapConfig {
   environment: 'development' | 'staging' | 'production';
 
   /**
+   * Path to configuration file
+   */
+  configurationPath?: string;
+
+  /**
    * List of services to manage
    */
   services: ServiceConfig[];
+
+  /**
+   * Default services to use when no services are defined in configuration
+   */
+  defaultServices?: ServiceConfig[];
 
   /**
    * Global configuration

@@ -11,3 +11,7 @@ export { LLMSwitchModule } from './LLMSwitchModule';
 export { QwenAuthCenter } from './QwenAuthCenter';
 export { QwenDebugModule } from './QwenDebugModule';
 export { LMStudioProviderModule } from './LMStudioProviderModule';
+
+// Framework-based modules
+export { OpenAIProviderModule as FrameworkOpenAIProviderModule } from './FrameworkOpenAIProviderModule';
+export { CompatibilityModule as FrameworkCompatibilityModule } from './FrameworkCompatibilityModule';

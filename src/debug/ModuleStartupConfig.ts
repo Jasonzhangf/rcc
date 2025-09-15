@@ -1,5 +1,4 @@
-import { BaseModule, ModuleInfo } from '../basemodule/src/BaseModule';
-import { TwoPhaseDebugSystem } from './TwoPhaseDebugSystem';
+import { BaseModule, ModuleInfo, DebugModule } from '../basemodule/src/BaseModule';
 
 /**
  * Module startup configuration with two-phase debug support
@@ -66,7 +65,7 @@ export interface ModuleStartupConfig {
  */
 export abstract class TwoPhaseDebugModule extends BaseModule {
   protected startupConfig: ModuleStartupConfig;
-  protected debugSystem: TwoPhaseDebugSystem;
+  protected debugSystem: DebugModule;
 
   constructor(moduleInfo: ModuleInfo, startupConfig: Partial<ModuleStartupConfig> = {}) {
     super(moduleInfo);
@@ -97,7 +96,7 @@ export abstract class TwoPhaseDebugModule extends BaseModule {
     };
 
     // Initialize debug system
-    this.debugSystem = new TwoPhaseDebugSystem(this.startupConfig.debugConfig.baseDirectory);
+    this.debugSystem = new DebugModule(this.startupConfig.debugConfig.baseDirectory);
   }
 
   /**
@@ -235,7 +234,7 @@ export abstract class TwoPhaseDebugModule extends BaseModule {
   /**
    * Get debug system
    */
-  public getDebugSystem(): TwoPhaseDebugSystem {
+  public getDebugSystem(): DebugModule {
     return this.debugSystem;
   }
 }

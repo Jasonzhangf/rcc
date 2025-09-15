@@ -71,17 +71,31 @@ export class ModuleLoader extends BaseModule {
         };
       }
 
-      // Convert to file URL for dynamic import
-      const fileUrl = pathToFileURL(path.resolve(filePath)).href;
+      let moduleExports: any;
       
-      // Dynamic import
-      const moduleExports = await import(fileUrl);
+      // Try CommonJS require first
+      try {
+        // Clear require cache to ensure fresh load
+        delete require.cache[require.resolve(filePath)];
+        moduleExports = require(filePath);
+      } catch (requireError) {
+        // If require fails, try ES module import
+        try {
+          const fileUrl = pathToFileURL(path.resolve(filePath)).href;
+          moduleExports = await import(fileUrl);
+        } catch (importError) {
+          return {
+            success: false,
+            error: `Failed to load module with both CommonJS and ES module import: ${(importError as Error).message}`
+          };
+        }
+      }
       
       // Look for module class or default export
-      let ModuleClass = moduleExports.default;
+      let ModuleClass = moduleExports.default || moduleExports;
       
       // If no default export, look for common module export patterns
-      if (!ModuleClass) {
+      if (!ModuleClass || typeof ModuleClass !== 'function') {
         const exportNames = Object.keys(moduleExports);
         const moduleExportName = exportNames.find(name => 
           name.endsWith('Module') || name.endsWith('CommandModule')

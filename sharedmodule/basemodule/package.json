@@ -1,6 +1,6 @@
 {
   "name": "rcc-basemodule",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "RCC BaseModule - Core framework for modular TypeScript development",
   "type": "module",
   "main": "dist/index.esm.js",

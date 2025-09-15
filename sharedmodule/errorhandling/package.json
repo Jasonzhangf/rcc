@@ -1,16 +1,23 @@
 {
   "name": "rcc-errorhandling",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "RCC ErrorHandling Center - Simple error handling for RCC modules",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": ["dist/index.d.ts"]
+    }
+  },
   "scripts": {
     "build": "tsc --outDir dist",
     "dev": "tsc --watch",
     "test": "echo \"No tests yet\"",
     "clean": "rimraf dist",
-    "prebuild": "npm run clean"
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "rcc",
@@ -18,8 +25,12 @@
     "error-management",
     "typescript"
   ],
-  "author": "RCC Team",
+  "author": "RCC Development Team",
   "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
   "dependencies": {
     "rcc-basemodule": ">=0.1.0"
   },
@@ -31,12 +42,21 @@
   "files": [
     "dist/**/*",
     "index.ts",
+    "types/**/*",
     "README.md",
     "LICENSE"
   ],
   "engines": {
     "node": ">=16.0.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rcc/rcc-errorhandling.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rcc/rcc-errorhandling/issues"
+  },
+  "homepage": "https://github.com/rcc/rcc-errorhandling#readme",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"

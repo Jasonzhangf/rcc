@@ -421,7 +421,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    */
   public override async handleMessage(message: any): Promise<any> {
     this.log('Handling message', { type: message?.type, source: message?.source }, 'handleMessage');
-    
+
     switch (message?.type) {
       case 'rule-evaluation-request':
         return await this.handleRuleEvaluation(message);
@@ -429,6 +429,12 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
         return await this.handleScheduleStatus(message);
       case 'rule-metrics-request':
         return await this.handleRuleMetrics(message);
+      case 'server-initialized':
+      case 'server-started':
+      case 'module_registered':
+        // Handle common system messages silently
+        this.log('Received system message', { type: message?.type }, 'handleMessage');
+        return { success: true, message: `Handled ${message?.type}` };
       default:
         return await super.handleMessage(message);
     }

@@ -579,15 +579,35 @@ export class QwenDebugModule extends BasePipelineModule {
     try {
       const fs = await import('fs');
       const path = await import('path');
-      
+
       const timestamp = new Date(entry.timestamp);
       const dateStr = timestamp.toISOString().split('T')[0];
       const filename = `qwen-debug-${dateStr}.jsonl`;
       const filepath = path.join(this.config.logDirectory, filename);
-      
+
       const logLine = JSON.stringify(entry) + '\n';
-      
+
       fs.appendFileSync(filepath, logLine);
+
+      // 如果是请求或响应日志，单独保存到对应的文件
+      if (entry.requestResponse) {
+        const requestResponseFilename = `qwen-${entry.requestResponse.type}-${entry.requestResponse.requestId}.json`;
+        const requestResponseFilepath = path.join(this.config.logDirectory, requestResponseFilename);
+
+        // 保存请求/响应的详细信息
+        const requestResponseData = {
+          timestamp: entry.timestamp,
+          level: entry.level,
+          module: entry.module,
+          category: entry.category,
+          message: entry.message,
+          requestResponse: entry.requestResponse,
+          performance: entry.performance,
+          id: entry.id
+        };
+
+        fs.writeFileSync(requestResponseFilepath, JSON.stringify(requestResponseData, null, 2));
+      }
     } catch (error) {
       console.error('Failed to write log to file:', error);
     }

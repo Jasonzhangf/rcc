@@ -8,7 +8,7 @@ import { ConfigData } from './ConfigData';
 import { PipelineTable, PipelineEntry } from './PipelineTable';
 import { ConfigLoader } from './ConfigLoader';
 import { ConfigParser } from './ConfigParser';
-import { PipelineTableGenerator } from './PipelineTableGenerator';
+import { EnhancedPipelineConfigGenerator } from './PipelineTableGenerator';
 import { VirtualModelRulesModule, VirtualModelValidationResult } from './VirtualModelRulesModule';
 
 /**
@@ -29,7 +29,7 @@ export interface ConfigurationModuleOptions {
 export class ConfigurationModule {
   private configLoader: ConfigLoader;
   private configParser: ConfigParser;
-  private pipelineTableGenerator: PipelineTableGenerator;
+  private pipelineTableGenerator: EnhancedPipelineConfigGenerator;
   private virtualModelRulesModule: VirtualModelRulesModule;
   private currentConfig: ConfigData | null = null;
   private currentPipelineTable: PipelineTable | null = null;
@@ -46,8 +46,29 @@ export class ConfigurationModule {
 
     this.configLoader = new ConfigLoader();
     this.configParser = new ConfigParser();
-    this.pipelineTableGenerator = new PipelineTableGenerator(this.options.fixedVirtualModels);
+    this.pipelineTableGenerator = new EnhancedPipelineConfigGenerator(this.options.fixedVirtualModels);
     this.virtualModelRulesModule = new VirtualModelRulesModule();
+  }
+
+  private async handleConfigurationOperation<T>(
+    operationName: string,
+    operation: () => Promise<T>,
+    errorContext?: any
+  ): Promise<T> {
+    try {
+      // Standardized logging approach
+      console.log(`Starting ${operationName}`);
+
+      const result = await operation();
+
+      console.log(`${operationName} completed successfully`);
+      return result;
+    } catch (error) {
+      console.error(`Failed to ${operationName}`, error, errorContext || {});
+
+      // Re-throw with proper error context
+      throw error;
+    }
   }
 
   /**
@@ -58,53 +79,53 @@ export class ConfigurationModule {
       return;
     }
 
-    try {
-      // 初始化各组件
-      await this.configLoader.initialize();
-      await this.configParser.initialize();
-      await this.pipelineTableGenerator.initialize();
-      await this.virtualModelRulesModule.initialize();
+    await this.handleConfigurationOperation(
+      'initialize ConfigurationModule',
+      async () => {
+        // 初始化各组件
+        await this.configLoader.initialize();
+        await this.configParser.initialize();
+        await this.pipelineTableGenerator.initialize();
+        await this.virtualModelRulesModule.initialize();
 
-      // 如果启用自动加载，尝试加载配置
-      if (this.options.autoLoad && this.options.configPath) {
-        await this.loadConfiguration(this.options.configPath);
+        // 如果启用自动加载，尝试加载配置
+        if (this.options.autoLoad && this.options.configPath) {
+          await this.loadConfiguration(this.options.configPath);
+        }
+
+        this.initialized = true;
+        return undefined;
       }
-
-      this.initialized = true;
-      console.log('ConfigurationModule initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize ConfigurationModule:', error);
-      throw error;
-    }
+    );
   }
 
   /**
    * 加载配置文件
    */
   public async loadConfiguration(configPath: string): Promise<ConfigData> {
-    try {
-      const rawData = await this.configLoader.loadConfig(configPath);
-      this.currentConfig = await this.configParser.parseConfig(rawData);
-      console.log('Configuration loaded successfully');
-      return this.currentConfig;
-    } catch (error) {
-      console.error('Failed to load configuration:', error);
-      throw error;
-    }
+    return await this.handleConfigurationOperation(
+      'load configuration',
+      async () => {
+        // Use parseConfigFromFile to enable environment variable substitution
+        this.currentConfig = await this.configParser.parseConfigFromFile(configPath);
+        return this.currentConfig;
+      },
+      { configPath }
+    );
   }
 
   /**
    * 保存配置文件
    */
   public async saveConfiguration(config: ConfigData, configPath: string): Promise<void> {
-    try {
-      await this.configLoader.saveConfig(config, configPath);
-      this.currentConfig = config;
-      console.log('Configuration saved successfully');
-    } catch (error) {
-      console.error('Failed to save configuration:', error);
-      throw error;
-    }
+    await this.handleConfigurationOperation(
+      'save configuration',
+      async () => {
+        await this.configLoader.saveConfig(config, configPath);
+        this.currentConfig = config;
+      },
+      { configPath }
+    );
   }
 
   /**
@@ -115,14 +136,13 @@ export class ConfigurationModule {
       throw new Error('No configuration loaded');
     }
 
-    try {
-      this.currentPipelineTable = await this.pipelineTableGenerator.generatePipelineTable(this.currentConfig);
-      console.log('Pipeline table generated successfully');
-      return this.currentPipelineTable;
-    } catch (error) {
-      console.error('Failed to generate pipeline table:', error);
-      throw error;
-    }
+    return await this.handleConfigurationOperation(
+      'generate pipeline table',
+      async () => {
+        this.currentPipelineTable = await this.pipelineTableGenerator.generatePipelineTable(this.currentConfig!);
+        return this.currentPipelineTable;
+      }
+    );
   }
 
   /**
@@ -145,10 +165,28 @@ export class ConfigurationModule {
   public async validateConfiguration(config: ConfigData): Promise<{ valid: boolean; errors: string[] }> {
     // 使用VirtualModelRulesModule进行验证
     const validationResult = await this.virtualModelRulesModule.validateVirtualModels(config);
-    
+
     const errors: string[] = [...validationResult.errors];
 
-    // 检查必需字段
+    // 检查基本结构
+    errors.push(...this.validateBasicStructure(config));
+
+    // 验证供应商配置
+    errors.push(...this.validateProviders(config));
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * 验证基本结构
+   * @private
+   */
+  private validateBasicStructure(config: ConfigData): string[] {
+    const errors: string[] = [];
+
     if (!config.version) {
       errors.push('Missing version');
     }
@@ -157,7 +195,16 @@ export class ConfigurationModule {
       errors.push('No providers configured');
     }
 
-    // 验证供应商配置
+    return errors;
+  }
+
+  /**
+   * 验证供应商配置
+   * @private
+   */
+  private validateProviders(config: ConfigData): string[] {
+    const errors: string[] = [];
+
     for (const [providerId, provider] of Object.entries(config.providers)) {
       if (!provider.name) {
         errors.push(`Provider ${providerId} missing name`);
@@ -167,8 +214,15 @@ export class ConfigurationModule {
         errors.push(`Provider ${providerId} missing type`);
       }
 
-      if (!provider.auth || !provider.auth.keys || provider.auth.keys.length === 0) {
-        errors.push(`Provider ${providerId} missing authentication keys`);
+      if (!provider.auth) {
+        errors.push(`Provider ${providerId} missing authentication configuration`);
+      } else {
+        if (!provider.auth.type) {
+          errors.push(`Provider ${providerId} missing authentication type`);
+        }
+        if (!provider.auth.keys || provider.auth.keys.length === 0) {
+          errors.push(`Provider ${providerId} missing authentication keys`);
+        }
       }
 
       if (!provider.models || Object.keys(provider.models).length === 0) {
@@ -176,10 +230,7 @@ export class ConfigurationModule {
       }
     }
 
-    return {
-      valid: errors.length === 0,
-      errors
-    };
+    return errors;
   }
 
   /**
@@ -201,16 +252,15 @@ export class ConfigurationModule {
    * 销毁模块
    */
   public async destroy(): Promise<void> {
-    try {
-      await this.configLoader.destroy();
-      await this.configParser.destroy();
-      await this.pipelineTableGenerator.destroy();
-      await this.virtualModelRulesModule.destroy();
-      this.initialized = false;
-      console.log('ConfigurationModule destroyed successfully');
-    } catch (error) {
-      console.error('Failed to destroy ConfigurationModule:', error);
-      throw error;
-    }
+    await this.handleConfigurationOperation(
+      'destroy ConfigurationModule',
+      async () => {
+        await this.configLoader.destroy();
+        await this.configParser.destroy();
+        await this.pipelineTableGenerator.destroy();
+        await this.virtualModelRulesModule.destroy();
+        this.initialized = false;
+      }
+    );
   }
 }

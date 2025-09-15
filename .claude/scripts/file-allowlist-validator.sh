@@ -212,8 +212,13 @@ validate_file_creation() {
     
     # Determine if this is a temporary file
     local is_temp="false"
-    if [[ "$(basename "$file_path")" =~ ^tmp|^temp|^\. ]] || \
-       [[ "$file_path" =~ tmp|temp|\.tmp$|\.temp$ ]]; then
+    local basename_file=$(basename "$file_path")
+    
+    # Check if filename starts with tmp/temp (but not dotfiles like .npmignore)
+    if [[ "$basename_file" =~ ^tmp|^temp ]] || \
+       [[ "$basename_file" =~ \.tmp$|\.temp$ ]] || \
+       [[ "$file_path" =~ /tmp/|/temp/ ]] || \
+       [[ "$file_path" =~ tmp/|temp/ ]]; then
         is_temp="true"
     fi
     

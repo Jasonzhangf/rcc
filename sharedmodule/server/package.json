@@ -1,6 +1,6 @@
 {
   "name": "rcc-server",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "RCC Server Module - Client input proxy response server with virtual model routing",
   "type": "module",
   "main": "dist/index.esm.js",
@@ -47,7 +47,7 @@
     "rcc-errorhandling": ">=0.1.0",
     "rcc-pipeline": "^0.1.1",
     "rcc-underconstruction": ">=0.1.0",
-    "rcc-virtual-model-rules": "^1.0.4",
+    "rcc-virtual-model-rules": "file:../virtual-model-rules",
     "uuid": "^9.0.1"
   },
   "peerDependencies": {

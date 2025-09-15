@@ -10,7 +10,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 // 服务器配置
-const PORT = 3001;
+const PORT = 5001;
 const CONFIG_DIR = path.join(require('os').homedir(), '.rcc');
 
 // 确保配置目录存在

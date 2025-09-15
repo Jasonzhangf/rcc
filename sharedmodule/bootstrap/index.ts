@@ -2,16 +2,10 @@
 
 // Main exports
 export { BootstrapService } from './src/BootstrapService';
-export { ServiceCoordinator } from './src/components/ServiceCoordinator';
-export { ConfigManager } from './src/components/ConfigManager';
-export { HealthMonitor } from './src/components/HealthMonitor';
 
 // Interfaces
 export type {
-  IBootstrapService,
-  IServiceCoordinator,
-  IConfigManager,
-  IHealthMonitor
+  IBootstrapService
 } from './src/interfaces/IBootstrapService';
 
 // Types

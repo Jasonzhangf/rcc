@@ -21,7 +21,7 @@ class RCC4CLI {
     this.defaultPort = 5506;
     this.pidDir = path.join(os.tmpdir(), 'rcc4');
     this.configPath = './config.json';
-    this.startupScript = path.join(__dirname, 'rcc4-system-startup.js');
+    this.startupScript = path.join(__dirname, 'start-rcc-system.mjs');
     
     // Ensure PID directory exists
     if (!fs.existsSync(this.pidDir)) {
@@ -248,56 +248,58 @@ class RCC4CLI {
    */
   async code(options) {
     const { port } = options;
-    
+
     // Check if already running
     const existingPid = await this.isRunning(port);
     if (existingPid) {
       this.info(`RCC4 is already running on port ${port} (PID: ${existingPid})`);
     } else {
       this.info(`🚀 Starting RCC4 system on port ${port}...`);
-      
+
       // Start RCC4 in background
       const env = {
         ...process.env,
         RCC4_CONFIG: this.configPath,
         RCC4_PORT: port.toString()
       };
-      
+
       const child = spawn('node', [this.startupScript], {
         env,
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: true
       });
-      
+
       child.unref();
       this.savePid(port, child.pid);
-      
+
       // Wait a moment for startup
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       this.info(`✅ RCC4 system started on port ${port} (PID: ${child.pid})`);
     }
-    
-    // Set environment variables for Claude
+
+    // Set environment variables for Claude (following route-claudecode approach)
     const claudeEnv = {
       ...process.env,
       ANTHROPIC_API_URL: `http://localhost:${port}/v1`,
+      ANTHROPIC_API_KEY: 'test-key', // Use the correct API key as shown in system startup message
       OPENAI_API_URL: `http://localhost:${port}/v1`,
       OPENAI_BASE_URL: `http://localhost:${port}/v1`
     };
-    
+
     this.info(`🤖 Launching Claude with RCC4 proxy (port ${port})...`);
     this.info('🔗 Environment variables set:');
     this.info(`   ANTHROPIC_API_URL=http://localhost:${port}/v1`);
+    this.info(`   ANTHROPIC_API_KEY=test-key`); // Add logging for the API key
     this.info(`   OPENAI_API_URL=http://localhost:${port}/v1`);
     this.info(`   OPENAI_BASE_URL=http://localhost:${port}/v1`);
-    
+
     // Launch Claude
     const claude = spawn('claude', [], {
       env: claudeEnv,
       stdio: 'inherit'
     });
-    
+
     claude.on('error', (error) => {
       if (error.code === 'ENOENT') {
         this.error('Claude command not found. Please make sure Claude CLI is installed.');
@@ -307,7 +309,7 @@ class RCC4CLI {
       }
       process.exit(1);
     });
-    
+
     claude.on('exit', (code) => {
       this.info('👋 Claude session ended');
       process.exit(code);

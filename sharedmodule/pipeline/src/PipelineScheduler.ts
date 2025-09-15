@@ -7,7 +7,7 @@ import { ModuleInfo } from 'rcc-basemodule';
 import { Message, MessageResponse } from 'rcc-basemodule';
 import { PipelineConfigManager, PipelineSystemConfig } from './PipelineConfig';
 import { PipelineInstance, IPipelineInstance } from './PipelineInstance';
-import { ErrorHandlerCenter, IErrorHandlerCenter } from './ErrorHandlerCenter';
+import { ErrorHandlerCenter, IErrorHandlerCenter } from './ErrorHandlerCenterSimple';
 import { EnhancedErrorResponseCenter, ErrorResponseCenterConfig } from './EnhancedErrorResponseCenter';
 import { LoadBalancerStrategy, LoadBalancerFactory } from './LoadBalancers';
 import { 
@@ -136,7 +136,7 @@ export class PipelineScheduler extends BaseModule implements IPipelineScheduler 
     
     this.enhancedErrorHandler = new EnhancedErrorResponseCenter(
       this.configManager, 
-      this.errorHandler, 
+      this.errorHandler as any, 
       enhancedErrorHandlerConfig
     );
     

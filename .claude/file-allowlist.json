@@ -269,6 +269,18 @@
       "description": "Manually added",
       "allowed": true,
       "notes": "Added via command line"
+    },
+    {
+      "path": "sharedmodule/virtual-model-rules/.npmignore",
+      "description": "Manually added",
+      "allowed": true,
+      "notes": "Added via command line"
+    },
+    {
+      "path": "sharedmodule/virtual-model-rules/.npmrc",
+      "description": "Manually added",
+      "allowed": true,
+      "notes": "Added via command line"
     }
   ]
 }

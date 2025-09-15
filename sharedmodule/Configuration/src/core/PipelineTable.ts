@@ -20,6 +20,19 @@ export interface PipelineEntry {
   enabled: boolean;
   /** 优先级 */
   priority: number;
+  /** 权重 */
+  weight: number;
+  /** 元数据 */
+  metadata?: {
+    /** 提供商类型 */
+    providerType: string;
+    /** API密钥 */
+    apiKey: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** [key: string]: any 其他元数据 */
+    [key: string]: any;
+  };
 }
 
 /**

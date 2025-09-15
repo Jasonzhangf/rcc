@@ -51,26 +51,37 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
    * Route a request to the appropriate virtual model
    */
   public async routeRequest(request: ClientRequest): Promise<VirtualModelConfig> {
+    console.log('=== VirtualModelRouter.routeRequest called ===');
+    console.log('Request:', request);
+    console.log('Available virtual models:', Array.from(this.virtualModels.keys()));
+    console.log('Enabled virtual models:', this.getEnabledModels().map(m => m.id));
+
     this.log('Routing request', { method: 'routeRequest' });
-    
+
     // If specific virtual model is requested, use it
     if (request.virtualModel) {
+      console.log('Specific virtual model requested:', request.virtualModel);
       const model = this.virtualModels.get(request.virtualModel);
+      console.log('Model found:', model);
       if (model && model.enabled) {
         this.log('Using specified virtual model', { method: 'routeRequest' });
         await this.recordRequestMetrics(model.id, true);
+        console.log('=== VirtualModelRouter.routeRequest completed (specific model) ===');
         return model;
       }
-      
+
       this.warn('Requested virtual model not found or disabled', { method: 'routeRequest' });
+      console.log('=== VirtualModelRouter.routeRequest failed (model not found or disabled) ===');
       throw new Error(`Virtual model '${request.virtualModel}' not found or disabled`);
     }
-    
+
     // Use routing rules to determine the best model
+    console.log('Using routing rules to determine best model');
     const decision = await this.makeRoutingDecision(request);
     this.log('Routing decision', { method: 'routeRequest' });
-    
+
     await this.recordRequestMetrics(decision.model.id, true);
+    console.log('=== VirtualModelRouter.routeRequest completed (routing decision) ===');
     return decision.model;
   }
 
@@ -193,26 +204,37 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
    * Make routing decision based on rules
    */
   private async makeRoutingDecision(request: ClientRequest): Promise<RoutingDecision> {
+    console.log('=== makeRoutingDecision called ===');
     const enabledModels = this.getEnabledModels();
-    
+    console.log('Enabled models count:', enabledModels.length);
+    console.log('Enabled models:', enabledModels.map(m => m.id));
+
     if (enabledModels.length === 0) {
+      console.log('❌ No enabled virtual models available - throwing error');
       throw new Error('No enabled virtual models available');
     }
-    
+
     // Apply routing rules
+    console.log('Applying routing rules');
     const candidates = await this.applyRoutingRules(request, enabledModels);
-    
+    console.log('Candidates count:', candidates.length);
+    console.log('Candidates:', candidates.map(m => m.id));
+
     if (candidates.length === 0) {
+      console.log('❌ No suitable virtual models found for this request - throwing error');
       throw new Error('No suitable virtual models found for this request');
     }
-    
+
     // Select first matching candidate (no load balancing)
     const selected = candidates[0];
-    
+    console.log('Selected model:', selected?.id);
+
     if (!selected) {
+      console.log('❌ No suitable model found - throwing error');
       throw new Error('No suitable model found');
     }
-    
+
+    console.log('=== makeRoutingDecision completed ===');
     return {
       model: selected,
       confidence: this.calculateConfidence(selected, request),

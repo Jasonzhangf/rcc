@@ -1,6 +1,6 @@
 {
   "name": "rcc-cli-framework",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "description": "RCC CLI Framework - Universal command-line interface framework based on BaseModule",
   "type": "module",
   "main": "dist/index.cjs",
@@ -85,7 +85,7 @@
     "docs:serve": "http-server docs -p 8080 -o",
     "validate": "npm run typecheck && npm run test",
     "prepublishOnly": "npm run validate && npm run build",
-    "version": "npm run build && git add -A dist",
+    "version": "npm run build",
     "postversion": "git push && git push --tags"
   },
   "jest": {

@@ -24,7 +24,6 @@ import {
 
 import { UnderConstruction } from 'rcc-underconstruction';
 import { VirtualModelRulesModule } from 'rcc-virtual-model-rules';
-import { ConfigurationSystem, createConfigurationSystem } from 'rcc-configuration';
 import { PipelineScheduler, IPipelineScheduler } from 'rcc-pipeline';
 
 export class ServerModule extends BaseModule implements IServerModule {
@@ -36,9 +35,6 @@ export class ServerModule extends BaseModule implements IServerModule {
   private isInitialized: boolean = false;
   private isRunning: boolean = false;
   private messageHandlers: Map<string, (message: any) => Promise<void>> = new Map();
-  
-  // Configuration System Integration
-  private configurationSystem: ConfigurationSystem | null = null;
   
   // Pipeline Scheduler Integration
   private pipelineScheduler: IPipelineScheduler | null = null;
@@ -81,63 +77,110 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * Configure the server module
    */
-  public override configure(config: Record<string, any>): void {
+  public override async configure(config: Record<string, any>): Promise<void> {
+    console.error('=== ServerModule.configure called ===');
+    this.log('ServerModule.configure method called', { method: 'configure' });
+    console.log('Config keys:', Object.keys(config));
+    console.log('Config:', JSON.stringify(config, null, 2));
+
     super.configure(config);
     this.config = config as ServerConfig;
+
+    console.log('=== ServerModule.configure - checking parsedConfig ===');
+    console.log('config.parsedConfig:', config.parsedConfig);
+    console.log('config.parsedConfig type:', typeof config.parsedConfig);
+    console.log('config.parsedConfig exists:', !!config.parsedConfig);
+
+    if (config.parsedConfig) {
+      console.log('config.parsedConfig.keys:', Object.keys(config.parsedConfig));
+      console.log('config.parsedConfig.virtualModels:', config.parsedConfig.virtualModels);
+      console.log('config.parsedConfig.virtualModels exists:', !!config.parsedConfig.virtualModels);
+      if (config.parsedConfig.virtualModels) {
+        console.log('config.parsedConfig.virtualModels type:', typeof config.parsedConfig.virtualModels);
+        console.log('config.parsedConfig.virtualModels keys:', Object.keys(config.parsedConfig.virtualModels));
+      }
+    }
+
+    this.log('ServerModule.configure called', { hasParsedConfig: !!config.parsedConfig, configKeys: Object.keys(config) });
+
+    // Load virtual models from parsed configuration if available
+    console.log('=== Checking condition for loading virtual models ===');
+    console.log('config.parsedConfig exists:', !!config.parsedConfig);
+    console.log('config.parsedConfig.virtualModels exists:', !!(config.parsedConfig && config.parsedConfig.virtualModels));
+    console.log('Full config object keys:', Object.keys(config));
+
+    if (config.parsedConfig && config.parsedConfig.virtualModels) {
+      this.log('Loading virtual models from parsedConfig', {
+        virtualModelsCount: Object.keys(config.parsedConfig.virtualModels).length,
+        virtualModelsKeys: Object.keys(config.parsedConfig.virtualModels)
+      });
+      console.log('=== Calling loadVirtualModelsFromConfig ===');
+      console.log('Virtual models to load:', config.parsedConfig.virtualModels);
+      await this.loadVirtualModelsFromConfig(config.parsedConfig.virtualModels);
+      console.log('=== loadVirtualModelsFromConfig call completed ===');
+    } else {
+      this.log('No parsedConfig or virtualModels found', {
+        hasParsedConfig: !!config.parsedConfig,
+        hasVirtualModels: !!(config.parsedConfig && config.parsedConfig.virtualModels),
+        parsedConfigType: typeof config.parsedConfig,
+        parsedConfigKeys: config.parsedConfig ? Object.keys(config.parsedConfig) : 'null'
+      });
+      console.log('=== NOT calling loadVirtualModelsFromConfig - condition not met ===');
+    }
+
+    console.log('=== ServerModule.configure completed ===');
   }
 
   /**
    * Initialize the server module
    */
   public override async initialize(): Promise<void> {
+    console.log('=== STARTING SERVER MODULE INITIALIZATION ===');
     if (this.isInitialized) {
       this.warn('Server module is already initialized');
       return;
     }
 
     this.log('Initializing Server Module');
-    
+
     try {
       // Call parent initialize first
       await super.initialize();
-      
-      // Initialize Configuration System
-      await this.initializeConfigurationSystem();
-      
+
       // Initialize Pipeline Scheduler
       await this.initializePipelineScheduler();
-      
+
       // Validate configuration
       if (this.config) {
         this.validateConfig(this.config);
       }
-      
+
       // Initialize HTTP server
       if (this.config) {
         this.httpServer.configure(this.config);
         await this.httpServer.initialize();
       }
-      
+
       // Initialize UnderConstruction module
       if (this.underConstruction) {
         await this.underConstruction.initialize();
       }
-      
+
       // Initialize Virtual Model Rules Module
       await this.initializeVirtualModelRulesIntegration();
-      
+
       // Set up request handling
       this.setupRequestHandling();
-      
+
       // Set up event handlers
       this.setupEventHandlers();
-      
+
       this.isInitialized = true;
       this.logInfo('Server Module initialized successfully');
-      
+
       // Notify initialization complete
       (this as any).sendMessage('server-initialized', { config: this.config || {} });
-      
+
     } catch (error) {
       this.error('Failed to initialize Server Module', { method: 'initialize' });
       throw error;
@@ -379,6 +422,109 @@ export class ServerModule extends BaseModule implements IServerModule {
   }
 
   /**
+   * Load virtual models from configuration
+   */
+  private async loadVirtualModelsFromConfig(virtualModels: any): Promise<void> {
+    console.log('=== loadVirtualModelsFromConfig called ===');
+    console.log('virtualModels:', virtualModels);
+    console.log('virtualModels type:', typeof virtualModels);
+
+    this.log('Loading virtual models from configuration', {
+      virtualModelsType: typeof virtualModels,
+      virtualModelsKeys: virtualModels ? Object.keys(virtualModels) : 'null'
+    });
+
+    try {
+      // Check if virtualModels is valid
+      if (!virtualModels || typeof virtualModels !== 'object') {
+        this.warn('Invalid virtualModels data provided to loadVirtualModelsFromConfig', {
+          virtualModelsType: typeof virtualModels,
+          virtualModelsValue: virtualModels
+        });
+        return;
+      }
+
+      const virtualModelsKeys = Object.keys(virtualModels);
+      console.log('Virtual models keys:', virtualModelsKeys);
+      this.log('Processing virtual models', {
+        virtualModelsCount: virtualModelsKeys.length,
+        virtualModelsKeys: virtualModelsKeys
+      });
+
+      // Convert configuration virtual models to ServerModule format
+      for (const [modelId, vmConfig] of Object.entries(virtualModels)) {
+        const typedVmConfig = vmConfig as any;
+        console.log(`Processing virtual model: ${modelId}`, vmConfig);
+        this.log(`Processing virtual model: ${modelId}`, {
+          vmConfigType: typeof vmConfig,
+          vmConfigKeys: vmConfig ? Object.keys(vmConfig) : 'null'
+        });
+
+        if (typedVmConfig.enabled !== false) {
+          try {
+            // Get the first target for basic configuration
+            const firstTarget = typedVmConfig.targets && typedVmConfig.targets.length > 0 ? typedVmConfig.targets[0] : null;
+            console.log(`First target for ${modelId}:`, firstTarget);
+
+            if (firstTarget) {
+              this.log(`Registering virtual model with first target: ${modelId}`, {
+                firstTargetProviderId: firstTarget.providerId,
+                firstTargetModelId: firstTarget.modelId,
+                firstTargetKeyIndex: firstTarget.keyIndex
+              });
+
+              const virtualModelConfig: VirtualModelConfig = {
+                id: modelId,
+                name: modelId,
+                provider: firstTarget.providerId,
+                endpoint: '', // Will be set based on provider configuration
+                model: firstTarget.modelId,
+                capabilities: ['chat'], // Default capabilities
+                maxTokens: 4096, // Default value
+                temperature: 0.7, // Default value
+                topP: 1.0, // Default value
+                enabled: typedVmConfig.enabled !== false,
+                routingRules: [] // No custom routing rules by default
+              };
+
+              console.log(`Virtual model config for ${modelId}:`, virtualModelConfig);
+
+              // Register the virtual model synchronously
+              await this.virtualModelRouter.registerModel(virtualModelConfig);
+              this.logInfo(`Virtual model registered successfully: ${modelId}`, {
+                modelId: modelId,
+                provider: virtualModelConfig.provider,
+                model: virtualModelConfig.model
+              });
+              console.log(`✅ Virtual model registered successfully: ${modelId}`);
+            } else {
+              this.warn(`No targets found for virtual model: ${modelId}`, {
+                vmConfigTargets: typedVmConfig.targets,
+                targetsLength: typedVmConfig.targets ? typedVmConfig.targets.length : 0
+              });
+              console.log(`⚠️ No targets found for virtual model: ${modelId}`);
+            }
+          } catch (error) {
+            this.warn(`Error processing virtual model ${modelId}:`, error instanceof Error ? error.message : String(error));
+            console.log(`❌ Error processing virtual model ${modelId}:`, error instanceof Error ? error.message : String(error));
+          }
+        } else {
+          this.log(`Virtual model is disabled: ${modelId}`);
+          console.log(`Virtual model is disabled: ${modelId}`);
+        }
+      }
+
+      this.logInfo('Virtual models loaded from configuration successfully', {
+        totalModelsProcessed: virtualModelsKeys.length
+      });
+      console.log('=== loadVirtualModelsFromConfig completed ===');
+    } catch (error) {
+      this.error('Failed to load virtual models from configuration', error instanceof Error ? error.message : String(error));
+      console.log('❌ Failed to load virtual models from configuration:', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /**
    * Get virtual model by ID
    */
   public getVirtualModel(modelId: string): VirtualModelConfig | undefined {
@@ -587,28 +733,6 @@ export class ServerModule extends BaseModule implements IServerModule {
     return;
   }
 
-  /**
-   * Initialize Configuration System
-   */
-  private async initializeConfigurationSystem(): Promise<void> {
-    this.log('Initializing Configuration System');
-    
-    try {
-      // Initialize Configuration System with default options
-      this.configurationSystem = await createConfigurationSystem({
-        id: 'server-configuration-system',
-        name: 'Server Configuration System',
-        enablePipelineIntegration: true
-      });
-      
-      this.logInfo('Configuration System initialized successfully');
-      
-    } catch (error) {
-      this.error('Failed to initialize Configuration System');
-      // Don't throw error - allow server to start without configuration system
-      this.warn('Configuration System initialization failed, continuing without it');
-    }
-  }
   
   /**
    * Initialize Pipeline Scheduler
@@ -1077,9 +1201,9 @@ export class ServerModule extends BaseModule implements IServerModule {
    */
   private setupRequestHandling(): void {
     const app = this.httpServer.getApp();
-    
+
     // Add default route for all requests
-    app.use('*', async (req: any, res: any) => {
+    app.all('*', async (req: any, res: any, next: any) => {
       const requestStartTime = Date.now();
       const requestId = req.headers['x-request-id'] || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       

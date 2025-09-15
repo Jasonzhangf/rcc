@@ -13,7 +13,6 @@ jest.mock('express', () => {
     listen: jest.fn(),
     on: jest.fn(),
     set: jest.fn(),
-    get: jest.fn(),
     clear: jest.fn()
   });
   
@@ -36,8 +35,11 @@ jest.mock('body-parser', () => ({
 jest.mock('rcc-basemodule', () => {
   const actualModule = jest.requireActual('rcc-basemodule');
   
+  // Ensure actualModule is an object before spreading
+  const moduleExports = typeof actualModule === 'object' && actualModule !== null ? actualModule : {};
+  
   return {
-    ...actualModule,
+    ...moduleExports,
     MessageCenter: {
       getInstance: jest.fn(() => ({
         registerModule: jest.fn(),

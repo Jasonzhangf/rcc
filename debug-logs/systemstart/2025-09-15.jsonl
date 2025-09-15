@@ -1,0 +1,2 @@
+{"timestamp":1757923442837,"level":"info","message":"Debug directories initialized","method":"initializeDirectories","data":{"baseDirectory":"./debug-logs","systemStartDirectory":"debug-logs/systemstart"},"phase":"systemstart","directory":"debug-logs/systemstart"}
+{"timestamp":1757923442837,"level":"info","message":"Two-phase debug system enabled","method":"enableTwoPhaseDebug","data":{"baseDirectory":"./debug-logs"},"phase":"systemstart","directory":"debug-logs/systemstart"}

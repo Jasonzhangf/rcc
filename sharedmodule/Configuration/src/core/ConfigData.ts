@@ -63,6 +63,8 @@ export interface VirtualModelConfig {
   enabled: boolean;
   /** 优先级 */
   priority: number;
+  /** 权重 */
+  weight?: number;
 }
 
 /**

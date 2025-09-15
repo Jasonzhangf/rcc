@@ -18,12 +18,19 @@ import { ConfigurationToPipelineModule } from './integration/ConfigurationToPipe
 export type {
   VirtualModelMapping,
   VirtualModelPipelineConfig,
-  PipelineTableConfig,
   PipelineAssemblyResult
 } from './integration/ConfigurationToPipelineModule';
 
+// Export decoupled integration module
+import { DecoupledConfigurationToPipelineModule } from './integration/DecoupledConfigurationToPipelineModule';
+export type {
+  VirtualModelMapping as DecoupledVirtualModelMapping,
+  DecoupledPipelineTableConfig
+} from './integration/DecoupledConfigurationToPipelineModule';
+
 // Re-export the class as a type and value
 export { ConfigurationToPipelineModule };
+export { DecoupledConfigurationToPipelineModule };
 
 // Export core interfaces
 // export * from './interfaces/IConfigurationSystem'; // Removed - using simplified structures from core/ConfigData
@@ -34,6 +41,26 @@ export * from './interfaces/IConfigValidatorModule';
 
 // Export constants only (types are already exported from interfaces)
 export * from './constants/ConfigurationConstants';
+
+// Export core configuration data structures
+export * from './core/ConfigData';
+
+// Export pipeline generation components
+export { 
+  PipelineTable, 
+  PipelineEntry, 
+  PipelineTableConfig 
+} from './core/PipelineTable';
+
+export { 
+  EnhancedPipelineConfigGenerator,
+  CompletePipelineConfig
+} from './core/PipelineTableGenerator';
+
+export {
+  EnhancedPipelineConfigConverter,
+  ConversionOptions
+} from './core/PipelineConfigConverter';
 
 // Web UI module removed for minimal configuration
 // import * as WebUI from './webui';
@@ -379,6 +406,7 @@ export default {
   ConfigurationSystem,
   EnhancedConfigurationSystem,
   ConfigurationToPipelineModule,
+  DecoupledConfigurationToPipelineModule,
   createConfigurationSystem,
   createEnhancedConfigurationSystem,
   isValidConfigurationStructure,

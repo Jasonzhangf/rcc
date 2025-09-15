@@ -15,7 +15,7 @@ import { ProcessManager } from '../utils/ProcessManager';
 
 export class CLIFramework extends BaseModule implements ICLIFramework {
   private commandRegistry: CommandRegistry;
-  private moduleLoader: ModuleLoader;
+  private moduleLoader: ModuleLoader | null = null;
   private configManager: ConfigManager;
   private argumentParser: ArgumentParser;
   private logger: Logger;
@@ -42,7 +42,6 @@ export class CLIFramework extends BaseModule implements ICLIFramework {
 
     // Initialize components
     this.commandRegistry = new CommandRegistry(this);
-    this.moduleLoader = new ModuleLoader(this, options.modulePaths);
     this.configManager = new ConfigManager(this, options.configPath);
     this.argumentParser = new ArgumentParser();
     this.logger = new Logger({
@@ -51,6 +50,7 @@ export class CLIFramework extends BaseModule implements ICLIFramework {
       console: options.logger?.console !== false
     });
     this.processManager = new ProcessManager();
+    // ModuleLoader will be initialized after config is loaded
   }
 
   async initialize(): Promise<void> {
@@ -69,6 +69,9 @@ export class CLIFramework extends BaseModule implements ICLIFramework {
       this.frameworkConfig = await this.configManager.load();
       this.logger.info(`Loaded configuration: ${this.frameworkConfig.framework.name} v${this.frameworkConfig.framework.version}`);
 
+      // Initialize ModuleLoader with config paths
+      this.moduleLoader = new ModuleLoader(this, this.frameworkConfig.modules.paths);
+      
       // Initialize process manager
       await this.processManager.initialize();
 
@@ -139,9 +142,11 @@ export class CLIFramework extends BaseModule implements ICLIFramework {
     this.logger.debug(`Unregistering module: ${moduleName}`);
     
     // Find and cleanup module
-    const module = this.moduleLoader.getModule(moduleName);
-    if (module && module.cleanup) {
-      await module.cleanup();
+    if (this.moduleLoader) {
+      const module = this.moduleLoader.getModule(moduleName);
+      if (module && module.cleanup) {
+        await module.cleanup();
+      }
     }
 
     // Remove commands from registry
@@ -245,13 +250,15 @@ export class CLIFramework extends BaseModule implements ICLIFramework {
     await this.commandRegistry.clear();
     
     // Reload modules
-    await this.moduleLoader.reloadModules();
-    const loadResults = await this.moduleLoader.loadModules();
-    
-    // Re-register modules
-    for (const result of loadResults) {
-      if (result.success && result.module) {
-        await this.registerModule(result.module);
+    if (this.moduleLoader) {
+      await this.moduleLoader.reloadModules();
+      const loadResults = await this.moduleLoader.loadModules();
+      
+      // Re-register modules
+      for (const result of loadResults) {
+        if (result.success && result.module) {
+          await this.registerModule(result.module);
+        }
       }
     }
     
@@ -263,10 +270,12 @@ export class CLIFramework extends BaseModule implements ICLIFramework {
     
     try {
       // Cleanup all modules
-      const modules = this.moduleLoader.getAllModules();
-      for (const module of modules) {
-        if (module.cleanup) {
-          await module.cleanup();
+      if (this.moduleLoader) {
+        const modules = this.moduleLoader.getAllModules();
+        for (const module of modules) {
+          if (module.cleanup) {
+            await module.cleanup();
+          }
         }
       }
 

@@ -26,9 +26,9 @@ export default [
     ],
     external: [
       'rcc-basemodule',
+      'rcc-errorhandling',
       'uuid',
-      'axios',
-      'crypto-js'
+      'axios'
     ],
   },
   // ES module bundle
@@ -52,9 +52,9 @@ export default [
     ],
     external: [
       'rcc-basemodule',
+      'rcc-errorhandling',
       'uuid',
-      'axios',
-      'crypto-js'
+      'axios'
     ],
   }
 ];

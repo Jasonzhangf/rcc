@@ -33,26 +33,39 @@ export function setupDOM() {
 
   // Mock IntersectionObserver
   global.IntersectionObserver = class IntersectionObserver {
-    constructor() {}
+    root: Element | null = null;
+    rootMargin: string = '';
+    thresholds: number[] = [];
+    
+    constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {}
+    
     disconnect() {}
-    observe() {}
-    unobserve() {}
+    observe(target: Element) {}
+    unobserve(target: Element) {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
   };
 
   // Mock ResizeObserver
   global.ResizeObserver = class ResizeObserver {
-    constructor() {}
+    constructor(callback: ResizeObserverCallback) {}
+    
     disconnect() {}
-    observe() {}
-    unobserve() {}
+    observe(target: Element, options?: ResizeObserverOptions) {}
+    unobserve(target: Element) {}
   };
 
   // Mock MutationObserver
   global.MutationObserver = class MutationObserver {
     constructor(callback: MutationCallback) {}
+    
     disconnect() {}
-    observe() {}
-    unobserve() {}
+    observe(target: Node, options: MutationObserverInit) {}
+    unobserve(target: Node) {}
+    takeRecords(): MutationRecord[] {
+      return [];
+    }
   };
 
   return dom;

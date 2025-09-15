@@ -43,9 +43,14 @@ export class ConfigLoader {
       console.log(`Configuration loaded from ${configPath}`);
       return config;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'ENOENT') {
         console.log(`Configuration file not found at ${configPath}, creating empty config`);
         return this.createEmptyConfig();
+      } else if (nodeError instanceof SyntaxError) {
+        // 如果是JSON解析错误，重新抛出错误
+        console.error(`Invalid JSON in configuration file ${configPath}:`, error);
+        throw new Error(`Invalid JSON in configuration file ${configPath}: ${error.message}`);
       }
       console.error(`Failed to load configuration from ${configPath}:`, error);
       throw error;

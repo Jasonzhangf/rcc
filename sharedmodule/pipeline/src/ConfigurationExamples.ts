@@ -6,7 +6,8 @@
 import { 
   PipelineAssemblyTable, 
   PipelineSchedulerConfig,
-  PipelineConfigFactory 
+  PipelineConfigFactory,
+  ConditionOperator
 } from './PipelineCompleteConfig';
 
 // ===== Example 1: Simple API Processing Pipeline =====
@@ -31,12 +32,12 @@ export const simpleApiAssemblyTable: PipelineAssemblyTable = {
       conditions: [
         {
           field: 'request.method',
-          operator: 'in',
+          operator: ConditionOperator.CONTAINS,
           value: ['GET', 'POST', 'PUT', 'DELETE']
         },
         {
           field: 'request.headers.content-type',
-          operator: 'contains',
+          operator: ConditionOperator.CONTAINS,
           value: 'application/json'
         }
       ],
@@ -104,7 +105,7 @@ export const simpleApiAssemblyTable: PipelineAssemblyTable = {
               enableConditions: [
                 {
                   field: 'request.headers.authorization',
-                  operator: 'exists',
+                  operator: ConditionOperator.CONTAINS,
                   value: null
                 }
               ]
@@ -125,6 +126,10 @@ export const simpleApiAssemblyTable: PipelineAssemblyTable = {
             },
             execution: {
               timeout: 1000
+            },
+            conditions: {
+              enableConditions: [],
+              skipConditions: []
             }
           },
           {
@@ -141,6 +146,10 @@ export const simpleApiAssemblyTable: PipelineAssemblyTable = {
             },
             execution: {
               timeout: 3000
+            },
+            conditions: {
+              enableConditions: [],
+              skipConditions: []
             }
           },
           {
@@ -157,6 +166,10 @@ export const simpleApiAssemblyTable: PipelineAssemblyTable = {
             },
             execution: {
               timeout: 10000
+            },
+            conditions: {
+              enableConditions: [],
+              skipConditions: []
             }
           },
           {
@@ -173,6 +186,10 @@ export const simpleApiAssemblyTable: PipelineAssemblyTable = {
             },
             execution: {
               timeout: 2000
+            },
+            conditions: {
+              enableConditions: [],
+              skipConditions: []
             }
           }
         ],
@@ -310,6 +327,12 @@ export const simpleApiAssemblyTable: PipelineAssemblyTable = {
       metadata: {
         author: 'Infrastructure Team',
         category: 'traffic-control'
+      },
+      initializationConfig: {
+        defaultConfig: {
+          requestsPerMinute: 100,
+          burstSize: 20
+        }
       }
     }
   ],
@@ -367,67 +390,41 @@ export const advancedSchedulerConfig: PipelineSchedulerConfig = {
     }
   },
   healthCheck: {
-    strategy: 'hybrid',
-    intervals: {
-      activeCheckInterval: 30000,
-      passiveCheckInterval: 10000,
-      fullCheckInterval: 300000
-    },
-    checks: {
-      basic: {
-        enabled: true,
-        timeout: 5000,
-        endpoint: '/health/basic'
+      strategy: 'active',
+      intervals: {
+        activeCheckInterval: 30000,
+        passiveCheckInterval: 60000,
+        fullCheckInterval: 300000
       },
-      detailed: {
-        enabled: true,
-        timeout: 15000,
-        includeMetrics: true,
-        includeDependencies: true
-      },
-      custom: {
-        enabled: true,
-        checkFunction: 'customHealthCheck',
-        parameters: {
-          checkDatabase: true,
-          checkExternalServices: true
+      checks: {
+        basic: {
+          enabled: true,
+          timeout: 5000,
+          endpoint: '/health'
+        },
+        detailed: {
+          enabled: false,
+          timeout: 10000,
+          includeMetrics: false,
+          includeDependencies: false
+        },
+        custom: {
+          enabled: false,
+          checkFunction: '',
+          parameters: {}
         }
+      },
+      thresholds: {
+        healthyThreshold: 2,
+        unhealthyThreshold: 3,
+        degradationThreshold: 1
+      },
+      recovery: {
+        autoRecovery: true,
+        recoveryStrategies: [],
+        maxRecoveryAttempts: 3
       }
     },
-    thresholds: {
-      healthyThreshold: 2,
-      unhealthyThreshold: 3,
-      degradationThreshold: 1
-    },
-    recovery: {
-      autoRecovery: true,
-      recoveryStrategies: [
-        {
-          strategyId: 'restart-strategy',
-          name: 'Restart Recovery',
-          conditions: [
-            {
-              field: 'health.memoryUsage',
-              operator: 'greater_than',
-              value: 0.9
-            }
-          ],
-          actions: [
-            {
-              type: 'restart',
-              parameters: {
-                gracefulShutdown: true,
-                timeout: 30000
-              },
-              timeout: 60000
-            }
-          ],
-          priority: 1
-        }
-      ],
-      maxRecoveryAttempts: 3
-    }
-  },
   errorHandling: {
     errorClassification: {
       enableAutomaticClassification: true,
@@ -438,7 +435,7 @@ export const advancedSchedulerConfig: PipelineSchedulerConfig = {
           classificationRules: [
             {
               field: 'error.code',
-              operator: 'in',
+              operator: ConditionOperator.CONTAINS,
               value: [4001, 4002, 4003],
               classification: {
                 category: 'business',
@@ -715,16 +712,17 @@ export const simpleSchedulerConfig: PipelineSchedulerConfig = {
     }
   },
   healthCheck: {
-    strategy: 'passive',
+    strategy: 'active',
     intervals: {
       activeCheckInterval: 60000,
-      passiveCheckInterval: 30000,
-      fullCheckInterval: 600000
+      passiveCheckInterval: 120000,
+      fullCheckInterval: 300000
     },
     checks: {
       basic: {
         enabled: true,
-        timeout: 5000
+        timeout: 5000,
+        endpoint: '/health'
       },
       detailed: {
         enabled: false,

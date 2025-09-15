@@ -1,5 +1,28 @@
 import { ModuleInfo } from 'rcc-basemodule';
 import { BasePipelineModule } from '../modules/BasePipelineModule';
+
+// Import the new frameworks
+import { 
+  LLMSwitchFramework, 
+  LLMSwitchFrameworkConfig 
+} from '../nodes/llmswitch';
+
+import { 
+  WorkflowFramework, 
+  WorkflowFrameworkConfig 
+} from '../nodes/workflow';
+
+import { 
+  CompatibilityFramework, 
+  CompatibilityFrameworkConfig 
+} from '../nodes/compatibility';
+
+import { 
+  ProviderFramework, 
+  ProviderFrameworkConfig 
+} from '../nodes/provider';
+
+// Import the original modules for backward compatibility
 import { LLMSwitchModule, LLMSwitchConfig } from '../modules/LLMSwitchModule';
 import { WorkflowModule, WorkflowConfig } from '../modules/WorkflowModule';
 import { CompatibilityModule, CompatibilityConfig } from '../modules/CompatibilityModule';
@@ -11,6 +34,12 @@ import {
   ModuleConnection, 
   Pipeline 
 } from '../interfaces/IPipelineAssembler';
+
+// Import framework initialization utilities
+import { 
+  NodeImplementationScanner, 
+  initializePipelineFrameworks 
+} from '../nodes';
 
 /**
  * Pipeline Module Factory - Creates instances of pipeline modules
@@ -34,15 +63,38 @@ class PipelineModuleFactory {
       }
     };
 
+    // Check if we should use the new framework or legacy module
+    const useFramework = moduleConfig.config?.useFramework !== false;
+
     switch (moduleConfig.type) {
       case 'llmswitch':
-        return new LLMSwitchModule(moduleInfo);
+        if (useFramework) {
+          return new LLMSwitchFramework(moduleInfo);
+        } else {
+          return new LLMSwitchModule(moduleInfo);
+        }
+      
       case 'workflow':
-        return new WorkflowModule(moduleInfo);
+        if (useFramework) {
+          return new WorkflowFramework(moduleInfo);
+        } else {
+          return new WorkflowModule(moduleInfo);
+        }
+      
       case 'compatibility':
-        return new CompatibilityModule(moduleInfo);
+        if (useFramework) {
+          return new CompatibilityFramework(moduleInfo);
+        } else {
+          return new CompatibilityModule(moduleInfo);
+        }
+      
       case 'provider':
-        return new ProviderModule(moduleInfo);
+        if (useFramework) {
+          return new ProviderFramework(moduleInfo);
+        } else {
+          return new ProviderModule(moduleInfo);
+        }
+      
       default:
         throw new Error(`Unsupported module type: ${moduleConfig.type}`);
     }
@@ -205,6 +257,7 @@ class ConcretePipeline implements Pipeline {
 export class PipelineAssembler implements IPipelineAssembler {
   private pipelines: Map<string, Pipeline> = new Map();
   private activePipeline: Pipeline | null = null;
+  private frameworksInitialized: boolean = false;
 
   /**
    * Assemble a pipeline from configuration
@@ -215,6 +268,13 @@ export class PipelineAssembler implements IPipelineAssembler {
     console.log(`Assembling pipeline: ${config.id}`);
 
     try {
+      // Initialize frameworks if not already done
+      if (!this.frameworksInitialized) {
+        console.log('Initializing pipeline frameworks...');
+        await initializePipelineFrameworks();
+        this.frameworksInitialized = true;
+      }
+
       // Create all modules
       const modules: Map<string, BasePipelineModule> = new Map();
       

@@ -1,18 +1,24 @@
 {
   "preset": "ts-jest",
-  "testEnvironment": "jsdom",
+  "testEnvironment": "node",
   "roots": [
     "<rootDir>/src",
-    "<rootDir>/__test__"
+    "<rootDir>"
   ],
   "testMatch": [
     "**/__test__/**/*.test.ts",
     "**/src/**/*.test.ts"
   ],
   "transform": {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": [
+      "ts-jest",
+      {
+        "useESM": true
+      }
+    ]
   },
-  "moduleNameMapping": {
+  "extensionsToTreatAsEsm": [".ts"],
+  "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@test/(.*)$": "<rootDir>/__test__/$1"
   },

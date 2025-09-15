@@ -627,7 +627,7 @@
         updateStatus('正在加载配置...');
         
         // 从API加载配置
-        const response = await fetch('http://localhost:3001/api/config');
+        const response = await fetch('http://localhost:5001/api/config');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -656,7 +656,7 @@
         updateStatus('正在保存配置...');
         
         // 通过API保存配置
-        const response = await fetch('http://localhost:3001/api/config', {
+        const response = await fetch('http://localhost:5001/api/config', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -691,7 +691,7 @@
         updateStatus('正在获取流水线表...');
         
         // 通过API获取流水线表
-        const response = await fetch('http://localhost:3001/api/pipeline');
+        const response = await fetch('http://localhost:5001/api/pipeline');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -713,7 +713,7 @@
         updateStatus('正在创建新配置...');
         
         // 通过API创建新配置
-        const response = await fetch('http://localhost:3001/api/config', {
+        const response = await fetch('http://localhost:5001/api/config', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

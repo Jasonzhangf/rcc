@@ -205,12 +205,12 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Error handling middleware
    */
-  private errorHandler(error: Error, req: express.Request, res: express.Response): void {
+  private errorHandler(error: Error, req: express.Request, res: express.Response, next: express.NextFunction): void {
     this.error('Request error', { method: 'errorHandler' });
-    
+
     const status = (error as any).status || 500;
     const message = process.env.NODE_ENV === 'production' ? 'Internal Server Error' : error.message;
-    
+
     res.status(status).json({
       error: {
         message,

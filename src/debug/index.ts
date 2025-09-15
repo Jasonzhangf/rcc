@@ -1,26 +1,13 @@
 /**
- * RCC Debug System - Two-phase debug configuration
+ * RCC Debug System - Simple configurable debug system
  *
- * This module provides a sophisticated two-phase debug system that:
- * 1. Uses "systemstart" directory before port initialization
- * 2. Switches to port-specific directories after port initialization
+ * This module provides a simple debug system that:
+ * 1. Supports configurable log directory
+ * 2. Can update directory at runtime
+ * 3. Supports different log levels and file output
  *
  * @module debug
  */
 
-// Two-phase debug system
-export { TwoPhaseDebugSystem, TwoPhaseDebugConfig } from './TwoPhaseDebugSystem';
-
-// Module startup configuration
-export {
-  TwoPhaseDebugModule,
-  ModuleStartupConfig,
-  createModuleStartupConfig,
-  ModuleStartupConfigs,
-} from './ModuleStartupConfig';
-
-// Global debug system instance
-export { twoPhaseDebugSystem } from './TwoPhaseDebugSystem';
-
-// Re-export debug types from BaseModule
-export { DebugLevel, DebugLogEntry, DebugConfig } from '../basemodule/src/BaseModule';
+// Main debug system
+export { DebugSystem, DebugConfig, DebugLevel, DebugLogEntry, debugSystem, initializeDebugSystem, updateDebugDirectory } from './DebugSystem';

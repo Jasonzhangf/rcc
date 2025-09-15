@@ -1,4 +1,4 @@
-import { DebugConfig, DebugLevel } from '../basemodule/src/BaseModule';
+import { DebugConfig, DebugLevel } from '../basemodule/src/DebugModule';
 import * as fs from 'fs';
 import * as path from 'path';
 

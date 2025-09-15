@@ -44,15 +44,26 @@ export interface VirtualModelConfig {
   id: string;
   name: string;
   provider: string;
-  endpoint: string;
+  endpoint?: string; // 现在是可选的
   apiKey?: string;
-  model: string;
-  capabilities: string[];
-  maxTokens: number;
-  temperature: number;
-  topP: number;
-  enabled: boolean;
-  routingRules: RoutingRule[];
+  model?: string; // 从配置生成，现在也是可选的
+  capabilities: string[]; // 可以从配置推断
+  maxTokens?: number; // 现在是可选的，有默认值
+  temperature?: number; // 现在是可选的，有默认值
+  topP?: number; // 现在是可选的，有默认值
+  enabled?: boolean; // 现在是可选的，有默认值
+  routingRules?: RoutingRule[]; // 现在是可选的
+  targets?: TargetConfig[]; // 从配置转换的目标数组
+  priority?: number; // 路由优先级
+}
+
+// 目标配置（从配置文件格式转换）
+export interface TargetConfig {
+  providerId: string;
+  modelId: string;
+  keyIndex?: number;
+  weight?: number;
+  enabled?: boolean;
 }
 
 export interface RoutingRule {

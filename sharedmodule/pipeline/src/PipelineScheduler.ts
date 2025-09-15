@@ -181,6 +181,59 @@ export class PipelineScheduler extends BaseModule implements IPipelineScheduler 
   }
 
   /**
+   * Execute a request through the pipeline system (for virtual model routing)
+   */
+  public async executePipeline(modelId: string, context: any): Promise<any> {
+    this.logInfo('Executing pipeline for virtual model', {
+      modelId,
+      context
+    }, 'executePipeline');
+
+    try {
+      // Create execution payload from virtual model context
+      const payload = {
+        model: modelId,
+        messages: context.messages || [],
+        max_tokens: context.maxTokens || 1000,
+        temperature: context.temperature || 0.7,
+        stream: context.stream || false
+      };
+
+      // Execute through pipeline system
+      const result = await this.execute(payload, {
+        timeout: context.timeout || 30000,
+        maxRetries: context.maxRetries || 2,
+        preferredPipelineId: context.preferredPipelineId,
+        metadata: {
+          modelId,
+          requestId: context.requestId,
+          virtualModel: context.virtualModel
+        }
+      });
+
+      // Transform pipeline result to virtual model response format
+      return {
+        id: result.executionId,
+        model: modelId,
+        provider: this.getProviderForModel(modelId),
+        content: result.result?.content || '',
+        usage: result.result?.usage || {},
+        timestamp: Date.now(),
+        processingMethod: 'pipeline',
+        pipelineId: result.pipelineId,
+        instanceId: result.instanceId
+      };
+
+    } catch (error) {
+      this.error('Pipeline execution failed for virtual model', {
+        modelId,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'executePipeline');
+      throw error;
+    }
+  }
+
+  /**
    * Execute a request through the pipeline system
    */
   public async execute(payload: Record<string, any>, options: ExecutionOptions = {}): Promise<PipelineExecutionResult> {
@@ -960,6 +1013,20 @@ export class PipelineScheduler extends BaseModule implements IPipelineScheduler 
       PipelineErrorCode.INTERNAL_ERROR
     ];
     return sendPhaseErrorCodes.includes(error.code);
+  }
+
+  /**
+   * Get provider for a given model ID
+   */
+  private getProviderForModel(modelId: string): string {
+    // This would typically lookup the model configuration to determine the provider
+    // For now, return a default provider based on model naming patterns
+    if (modelId.includes('qwen') || modelId.includes('coding')) {
+      return 'qwen';
+    } else if (modelId.includes('glm') || modelId.includes('deepseek')) {
+      return 'iflow';
+    }
+    return 'default';
   }
 
   /**

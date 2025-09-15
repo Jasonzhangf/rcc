@@ -589,7 +589,7 @@ export class ServerModule extends BaseModule implements IServerModule {
         enabled: this.pipelineIntegrationConfig.enabled,
         schedulerAvailable: false,
         processingMethod: this.underConstruction && this.pipelineIntegrationConfig.enabled ? 'underconstruction' : 'direct',
-        fallbackEnabled: this.pipelineIntegrationConfig.fallbackToDirect,
+        fallbackEnabled: false,
         unifiedErrorHandling: this.pipelineIntegrationConfig.unifiedErrorHandling || false,
         unifiedMonitoring: this.pipelineIntegrationConfig.unifiedMonitoring || false,
         errorMapping: this.pipelineIntegrationConfig.errorMapping || {}
@@ -872,13 +872,13 @@ export class ServerModule extends BaseModule implements IServerModule {
           method: 'processVirtualModelRequest'
         });
         
-        // Fall back to direct processing
-        return await this.processDirectly(request, model);
+        // Pipeline processing failed - throw error to indicate system issue
+        throw new Error(`Pipeline processing failed for model ${model.id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-    
-    // Use direct processing if pipeline scheduler is not available
-    return await this.processDirectly(request, model);
+
+    // Pipeline scheduler not available - throw error to indicate system issue
+    throw new Error('Pipeline scheduler not available - system configuration issue');
   }
 
   /**
@@ -957,93 +957,7 @@ export class ServerModule extends BaseModule implements IServerModule {
     }
   }
 
-  /**
-   * Process request directly (fallback method)
-   */
-  private async processDirectly(request: ClientRequest, model: VirtualModelConfig): Promise<ClientResponse> {
-    this.log('Processing request directly');
-    
-    const startTime = Date.now();
-    
-    try {
-      // Basic request processing without Pipeline
-      const processingTime = Date.now() - startTime;
-      
-      return {
-        id: request.id,
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Virtual-Model': model.id,
-          'X-Provider': model.provider,
-          'X-Processing-Method': 'direct',
-          'X-Fallback-Reason': 'pipeline-unavailable',
-          'X-Integration-Status': 'rcc-v4-unified'
-        },
-        body: {
-          message: 'Request processed successfully via direct processing',
-          model: model.id,
-          provider: model.provider,
-          processingMethod: 'direct',
-          originalRequest: {
-            method: request.method,
-            path: request.path,
-            timestamp: request.timestamp
-          },
-          timestamp: Date.now(),
-          integration: {
-            unified: true,
-            version: 'v4',
-            errorHandler: 'unified-pipeline-error-handling'
-          }
-        },
-        timestamp: Date.now(),
-        processingTime,
-        requestId: request.id
-      };
-      
-    } catch (error) {
-      const processingTime = Date.now() - startTime;
-      
-      this.error('Direct processing failed', {
-        modelId: model.id,
-        error: error instanceof Error ? error.message : String(error),
-        method: 'processDirectly'
-      });
-      
-      // Create standardized error response
-      const errorResponse = this.createErrorResponse(error, request);
-      
-      return {
-        id: request.id,
-        status: errorResponse.httpStatus || 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Virtual-Model': model.id,
-          'X-Provider': model.provider,
-          'X-Processing-Method': 'direct',
-          'X-Error-Type': 'direct-processing-failed',
-          'X-Integration-Status': 'rcc-v4-unified'
-        },
-        body: {
-          ...errorResponse,
-          processingMethod: 'direct',
-          model: model.id,
-          provider: model.provider,
-          timestamp: Date.now(),
-          integration: {
-            unified: true,
-            version: 'v4',
-            errorHandler: 'unified-pipeline-error-handling'
-          }
-        },
-        timestamp: Date.now(),
-        processingTime,
-        requestId: request.id
-      };
-    }
-  }
-
+  
   /**
    * Set UnderConstruction Module
    */
@@ -1101,7 +1015,6 @@ export class ServerModule extends BaseModule implements IServerModule {
       const errorMap: Record<string, string> = {
         'Server is not running': 'SERVER_NOT_RUNNING',
         'Pipeline execution failed': 'PIPELINE_EXECUTION_FAILED',
-        'Direct processing failed': 'DIRECT_PROCESSING_FAILED',
         'Internal Server Error': 'INTERNAL_SERVER_ERROR',
         'Not Found': 'RESOURCE_NOT_FOUND',
         'Unauthorized': 'AUTHORIZATION_FAILED',
@@ -1175,7 +1088,7 @@ export class ServerModule extends BaseModule implements IServerModule {
       defaultTimeout: 30000,
       maxRetries: 3,
       retryDelay: 1000,
-      fallbackToDirect: true,
+      fallbackToDirect: false,
       enableMetrics: true,
       enableHealthCheck: true,
       pipelineSelectionStrategy: 'round-robin',

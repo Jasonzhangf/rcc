@@ -35,6 +35,8 @@
     "rcc-basemodule": "^0.1.4",
     "rcc-configuration": "0.1.1",
     "rcc-errorhandling": "^1.0.4",
+    "rcc-pipeline": "^0.1.2",
+    "rcc-server": "^0.1.6",
     "rcc-underconstruction": "^0.1.0"
   },
   "devDependencies": {

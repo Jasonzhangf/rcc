@@ -1,6 +1,6 @@
 {
   "name": "rcc",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "RCC - Modular TypeScript Framework",
   "private": false,
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
     "rcc-configuration": "0.1.1",
     "rcc-errorhandling": "^1.0.5",
     "rcc-pipeline": "^0.1.1",
-    "rcc-server": "file:sharedmodule/server/rcc-server-0.1.3.tgz",
+    "rcc-server": "^0.1.4",
     "rcc-underconstruction": "^0.1.0",
     "rcc-virtual-model-rules": "file:sharedmodule/virtual-model-rules/rcc-virtual-model-rules-1.0.5.tgz",
     "uuid": "^9.0.1",

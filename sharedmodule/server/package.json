@@ -1,6 +1,6 @@
 {
   "name": "rcc-server",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "RCC Server Module - Client input proxy response server with virtual model routing",
   "type": "module",
   "main": "dist/index.esm.js",

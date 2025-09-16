@@ -738,17 +738,32 @@ export class ServerModule extends BaseModule implements IServerModule {
    * Initialize Pipeline Scheduler
    */
   private async initializePipelineScheduler(): Promise<void> {
-    this.log('Initializing Pipeline Scheduler');
-    
+    this.log('Initializing Pipeline Scheduler with enhanced logging');
+
     try {
-      // Initialize Pipeline Scheduler
+      // Initialize Pipeline Scheduler with enhanced logging
       this.pipelineScheduler = new PipelineScheduler();
       await this.pipelineScheduler.initialize();
-      
-      this.logInfo('Pipeline Scheduler initialized successfully');
-      
+
+      // Configure logging after initialization
+      const enhancedScheduler = this.pipelineScheduler as any;
+      if (enhancedScheduler && typeof enhancedScheduler.configureLogging === 'function') {
+        await enhancedScheduler.configureLogging({
+          enabled: true,
+          baseDirectory: './server-pipeline-logs',
+          logLevel: 'debug',
+          contentFiltering: {
+            enabled: true,
+            sensitiveFields: ['apiKey', 'password', 'token', 'secret', 'key', 'authorization', 'bearer']
+          }
+        });
+      }
+
+      this.logInfo('Pipeline Scheduler with enhanced logging initialized successfully');
+      this.logInfo('Pipeline logging enabled - all requests will be logged to ./server-pipeline-logs');
+
     } catch (error) {
-      this.error('Failed to initialize Pipeline Scheduler');
+      this.error('Failed to initialize Pipeline Scheduler with logging');
       // Don't throw error - allow server to start without pipeline scheduler
       this.warn('Pipeline Scheduler initialization failed, continuing without it');
     }

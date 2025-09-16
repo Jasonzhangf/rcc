@@ -1,8 +1,44 @@
 // Simple pipeline build for testing purposes
 // This is a minimal JavaScript version that can be built and tested
 
-class PipelineScheduler {
+const { underConstruction } = require('rcc-underconstruction');
+
+/**
+ * Pipeline scheduler interface
+ * Abstract base class defining the interface
+ */
+export class IPipelineScheduler {
+  constructor() {
+    if (this.constructor === IPipelineScheduler) {
+      throw new Error('Interface cannot be instantiated directly');
+    }
+  }
+
+  async initialize() {
+    return underConstruction.callUnderConstructionFeature('pipeline-interface-initialize', {
+      caller: 'IPipelineScheduler.initialize',
+      purpose: 'Pipeline调度器接口初始化方法'
+    });
+  }
+
+  async execute(pipelineId, payload) {
+    return underConstruction.callUnderConstructionFeature('pipeline-interface-execute', {
+      caller: 'IPipelineScheduler.execute',
+      purpose: 'Pipeline调度器接口执行方法'
+    });
+  }
+
+  async executePipeline(modelId, context) {
+    return underConstruction.callUnderConstructionFeature('pipeline-interface-executePipeline', {
+      caller: 'IPipelineScheduler.executePipeline',
+      purpose: 'Pipeline调度器接口执行模型方法'
+    });
+  }
+}
+
+class PipelineScheduler extends IPipelineScheduler {
   constructor(config) {
+    super();
     this.config = config;
     this.initialized = false;
   }

@@ -6,6 +6,7 @@ import compression from 'compression';
 import bodyParser from 'body-parser';
 import { createServer } from 'http';
 import { VirtualModelRulesModule } from 'rcc-virtual-model-rules';
+import { PipelineScheduler } from 'rcc-pipeline';
 
 // HTTP Server component for RCC Server Module
 class HttpServerComponent extends BaseModule {
@@ -1059,29 +1060,6 @@ class VirtualModelRouter extends BaseModule {
         this.modelMetrics.clear();
         await super.destroy();
     }
-}
-
-// Simple pipeline build for testing purposes
-// This is a minimal JavaScript version that can be built and tested
-
-class PipelineScheduler {
-  constructor(config) {
-    this.config = config;
-    this.initialized = false;
-  }
-
-  async initialize() {
-    console.log('Initializing PipelineScheduler');
-    this.initialized = true;
-  }
-
-  async execute(pipelineId, payload) {
-    if (!this.initialized) {
-      throw new Error('PipelineScheduler not initialized');
-    }
-    console.log(`Executing pipeline ${pipelineId}`, payload);
-    return { success: true, pipelineId, result: 'Mock execution result' };
-  }
 }
 
 // Main Server Module for RCC

@@ -1,6 +1,6 @@
 {
   "name": "rcc-pipeline",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "description": "RCC Pipeline Module System - A comprehensive pipeline scheduling and load balancing system built on BaseModule",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",

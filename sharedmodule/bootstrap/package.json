@@ -1,6 +1,6 @@
 {
   "name": "rcc-bootstrap",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "RCC Bootstrap Service - System initialization and service coordination",
   "type": "module",
   "main": "dist/index.js",
@@ -35,8 +35,8 @@
     "rcc-basemodule": "^0.1.4",
     "rcc-configuration": "0.1.1",
     "rcc-errorhandling": "^1.0.4",
-    "rcc-pipeline": "^0.1.2",
-    "rcc-server": "^0.1.6",
+    "rcc-pipeline": "^0.1.3",
+    "rcc-server": "^0.1.8",
     "rcc-underconstruction": "^0.1.0"
   },
   "devDependencies": {

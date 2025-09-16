@@ -1,7 +1,7 @@
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 export default {
-  input: 'src/index-simple.js',
+  input: 'src/index-enhanced.js',
   output: [
     {
       file: 'dist/index.js',

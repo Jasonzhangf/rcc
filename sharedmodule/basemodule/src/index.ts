@@ -16,13 +16,7 @@ export { BaseModule } from './BaseModule';
 export { DebugModule } from './DebugModule';
 
 // Export all types from BaseModule
-export type {
-  DebugLevel,
-  DebugLogEntry,
-  DebugConfig,
-} from './BaseModule';
+export type { DebugLevel, DebugLogEntry, DebugConfig } from './BaseModule';
 
 // Export all types from DebugModule
-export type {
-  TwoPhaseDebugConfig,
-} from './DebugModule';
+export type { TwoPhaseDebugConfig, ModuleIOEntry, IOTrackingConfig } from './DebugModule';

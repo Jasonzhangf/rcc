@@ -7,12 +7,15 @@ import { v4 as uuidv4 } from 'uuid';
 export class MessageCenter {
   private static instance: MessageCenter;
   private modules: Map<string, any> = new Map(); // Map of module IDs to module instances
-  private pendingRequests: Map<string, {
-    resolve: (response: MessageResponse) => void;
-    reject: (error: any) => void;
-    timeoutId: NodeJS.Timeout;
-  }> = new Map();
-  
+  private pendingRequests: Map<
+    string,
+    {
+      resolve: (response: MessageResponse) => void;
+      reject: (error: any) => void;
+      timeoutId: NodeJS.Timeout;
+    }
+  > = new Map();
+
   // Statistics tracking
   private stats = {
     totalMessages: 0,
@@ -22,9 +25,9 @@ export class MessageCenter {
     messagesDelivered: 0,
     messagesFailed: 0,
     averageResponseTime: 0,
-    uptime: Date.now()
+    uptime: Date.now(),
   };
-  
+
   private responseTimes: number[] = [];
   private startTime = Date.now();
 
@@ -52,7 +55,7 @@ export class MessageCenter {
   public registerModule(moduleId: string, moduleInstance: any): void {
     this.modules.set(moduleId, moduleInstance);
     this.stats.registeredModules = this.modules.size;
-    
+
     // Notify other modules about new registration
     setImmediate(() => {
       this.broadcastMessage({
@@ -60,7 +63,7 @@ export class MessageCenter {
         type: 'module_registered',
         source: 'MessageCenter',
         payload: { moduleId },
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
   }
@@ -72,7 +75,7 @@ export class MessageCenter {
   public unregisterModule(moduleId: string): void {
     this.modules.delete(moduleId);
     this.stats.registeredModules = this.modules.size;
-    
+
     // Clean up any pending requests for this module
     for (const [correlationId, request] of this.pendingRequests.entries()) {
       // In a real implementation, you might want to check if this request was to/from the unregistered module
@@ -80,7 +83,7 @@ export class MessageCenter {
       clearTimeout(request.timeoutId);
       this.pendingRequests.delete(correlationId);
     }
-    
+
     // Notify other modules about unregistration
     setImmediate(() => {
       this.broadcastMessage({
@@ -88,7 +91,7 @@ export class MessageCenter {
         type: 'module_unregistered',
         source: 'MessageCenter',
         payload: { moduleId },
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
   }
@@ -99,9 +102,9 @@ export class MessageCenter {
    */
   public sendMessage(message: Message): void {
     this.stats.totalMessages++;
-    
+
     setImmediate(() => {
-      this.processMessage(message).catch(error => {
+      this.processMessage(message).catch((error) => {
         console.error(`Error processing message ${message.id}:`, error);
         this.stats.messagesFailed++;
       });
@@ -114,12 +117,13 @@ export class MessageCenter {
    */
   public broadcastMessage(message: Message): void {
     this.stats.totalMessages++;
-    
+
     setImmediate(() => {
       // Send to all registered modules
       for (const [moduleId, moduleInstance] of this.modules.entries()) {
-        if (moduleId !== message.source) { // Don't send back to sender
-          this.deliverMessage(message, moduleInstance).catch(error => {
+        if (moduleId !== message.source) {
+          // Don't send back to sender
+          this.deliverMessage(message, moduleInstance).catch((error) => {
             console.error(`Error delivering broadcast message to ${moduleId}:`, error);
             this.stats.messagesFailed++;
           });
@@ -137,22 +141,22 @@ export class MessageCenter {
   public sendRequest(message: Message, timeout: number = 30000): Promise<MessageResponse> {
     this.stats.totalRequests++;
     this.stats.activeRequests++;
-    
+
     return new Promise((resolve, reject) => {
       if (!message.correlationId) {
         message.correlationId = uuidv4();
       }
-      
+
       // Set up timeout
       const timeoutId = setTimeout(() => {
         this.pendingRequests.delete(message.correlationId!);
         this.stats.activeRequests--;
         reject(new Error(`Request timeout after ${timeout}ms`));
       }, timeout);
-      
+
       // Store pending request
       this.pendingRequests.set(message.correlationId, { resolve, reject, timeoutId });
-      
+
       // Send the message
       this.sendMessage(message);
     });
@@ -164,14 +168,18 @@ export class MessageCenter {
    * @param callback - Callback function for response
    * @param timeout - Timeout in milliseconds
    */
-  public sendRequestAsync(message: Message, callback: (response: MessageResponse) => void, timeout: number = 30000): void {
+  public sendRequestAsync(
+    message: Message,
+    callback: (response: MessageResponse) => void,
+    timeout: number = 30000
+  ): void {
     this.stats.totalRequests++;
     this.stats.activeRequests++;
-    
+
     if (!message.correlationId) {
       message.correlationId = uuidv4();
     }
-    
+
     // Set up timeout
     const timeoutId = setTimeout(() => {
       this.pendingRequests.delete(message.correlationId!);
@@ -181,10 +189,10 @@ export class MessageCenter {
         correlationId: message.correlationId || '',
         success: false,
         error: `Request timeout after ${timeout}ms`,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }, timeout);
-    
+
     // Store pending request
     this.pendingRequests.set(message.correlationId, {
       resolve: (response: MessageResponse) => {
@@ -202,12 +210,12 @@ export class MessageCenter {
           correlationId: message.correlationId || '',
           success: false,
           error: error.message || 'Unknown error',
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       },
-      timeoutId
+      timeoutId,
     });
-    
+
     // Send the message
     this.sendMessage(message);
   }
@@ -222,14 +230,14 @@ export class MessageCenter {
       if (message.ttl && Date.now() - message.timestamp > message.ttl) {
         throw new Error('Message TTL expired');
       }
-      
+
       if (message.target) {
         // Targeted message
         const targetModule = this.modules.get(message.target);
         if (!targetModule) {
           throw new Error(`Target module ${message.target} not found`);
         }
-        
+
         await this.deliverMessage(message, targetModule);
       } else {
         // Broadcast message
@@ -237,7 +245,7 @@ export class MessageCenter {
       }
     } catch (error) {
       this.stats.messagesFailed++;
-      
+
       // If this was a request, send error response
       if (message.correlationId && this.pendingRequests.has(message.correlationId)) {
         const request = this.pendingRequests.get(message.correlationId)!;
@@ -258,21 +266,21 @@ export class MessageCenter {
    */
   private async deliverMessage(message: Message, moduleInstance: any): Promise<void> {
     const startTime = Date.now();
-    
+
     if (typeof moduleInstance.handleMessage === 'function') {
       const response = await moduleInstance.handleMessage(message);
       this.stats.messagesDelivered++;
-      
+
       // If this was a request with a correlation ID, send response back
       if (message.correlationId && response && this.pendingRequests.has(message.correlationId)) {
         const request = this.pendingRequests.get(message.correlationId)!;
         const responseTime = Date.now() - startTime;
-        
+
         this.responseTimes.push(responseTime);
         if (this.responseTimes.length > 1000) {
           this.responseTimes = this.responseTimes.slice(-100); // Keep only last 100
         }
-        
+
         clearTimeout(request.timeoutId);
         request.resolve(response);
         this.pendingRequests.delete(message.correlationId);
@@ -286,14 +294,15 @@ export class MessageCenter {
    * @returns Statistics object
    */
   public getStats(): MessageCenterStats {
-    const avgResponseTime = this.responseTimes.length > 0 
-      ? this.responseTimes.reduce((a, b) => a + b, 0) / this.responseTimes.length 
-      : 0;
-      
+    const avgResponseTime =
+      this.responseTimes.length > 0
+        ? this.responseTimes.reduce((a, b) => a + b, 0) / this.responseTimes.length
+        : 0;
+
     return {
       ...this.stats,
       averageResponseTime: Math.round(avgResponseTime),
-      uptime: Date.now() - this.startTime
+      uptime: Date.now() - this.startTime,
     };
   }
 
@@ -309,7 +318,7 @@ export class MessageCenter {
       messagesDelivered: 0,
       messagesFailed: 0,
       averageResponseTime: 0,
-      uptime: Date.now()
+      uptime: Date.now(),
     };
     this.responseTimes = [];
     this.startTime = Date.now();

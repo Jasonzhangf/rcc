@@ -210,7 +210,7 @@ export enum ErrorSource {
   SYSTEM = 'system',
   EXTERNAL = 'external',
   NETWORK = 'network',
-  UNKNOWN = 'unknown'
+  UNKNOWN = 'unknown',
 }
 
 export enum ErrorType {
@@ -218,26 +218,26 @@ export enum ErrorType {
   TECHNICAL = 'technical',
   CONFIGURATION = 'configuration',
   RESOURCE = 'resource',
-  DEPENDENCY = 'dependency'
+  DEPENDENCY = 'dependency',
 }
 
 export enum ErrorSeverity {
   CRITICAL = 'critical',
   HIGH = 'high',
   MEDIUM = 'medium',
-  LOW = 'low'
+  LOW = 'low',
 }
 
 export enum ErrorImpact {
   SINGLE_MODULE = 'single_module',
   MULTIPLE_MODULE = 'multiple_module',
-  SYSTEM_WIDE = 'system_wide'
+  SYSTEM_WIDE = 'system_wide',
 }
 
 export enum ErrorRecoverability {
   RECOVERABLE = 'recoverable',
   NON_RECOVERABLE = 'non_recoverable',
-  AUTO_RECOVERABLE = 'auto_recoverable'
+  AUTO_RECOVERABLE = 'auto_recoverable',
 }
 
 export enum ResponseStatus {
@@ -247,7 +247,7 @@ export enum ResponseStatus {
   FAILURE = 'failure',
   RETRY = 'retry',
   FALLENBACK = 'fallback',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 export enum ResponseActionType {
@@ -257,7 +257,7 @@ export enum ResponseActionType {
   NOTIFY = 'notify',
   ISOLATE = 'isolate',
   RESTART = 'restart',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 // ResponsePriority removed - use ActionPriority instead
@@ -267,14 +267,14 @@ export enum PolicyType {
   FALLBACK = 'fallback',
   ISOLATION = 'isolation',
   NOTIFICATION = 'notification',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 export enum RuleType {
   ROUTING = 'routing',
   FILTERING = 'filtering',
   TRANSFORMATION = 'transformation',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 export enum ConditionOperator {
@@ -287,12 +287,12 @@ export enum ConditionOperator {
   IN = 'in',
   NOT_IN = 'not_in',
   REGEX = 'regex',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 export enum LogicalOperator {
   AND = 'and',
-  OR = 'or'
+  OR = 'or',
 }
 
 export enum ActionType {
@@ -302,7 +302,7 @@ export enum ActionType {
   NOTIFY = 'notify',
   ISOLATE = 'isolate',
   RESTART = 'restart',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 export enum AnnotationType {
@@ -310,7 +310,7 @@ export enum AnnotationType {
   WARNING = 'warning',
   INFO = 'info',
   DEBUG = 'debug',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 export enum HandlingStatus {
@@ -318,7 +318,7 @@ export enum HandlingStatus {
   FAILURE = 'failure',
   PARTIAL = 'partial',
   RETRY = 'retry',
-  FALLENBACK = 'fallback'
+  FALLENBACK = 'fallback',
 }
 
 export enum ActionStatus {
@@ -326,14 +326,14 @@ export enum ActionStatus {
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 export enum ActionPriority {
   CRITICAL = 'critical',
   HIGH = 'high',
   MEDIUM = 'medium',
-  LOW = 'low'
+  LOW = 'low',
 }
 
 // Re-export ModuleInfo at the end to avoid circular dependencies

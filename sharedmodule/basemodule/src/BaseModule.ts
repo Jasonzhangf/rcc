@@ -3,7 +3,7 @@ import { ConnectionInfo, DataTransfer } from './interfaces/Connection';
 import { ValidationRule, ValidationResult } from './interfaces/Validation';
 import { Message, MessageResponse, MessageHandler } from './interfaces/Message';
 import { MessageCenter } from './MessageCenter';
-import { DebugModule } from './DebugModule';
+import { DebugModule, IOTrackingConfig, DebugConfig as DebugModuleConfig } from './DebugModule';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -53,36 +53,9 @@ export interface DebugLogEntry {
 /**
  * Debug configuration
  */
-export interface DebugConfig {
-  /**
-   * Whether debug logging is enabled
-   */
-  enabled: boolean;
-  
-  /**
-   * Minimum log level to output
-   */
-  level: DebugLevel;
-  
-  /**
-   * Whether to record call stacks
-   */
-  recordStack: boolean;
-  
-  /**
-   * Maximum number of log entries to keep in memory
-   */
-  maxLogEntries: number;
-  
-  /**
-   * Whether to output to console
-   */
-  consoleOutput: boolean;
-  
-  /**
-   * Whether to track data flow
-   */
-  trackDataFlow: boolean;
+export interface DebugConfig extends Omit<DebugModuleConfig, 'ioTracking' | 'pipelineIO' | 'baseDirectory'> {
+  ioTracking?: IOTrackingConfig;
+  baseDirectory?: string;
 }
 
 /**
@@ -143,7 +116,7 @@ export abstract class BaseModule implements MessageHandler {
   /**
    * Two-phase debug system
    */
-  protected twoPhaseDebugSystem: DebugModule;
+  protected twoPhaseDebugSystem: DebugModule | null;
   
   /**
    * Whether to use two-phase debug system
@@ -173,11 +146,14 @@ export abstract class BaseModule implements MessageHandler {
       recordStack: true,
       maxLogEntries: 1000,
       consoleOutput: true,
-      trackDataFlow: true
+      trackDataFlow: true,
+      enableFileLogging: false,
+      maxFileSize: 10485760, // 10MB
+      maxLogFiles: 5
     };
     
     // Initialize two-phase debug system
-    this.twoPhaseDebugSystem = new DebugModule();
+    this.twoPhaseDebugSystem = null;
   }
   
   /**
@@ -196,6 +172,11 @@ export abstract class BaseModule implements MessageHandler {
    */
   public setDebugConfig(config: Partial<DebugConfig>): void {
     this.debugConfig = { ...this.debugConfig, ...config };
+
+    // If I/O tracking configuration is updated and two-phase debug is enabled, update DebugModule
+    if (config.ioTracking && this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
+      this.twoPhaseDebugSystem.updateIOTrackingConfig(config.ioTracking);
+    }
   }
   
   /**
@@ -203,17 +184,45 @@ export abstract class BaseModule implements MessageHandler {
    * @returns Debug configuration
    */
   public getDebugConfig(): DebugConfig {
-    return { ...this.debugConfig };
+    const config = { ...this.debugConfig };
+    config.enabled = this.useTwoPhaseDebug;
+
+    // Include ioTracking configuration if two-phase debug is enabled
+    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
+      config.ioTracking = this.twoPhaseDebugSystem.getIOTrackingConfig();
+      config.baseDirectory = this.twoPhaseDebugSystem.getLogDirectory();
+    }
+
+    return config;
   }
   
   /**
    * Enable two-phase debug system
+   * @param enabled - Whether to enable two-phase debug
    * @param baseDirectory - Base directory for debug logs
+   * @param ioConfig - Optional I/O tracking configuration
    */
-  public enableTwoPhaseDebug(baseDirectory: string = './debug-logs'): void {
-    this.useTwoPhaseDebug = true;
-    this.twoPhaseDebugSystem = new DebugModule(baseDirectory);
-    this.logInfo('Two-phase debug system enabled', { baseDirectory }, 'enableTwoPhaseDebug');
+  public enableTwoPhaseDebug(enabled: boolean, baseDirectory: string = './debug-logs', ioConfig?: IOTrackingConfig): void {
+    this.useTwoPhaseDebug = enabled;
+    if (enabled) {
+      this.twoPhaseDebugSystem = new DebugModule(baseDirectory);
+      // Apply custom I/O tracking configuration if provided
+      if (ioConfig) {
+        this.twoPhaseDebugSystem.updateIOTrackingConfig(ioConfig);
+      }
+      // Enable basic debug logging when two-phase debug is enabled
+      this.debugConfig.enabled = true;
+      this.logInfo('Two-phase debug system enabled', { baseDirectory }, 'enableTwoPhaseDebug');
+    } else {
+      // Disable debug system
+      if (this.twoPhaseDebugSystem) {
+        this.twoPhaseDebugSystem.setIOTrackingEnabled(false);
+        this.twoPhaseDebugSystem = null;
+      }
+      // Also disable basic debug logging
+      this.debugConfig.enabled = false;
+      this.logInfo('Two-phase debug system disabled', {}, 'enableTwoPhaseDebug');
+    }
   }
   
   /**
@@ -221,7 +230,7 @@ export abstract class BaseModule implements MessageHandler {
    * @param port - Port number
    */
   public switchDebugToPortMode(port: number): void {
-    if (this.useTwoPhaseDebug) {
+    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
       this.twoPhaseDebugSystem.switchToPortMode(port);
       this.logInfo('Debug system switched to port mode', { port }, 'switchDebugToPortMode');
     }
@@ -231,7 +240,7 @@ export abstract class BaseModule implements MessageHandler {
    * Get two-phase debug system
    * @returns Two-phase debug system instance
    */
-  public getTwoPhaseDebugSystem(): DebugModule {
+  public getTwoPhaseDebugSystem(): DebugModule | null {
     return this.twoPhaseDebugSystem;
   }
   
@@ -244,7 +253,7 @@ export abstract class BaseModule implements MessageHandler {
    */
   protected debug(level: DebugLevel, message: string, data?: any, method?: string): void {
     // Use two-phase debug system if enabled
-    if (this.useTwoPhaseDebug) {
+    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
       this.twoPhaseDebugSystem.log(level, message, data, method);
       return;
     }
@@ -634,24 +643,24 @@ export abstract class BaseModule implements MessageHandler {
    * Cleans up resources and connections
    */
   public async destroy(): Promise<void> {
+    // Log destruction before clearing logs
+    this.logInfo('Module destroyed', {}, 'destroy');
+
     // Clean up connections
     this.inputConnections.clear();
     this.outputConnections.clear();
     this.initialized = false;
     this.configured = false;
     this.config = {};
-    
+
     // Unregister from message center
     this.messageCenter.unregisterModule(this.info.id);
-    
+
     // Clear debug logs
     this.clearDebugLogs();
-    
+
     // Clear pending requests
     this.pendingRequests.clear();
-    
-    // Log destruction
-    this.logInfo('Module destroyed', {}, 'destroy');
   }
   
   /**
@@ -851,5 +860,62 @@ export abstract class BaseModule implements MessageHandler {
    */
   public onModuleUnregistered(moduleId: string): void {
     this.logInfo('Module unregistered', { moduleId }, 'onModuleUnregistered');
+  }
+
+  // ========================================
+  // I/O Tracking Methods
+  // ========================================
+
+  /**
+   * Record an I/O operation
+   * @param operationId - Unique identifier for the operation
+   * @param input - Input data
+   * @param output - Output data
+   * @param method - Method name that performed the operation
+   */
+  public recordIOOperation(operationId: string, input: any, output: any, method?: string): void {
+    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
+      const ioConfig = this.twoPhaseDebugSystem.getIOTrackingConfig();
+      if (ioConfig.enabled) {
+        this.twoPhaseDebugSystem.recordOperation(
+          this.info.id,
+          operationId,
+          input,
+          output,
+          method
+        );
+      }
+    }
+  }
+
+  /**
+   * Start tracking an I/O operation
+   * @param operationId - Unique identifier for the operation
+   * @param input - Input data
+   * @param method - Method name that performed the operation
+   */
+  public startIOTracking(operationId: string, input: any, method?: string): void {
+    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
+      const ioConfig = this.twoPhaseDebugSystem.getIOTrackingConfig();
+      if (ioConfig.enabled) {
+        this.twoPhaseDebugSystem.startOperation(this.info.id, operationId, input, method);
+      }
+    }
+  }
+
+  /**
+   * End tracking an I/O operation
+   * @param operationId - Unique identifier for the operation
+   * @param output - Output data
+   * @param success - Whether the operation was successful
+   * @param error - Error message if operation failed
+   */
+  public endIOTracking(operationId: string, output: any, success: boolean = true, error?: string): void {
+    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
+      const ioConfig = this.twoPhaseDebugSystem.getIOTrackingConfig();
+      if (ioConfig.enabled) {
+        this.twoPhaseDebugSystem.endOperation(this.info.id, operationId, output, success, error);
+      }
+    }
   }
 }

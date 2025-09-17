@@ -1,6 +1,6 @@
 {
   "name": "rcc-basemodule",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "RCC BaseModule - Core framework for modular TypeScript development",
   "type": "module",
   "main": "dist/index.esm.js",
@@ -58,8 +58,8 @@
   "scripts": {
     "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-    "build:cjs": "rollup -c rollup.config.js",
-    "build:esm": "rollup -c rollup.config.js",
+    "build:cjs": "rollup -c rollup.config.cjs",
+    "build:esm": "rollup -c rollup.config.cjs",
     "clean": "rimraf dist",
     "dev": "tsc --watch",
     "test": "jest",

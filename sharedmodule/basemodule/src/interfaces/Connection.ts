@@ -6,37 +6,37 @@ export interface ConnectionInfo {
    * Unique identifier for the connection
    */
   id: string;
-  
+
   /**
    * Source module ID
    */
   sourceModuleId: string;
-  
+
   /**
    * Target module ID
    */
   targetModuleId: string;
-  
+
   /**
    * Connection type
    */
   type: 'input' | 'output';
-  
+
   /**
    * Connection status
    */
   status?: 'pending' | 'connected' | 'disconnected' | 'error';
-  
+
   /**
    * Data type for this connection (single type)
    */
   dataType?: string;
-  
+
   /**
    * Data types supported by this connection (multiple types)
    */
   dataTypes?: string[];
-  
+
   /**
    * Connection metadata
    */
@@ -51,27 +51,27 @@ export interface DataTransfer {
    * Unique identifier for the data transfer
    */
   id: string;
-  
+
   /**
    * Source connection ID
    */
   sourceConnectionId: string;
-  
+
   /**
    * Target connection ID
    */
   targetConnectionId: string;
-  
+
   /**
    * Data payload
    */
   data: any;
-  
+
   /**
    * Timestamp of the transfer
    */
   timestamp: number;
-  
+
   /**
    * Transfer metadata
    */

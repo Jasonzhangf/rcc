@@ -6,6 +6,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**📚 Detailed Architecture Documentation: [ARCHITECTURE.md](./ARCHITECTURE.md)**
+
 ## Overview
 
 The RCC Server Module is a powerful HTTP server component designed for the RCC (Router-Controlled Computing) framework. It provides client input proxy response capabilities with intelligent virtual model routing, middleware support, and comprehensive monitoring features.

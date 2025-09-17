@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "RCC UnderConstruction - Explicit feature marking for unfinished functionality",
   "type": "module",
-  "main": "src/index.ts",
-  "module": "src/index.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "src/**/*",
@@ -38,7 +38,7 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "rcc-basemodule": "^0.1.3",
+    "rcc-basemodule": "^0.1.4",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

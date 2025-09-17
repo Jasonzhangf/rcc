@@ -130,3 +130,37 @@ IFLOW.md
 
 # Local configuration
 config/local.json
+
+# Generated test artifacts and reports
+test-results/
+test-reports/
+test-output/
+test-logs/
+*.test.log
+*.test.json
+
+# Test credentials and sensitive data
+~/.iflow/oauth_creds.json
+~/.qwen/oauth_creds.json
+~/.*/oauth_creds.json
+oauth_creds.json
+.env.local
+.env.test.local
+
+# Generated documentation and reports
+docs/test-reports/
+docs/integration-reports/
+*.test-report.md
+*.integration-summary.md
+*.delivery-report.md
+
+# Temporary test files
+test-*.tmp
+*.test.tmp
+integration-test-outputs/
+test-artifacts/
+
+# Debug and log files from testing
+debug-test-*.log
+test-system-debug/
+integration-debug.log

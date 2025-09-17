@@ -1,155 +1,58 @@
 {
   "name": "rcc-cli-framework",
-  "version": "0.1.5",
-  "description": "RCC CLI Framework - Universal command-line interface framework based on BaseModule",
+  "version": "1.0.0",
+  "description": "RCC Command Line Interface Framework with dynamic command discovery",
+  "main": "dist/index.js",
   "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "rcc-cli": "cli/rcc-cli.cjs"
+    "rcc": "./bin/rcc"
   },
-  "files": [
-    "dist/**/*",
-    "cli/**/*",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE"
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepublishOnly": "npm run build && npm test",
+    "start": "node bin/rcc"
+  },
+  "keywords": [
+    "cli",
+    "framework",
+    "rcc",
+    "command",
+    "dynamic",
+    "discovery",
+    "basemodule"
   ],
+  "author": "RCC Team",
+  "license": "MIT",
+  "dependencies": {
+    "rcc-basemodule": "^0.1.8",
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rcc/rcc-cli-framework.git"
   },
-  "homepage": "https://github.com/rcc/rcc-cli-framework#readme",
   "bugs": {
     "url": "https://github.com/rcc/rcc-cli-framework/issues"
   },
-  "keywords": [
-    "rcc",
-    "cli",
-    "framework",
-    "command-line",
-    "typescript",
-    "modular-architecture",
-    "basemodule"
-  ],
-  "author": "RCC Development Team",
-  "license": "MIT",
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
-  },
-  "dependencies": {
-    "chokidar": "^3.5.3",
-    "glob": "^10.3.0",
-    "minimist": "^1.2.8",
-    "rcc-basemodule": "^0.1.3",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "@rollup/plugin-node-resolve": "^16.0.1",
-    "@types/glob": "^8.1.0",
-    "@types/jest": "^29.5.11",
-    "@types/minimist": "^1.2.5",
-    "@types/node": "^20.0.0",
-    "@types/uuid": "^9.0.8",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "eslint": "^8.57.1",
-    "jest": "^29.7.0",
-    "prettier": "^3.1.1",
-    "rimraf": "^5.0.5",
-    "rollup": "^4.0.0",
-    "rollup-plugin-dts": "^6.0.0",
-    "rollup-plugin-typescript2": "^0.36.0",
-    "ts-jest": "^29.1.1",
-    "typedoc": "^0.25.7",
-    "typescript": "^5.4.5"
-  },
-  "scripts": {
-    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm",
-    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-    "build:cjs": "rollup -c rollup.config.cjs.mjs",
-    "build:esm": "rollup -c rollup.config.esm.mjs",
-    "clean": "rimraf dist",
-    "dev": "tsc --watch",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "format": "prettier --write \"src/**/*.ts\" \"__test__/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"__test__/**/*.ts\"",
-    "typecheck": "tsc --noEmit",
-    "docs:generate": "typedoc src --out docs --theme default",
-    "docs:serve": "http-server docs -p 8080 -o",
-    "validate": "npm run typecheck && npm run test",
-    "prepublishOnly": "npm run validate && npm run build",
-    "version": "npm run build",
-    "postversion": "git push && git push --tags"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "passWithNoTests": true,
-    "roots": [
-      "<rootDir>/src",
-      "<rootDir>/__test__"
-    ],
-    "testMatch": [
-      "**/__test__/**/*.test.ts",
-      "**/src/**/*.test.ts"
-    ],
-    "transform": {
-      "^.+\\.ts$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "src/**/*.ts",
-      "!src/**/*.d.ts",
-      "!src/**/__test__/**",
-      "!src/**/index.ts"
-    ],
-    "coverageReporters": [
-      "html",
-      "text",
-      "text-summary",
-      "lcov"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 90,
-        "functions": 92,
-        "lines": 90,
-        "statements": 90
-      }
-    },
-    "testTimeout": 30000
-  },
-  "eslintConfig": {
-    "parser": "@typescript-eslint/parser",
-    "plugins": [
-      "@typescript-eslint"
-    ],
-    "extends": [
-      "eslint:recommended",
-      "@typescript-eslint/recommended"
-    ],
-    "rules": {
-      "@typescript-eslint/no-unused-vars": "error",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/explicit-function-return-type": "warn"
-    },
-    "env": {
-      "node": true,
-      "jest": true
-    }
-  },
-  "prettier": {
-    "semi": true,
-    "trailingComma": "es5",
-    "singleQuote": true,
-    "printWidth": 100,
-    "tabWidth": 2,
-    "useTabs": false
-  }
+  "homepage": "https://github.com/rcc/rcc-cli-framework#readme"
 }

@@ -20,16 +20,13 @@ export const defaultCLIConfig = {
       __dirname + '/commands',
       // Project-specific commands
       process.cwd() + '/commands',
-      process.cwd() + '/src/commands'
+      process.cwd() + '/src/commands',
     ],
-    modulePatterns: [
-      'rcc-command-*',
-      '@rcc/command-*'
-    ],
+    modulePatterns: ['rcc-command-*', '@rcc/command-*'],
     autoLoad: true,
-    watchForChanges: process.env.NODE_ENV === 'development'
+    watchForChanges: process.env.NODE_ENV === 'development',
   },
-  defaultCommand: 'help'
+  defaultCommand: 'help',
 };
 
 // Create default CLI engine instance

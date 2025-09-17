@@ -108,6 +108,29 @@ export interface BootstrapConfig {
    * Health check interval in milliseconds
    */
   healthCheckInterval: number;
+
+  /**
+   * Debug system instance
+   */
+  debugSystem?: any;
+
+  /**
+   * Module logger instance
+   */
+  moduleLogger?: any;
+
+  /**
+   * Request tracker instance
+   */
+  requestTracker?: any;
+
+  /**
+   * System metadata
+   */
+  metadata?: {
+    name: string;
+    description: string;
+  };
 }
 
 /**

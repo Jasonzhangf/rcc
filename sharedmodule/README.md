@@ -1,62 +1,134 @@
-# Shared Module Structure
+# RCC 共享模块架构
+
+## 架构概览
+
+RCC 共享模块采用模块化设计，提供可复用的核心功能组件。每个模块专注于特定的功能领域，通过标准化接口实现模块间的协作。
 
 ## 目录结构 (Directory Structure)
 
 ```
 sharedmodule/
-├── basemodule/              # 基础模块
-├── Configuration/           # 配置模块
-├── errorhandling/           # 错误处理模块
-├── pipeline/                # 流水线模块
+├── basemodule/              # 基础模块定义
 │   └── src/
-│       └── modules/         # 原有流水线模块
-├── modules/                 # 新增共享模块
-│   ├── index.ts            # 模块导出
-│   ├── QwenProviderModule.ts    # Qwen提供商模块
-│   └── QwenCompatibilityModule.ts # Qwen兼容性模块
-├── QwenPipelineAssemblyFactory.ts    # Qwen流水线组装工厂
-├── QwenPipelineConfigOutput.json     # Qwen流水线配置
-├── QwenPipelineTest.ts              # Qwen流水线测试
-└── QWEN_IMPLEMENTATION_SUMMARY.md   # 实现总结文档
+│       └── BaseModule.ts    # 所有模块的基类（唯一定义）
+├── config-parser/           # 配置解析核心模块
+│   └── src/
+│       ├── core/
+│       │   ├── ConfigLoader.ts           # 配置加载器
+│       │   ├── ConfigValidator.ts        # 配置验证器
+│       │   ├── ConfigTransformer.ts      # 配置转换器
+│       │   └── PipelineConfigGenerator.ts # 流水线配置生成器
+│       ├── interfaces/      # 接口定义
+│       ├── types/          # 类型定义
+│       └── index.ts        # 模块导出
+├── config-management/       # 配置管理模块
+│   └── src/
+│       ├── core/
+│       │   └── ConfigurationModule.ts   # 配置管理主模块
+│       ├── webui/          # Web UI 组件
+│       └── index.ts        # 管理层导出
+├── errorhandling/          # 错误处理中心
+├── pipeline/               # 流水线框架
+├── cli-framework/          # CLI 框架
+├── server/                 # 服务器框架
+├── underconstruction/      # 开发模式支持
+├── bootstrap/              # 启动引导模块
+├── virtual-model-rules/    # 虚拟模型规则
+└── README.md              # 本文档
 ```
 
 ## 模块说明 (Module Description)
 
-### 核心Qwen模块 (Core Qwen Modules)
+### 1. 核心基础设施模块
 
-1. **QwenProviderModule** (`modules/QwenProviderModule.ts`)
-   - 独立的Qwen提供商模块
-   - 实现OAuth 2.0 Device Flow认证
-   - 管理token生命周期和自动刷新
-   - 处理维护模式切换
+#### BaseModule (`basemodule/`)
+- **作用**: 所有模块的基类，提供标准化接口
+- **核心功能**:
+  - 模块生命周期管理 (initialize, destroy)
+  - 模块信息标准化 (ModuleInfo)
+  - 连接管理和握手机制
+  - 资源清理和错误处理
+- **重要性**: 系统中唯一的 BaseModule 定义，所有其他模块必须继承此基类
 
-2. **QwenCompatibilityModule** (`modules/QwenCompatibilityModule.ts`)
-   - Qwen兼容性转换模块
-   - OpenAI ↔ Qwen协议转换
-   - 字段映射和模型映射
-   - 请求/响应验证
+#### ErrorHandling (`errorhandling/`)
+- **作用**: 统一的错误处理中心
+- **核心功能**:
+  - 错误分类和路由
+  - 错误恢复策略
+  - 错误日志记录
+  - 模块间错误传播
 
-### 组装和配置 (Assembly and Configuration)
+### 2. 配置系统模块
 
-3. **QwenPipelineAssemblyFactory** (`QwenPipelineAssemblyFactory.ts`)
-   - Qwen流水线组装工厂
-   - 模块化组件组装
-   - 配置驱动的依赖管理
+#### Config-Parser (`config-parser/`)
+- **作用**: 配置解析的核心功能模块
+- **核心组件**:
+  - `ConfigLoader`: 配置文件加载和解析
+  - `ConfigValidator`: 配置验证和约束检查  
+  - `ConfigTransformer`: 配置格式转换和数据处理
+  - `PipelineConfigGenerator`: 流水线配置生成
+- **设计理念**: 专注于核心配置处理逻辑，可被其他模块复用
 
-4. **QwenPipelineConfigOutput.json** (`QwenPipelineConfigOutput.json`)
-   - 完整的Qwen流水线配置
-   - 遵循PIPELINE_CONFIG_OUTPUT_DOCS.md格式
-   - 包含路由规则、流水线模板、模块注册表
+#### Config-Management (`config-management/`)
+- **作用**: 配置管理和 Web UI 模块
+- **核心功能**:
+  - 调用 config-parser 提供的核心功能
+  - 提供 Web UI 和管理界面
+  - 配置文件的增删改查操作
+  - 配置变更的版本管理
+- **设计理念**: 管理层模块，主要负责用户交互和配置管理
 
-### 测试和文档 (Testing and Documentation)
+### 3. 流水线和框架模块
 
-5. **QwenPipelineTest.ts** (`QwenPipelineTest.ts`)
-   - 完整的测试套件
-   - 配置验证、模块兼容性、工厂操作测试
+#### Pipeline (`pipeline/`)
+- **作用**: 流水线框架和执行引擎
+- **核心功能**:
+  - 流水线组装和执行
+  - 模块间数据流管理
+  - 流水线状态跟踪
+  - 并行和串行执行控制
 
-6. **QWEN_IMPLEMENTATION_SUMMARY.md** (`QWEN_IMPLEMENTATION_SUMMARY.md`)
-   - 详细的实现总结文档
-   - 使用说明和部署指南
+#### CLI-Framework (`cli-framework/`)
+- **作用**: 命令行界面框架
+- **核心功能**:
+  - CLI 命令注册和路由
+  - 参数解析和验证
+  - 帮助文档自动生成
+  - 交互式命令支持
+
+#### Server (`server/`)
+- **作用**: HTTP 服务器基础设施
+- **核心功能**:
+  - HTTP 服务器基础设施
+  - 路由和中间件管理
+  - API 端点注册
+  - 请求/响应处理
+
+### 4. 开发和工具模块
+
+#### UnderConstruction (`underconstruction/`)
+- **作用**: 开发模式支持和 Mock 功能
+- **核心功能**:
+  - 模块开发时的占位实现
+  - 开发阶段的 mock 功能
+  - 渐进式开发支持
+  - 开发时的调试辅助
+
+#### Bootstrap (`bootstrap/`)
+- **作用**: 系统启动引导
+- **核心功能**:
+  - 系统初始化流程
+  - 模块加载顺序管理
+  - 依赖关系解析
+  - 启动配置处理
+
+#### Virtual-Model-Rules (`virtual-model-rules/`)
+- **作用**: 虚拟模型规则引擎
+- **核心功能**:
+  - 模型映射规则
+  - 动态模型转换
+  - 规则验证和执行
+  - 模型兼容性处理
 
 ## 使用方式 (Usage)
 

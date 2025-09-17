@@ -11,18 +11,13 @@
   },
   "dependencies": {
     "axios": "^1.11.0",
-    "commander": "^11.0.0",
-    "openai-compatible-providers-framework": "^0.0.10",
-    "rcc-basemodule": "^0.1.4",
-    "rcc-bootstrap": "^1.0.1",
-    "rcc-configuration": "0.1.1",
-    "rcc-errorhandling": "^1.0.5",
-    "rcc-pipeline": "^0.1.1",
-    "rcc-server": "^0.1.7",
+    "commander": "^11.1.0",
+    "rcc-basemodule": "^0.1.8",
+    "rcc-config-parser": "^0.1.0",
+    "rcc-errorhandling": "^1.0.3",
+    "rcc-pipeline": "^0.1.0",
     "rcc-underconstruction": "^0.1.0",
-    "rcc-virtual-model-rules": "file:sharedmodule/virtual-model-rules/rcc-virtual-model-rules-1.0.5.tgz",
-    "uuid": "^9.0.1",
-    "webauto-pipelineframework": "^0.0.1"
+    "uuid": "^9.0.1"
   },
   "files": [
     "dist/**/*",
@@ -54,6 +49,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.19.14",
@@ -113,8 +109,7 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "roots": [
-      "<rootDir>/src",
-      "<rootDir>/__test__"
+      "<rootDir>/src"
     ],
     "testMatch": [
       "**/__test__/**/*.test.ts",

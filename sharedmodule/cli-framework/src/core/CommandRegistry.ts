@@ -1,118 +1,191 @@
-/**
- * Command Registry for RCC CLI Framework
- */
+import { ICommand, CommandDiscoveryOptions, ILogger } from '../types';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as glob from 'glob';
 
-import { BaseModule, ModuleInfo } from 'rcc-basemodule';
-import { ICommand } from '../interfaces/ICommand';
+export class CommandRegistry {
+  private commands = new Map<string, ICommand>();
+  private aliases = new Map<string, string>();
+  private logger: ILogger;
 
-export class CommandRegistry extends BaseModule {
-  private commands: Map<string, ICommand> = new Map();
-  private aliases: Map<string, string> = new Map();
-  private moduleCommands: Map<string, string[]> = new Map();
+  constructor(logger: ILogger) {
+    this.logger = logger;
+  }
 
-  constructor(_framework: any) {
-    const moduleInfo: ModuleInfo = {
-      id: 'CommandRegistry',
-      name: 'Command Registry',
-      version: '1.0.0',
-      description: 'Registry for CLI commands',
-      type: 'registry',
+  register(command: ICommand): void {
+    if (this.commands.has(command.name)) {
+      throw new Error(`Command '${command.name}' is already registered`);
+    }
 
-      metadata: {
-        author: 'RCC Development Team',
-        license: 'MIT'
+    this.commands.set(command.name, command);
+    this.logger.debug(`Command registered: ${command.name}`);
+
+    // Register aliases
+    if (command.aliases) {
+      for (const alias of command.aliases) {
+        if (this.aliases.has(alias)) {
+          this.logger.warn(`Alias '${alias}' is already registered for another command`);
+          continue;
+        }
+        this.aliases.set(alias, command.name);
+        this.logger.debug(`Alias registered: ${alias} -> ${command.name}`);
       }
-    };
-
-    super(moduleInfo);
+    }
   }
 
-  async register(name: string, command: ICommand): Promise<void> {
-    if (this.commands.has(name)) {
-      throw new Error(`Command '${name}' is already registered`);
+  unregister(commandName: string): void {
+    const command = this.commands.get(commandName);
+    if (!command) {
+      return;
     }
 
-    this.commands.set(name, command);
-    this.log(`Registered command: ${name}`);
-  }
-
-  async registerAlias(alias: string, commandName: string): Promise<void> {
-    if (this.aliases.has(alias) || this.commands.has(alias)) {
-      throw new Error(`Alias '${alias}' conflicts with existing command or alias`);
+    this.commands.delete(commandName);
+    
+    // Remove aliases
+    if (command.aliases) {
+      for (const alias of command.aliases) {
+        this.aliases.delete(alias);
+      }
     }
 
-    this.aliases.set(alias, commandName);
-    this.log(`Registered alias: ${alias} -> ${commandName}`);
+    this.logger.debug(`Command unregistered: ${commandName}`);
   }
 
-  get(name: string): ICommand | undefined {
-    // Check direct command first
-    if (this.commands.has(name)) {
-      return this.commands.get(name);
+  getCommand(name: string): ICommand | undefined {
+    // Check direct command name
+    const directCommand = this.commands.get(name);
+    if (directCommand) {
+      return directCommand;
     }
 
     // Check aliases
-    const aliasTarget = this.aliases.get(name);
-    if (aliasTarget) {
-      return this.commands.get(aliasTarget);
+    const aliasedCommandName = this.aliases.get(name);
+    if (aliasedCommandName) {
+      return this.commands.get(aliasedCommandName);
     }
 
     return undefined;
   }
 
-  getAll(): Map<string, ICommand> {
-    return new Map(this.commands);
+  getAllCommands(): ICommand[] {
+    return Array.from(this.commands.values());
   }
 
-  has(name: string): boolean {
-    return this.commands.has(name) || this.aliases.has(name);
+  async discoverCommands(options: CommandDiscoveryOptions): Promise<void> {
+    const { commandDirs = [], modulePatterns = [], autoLoad = true } = options;
+
+    this.logger.info('Discovering commands...');
+
+    // Discover from file system directories
+    for (const dir of commandDirs) {
+      await this.discoverFromDirectory(dir);
+    }
+
+    // Discover from module patterns
+    for (const pattern of modulePatterns) {
+      await this.discoverFromModules(pattern);
+    }
+
+    this.logger.info(`Discovered ${this.commands.size} commands`);
   }
 
-  async unregister(name: string): Promise<void> {
-    if (this.commands.has(name)) {
-      this.commands.delete(name);
+  private async discoverFromDirectory(dirPath: string): Promise<void> {
+    try {
+      const absolutePath = path.resolve(dirPath);
       
-      // Remove any aliases pointing to this command
-      for (const [alias, target] of this.aliases.entries()) {
-        if (target === name) {
-          this.aliases.delete(alias);
+      if (!fs.existsSync(absolutePath)) {
+        this.logger.warn(`Command directory not found: ${absolutePath}`);
+        return;
+      }
+
+      // Look for JavaScript/TypeScript files
+      const files = glob.sync('**/*.{js,ts,mjs,cjs}', {
+        cwd: absolutePath,
+        ignore: ['**/*.d.ts', '**/__tests__/**', '**/*.test.*']
+      });
+
+      for (const file of files) {
+        const fullPath = path.join(absolutePath, file);
+        await this.loadCommandFromFile(fullPath);
+      }
+
+    } catch (error) {
+      this.logger.error(`Error discovering commands from directory ${dirPath}:`, error);
+    }
+  }
+
+  private async discoverFromModules(pattern: string): Promise<void> {
+    try {
+      const modules = glob.sync(pattern, {
+        cwd: process.cwd()
+      });
+
+      for (const modulePath of modules) {
+        await this.loadCommandFromModule(modulePath);
+      }
+
+    } catch (error) {
+      this.logger.error(`Error discovering commands from modules ${pattern}:`, error);
+    }
+  }
+
+  private async loadCommandFromFile(filePath: string): Promise<void> {
+    try {
+      // Use dynamic import to load the module
+      const module = await import(filePath);
+      
+      // Look for default export or named exports that implement ICommand
+      const exports = Object.values(module);
+      for (const exportItem of exports) {
+        if (this.isCommand(exportItem)) {
+          this.register(exportItem);
         }
       }
+
+    } catch (error) {
+      this.logger.error(`Error loading command from file ${filePath}:`, error);
+    }
+  }
+
+  private async loadCommandFromModule(modulePath: string): Promise<void> {
+    try {
+      const module = await import(modulePath);
       
-      this.log(`Unregistered command: ${name}`);
-    }
-  }
-
-  async unregisterByModule(moduleName: string): Promise<void> {
-    const moduleCommandNames = this.moduleCommands.get(moduleName);
-    if (moduleCommandNames) {
-      for (const commandName of moduleCommandNames) {
-        await this.unregister(commandName);
+      // Check if module has a registerCommands function
+      if (typeof module.registerCommands === 'function') {
+        await module.registerCommands(this);
       }
-      this.moduleCommands.delete(moduleName);
+      
+      // Also check for default exports that are commands
+      const exports = Object.values(module);
+      for (const exportItem of exports) {
+        if (this.isCommand(exportItem)) {
+          this.register(exportItem);
+        }
+      }
+
+    } catch (error) {
+      this.logger.error(`Error loading commands from module ${modulePath}:`, error);
     }
   }
 
-  async clear(): Promise<void> {
+  private isCommand(obj: any): obj is ICommand {
+    return (
+      obj &&
+      typeof obj === 'object' &&
+      typeof obj.name === 'string' &&
+      typeof obj.description === 'string' &&
+      typeof obj.execute === 'function'
+    );
+  }
+
+  clear(): void {
     this.commands.clear();
     this.aliases.clear();
-    this.moduleCommands.clear();
-    this.log('Cleared all commands');
+    this.logger.debug('Command registry cleared');
   }
 
-  getCommandNames(): string[] {
-    return Array.from(this.commands.keys());
-  }
-
-  getAliases(): Map<string, string> {
-    return new Map(this.aliases);
-  }
-
-  getStats(): { commands: number; aliases: number; modules: number } {
-    return {
-      commands: this.commands.size,
-      aliases: this.aliases.size,
-      modules: this.moduleCommands.size
-    };
+  getCommandCount(): number {
+    return this.commands.size;
   }
 }

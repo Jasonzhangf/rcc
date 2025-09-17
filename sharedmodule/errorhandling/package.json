@@ -32,7 +32,7 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "rcc-basemodule": ">=0.1.0"
+    "rcc-basemodule": "file:../basemodule"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

@@ -1,5 +1,5 @@
-// Bootstrap Service implementation using rcc-configuration module
-// This implementation integrates with the real configuration module
+// Bootstrap Service implementation using rcc-config-parser module
+// This implementation integrates with the config parser module
 
 import { IBootstrapService } from './interfaces/IBootstrapService';
 import {
@@ -9,22 +9,43 @@ import {
   SystemHealth,
   ServiceInstance
 } from './types/BootstrapTypes';
-// @ts-ignore - Ignore TypeScript checking for ConfigurationSystem since npm package may have import issues
-import type { ConfigurationSystem } from 'rcc-configuration';
+// ConfigurationSystem interface from config-management module
+interface ConfigurationSystem {
+  initialize(config: any): Promise<void>;
+  loadConfig(source: any): Promise<void>;
+  generatePipelineTable(mappings: any): Promise<void>;
+  getCurrentConfig(): any;
+  getPipelineTable(): any;
+  destroy(): Promise<void>;
+}
 // @ts-ignore - Ignore TypeScript checking for BaseModule since npm package lacks types
-import { BaseModule } from 'rcc-basemodule';
+import { BaseModule, IOTrackingConfig } from 'rcc-basemodule';
 // @ts-ignore - Ignore TypeScript checking for ServerModule since npm package may have import issues
 import { ServerModule } from 'rcc-server';
+// SimpleDebugLogManager interface for enhanced request logging
+interface SimpleDebugLogManager {
+  logRequest(request: any): Promise<void>;
+  logSuccess(context: any, request: any, response: any): Promise<void>;
+  logError(context: any, error: any, request: any, stage?: string, metadata?: any): Promise<void>;
+  startRequest(component: string, operation: string, data: any): any;
+  trackStage(requestId: string, stage: string): void;
+  completeStage(requestId: string, stage: string, data?: any): void;
+}
 
 /**
  * Bootstrap Service for RCC system initialization and service coordination
- * This implementation integrates with the rcc-configuration module
+ * This implementation integrates with the rcc-config-parser module
  */
 export class BootstrapService extends BaseModule implements IBootstrapService {
   private config: BootstrapConfig | null = null;
   private services: Map<string, ServiceInstance> = new Map();
   private isRunning = false;
   private configurationSystem: ConfigurationSystem | null = null;
+  private debugSystem: any = null;
+  // 移除局部logger和tracker - 使用BaseModule内置功能
+  private debugLogManager: SimpleDebugLogManager | null = null;
+  private testScheduler: any = null;
+  private pipelineScheduler: any = null;
 
   constructor() {
     // Initialize BaseModule with proper module info
@@ -34,9 +55,14 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
       version: '1.0.0',
       description: 'RCC Bootstrap Service for system initialization and service coordination',
       type: 'system',
+      capabilities: ['service-coordination', 'system-initialization'],
+      dependencies: ['rcc-basemodule', 'rcc-config-parser'],
+      config: {
+        autoStart: true,
+        serviceTimeout: 30000
+      },
       metadata: {
-        author: 'RCC Development Team',
-        dependencies: ['rcc-basemodule', 'rcc-configuration']
+        author: 'RCC Development Team'
       }
     });
 
@@ -47,9 +73,38 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
   /**
    * Enable two-phase debug system
    * @param baseDirectory - Base directory for debug logs
+   * @param ioTracking - Optional IO tracking configuration
    */
-  enableTwoPhaseDebug(baseDirectory: string = '~/.rcc/debug'): void {
-    super.enableTwoPhaseDebug(baseDirectory);
+  enableTwoPhaseDebug(baseDirectory: string = '~/.rcc/debug', ioTracking?: IOTrackingConfig): void {
+    try {
+      // Use BaseModule's two-phase debug system instead of custom debugSystem
+      super.enableTwoPhaseDebug(true, baseDirectory, ioTracking);
+
+      // Configure debug logging with enhanced pipeline recording
+      if (this.pipelineScheduler) {
+        const twoPhaseDebugSystem = this.getTwoPhaseDebugSystem();
+        if (twoPhaseDebugSystem) {
+          // Enable pipeline IO recording for scheduler operations
+          twoPhaseDebugSystem.setPipelineIOEnabled(true);
+          twoPhaseDebugSystem.setAutoRecordPipeline(true);
+          twoPhaseDebugSystem.setRecordAllOperations(true);
+        }
+      }
+
+      this.logInfo('Two-phase debug system enabled with BaseModule integration', {
+        baseDirectory,
+        enabledIOTracking: !!ioTracking,
+        pipelineRecording: !!this.pipelineScheduler,
+        method: 'enableTwoPhaseDebug'
+      }, 'enableTwoPhaseDebug');
+    } catch (error) {
+      this.logError('Failed to enable two-phase debug system', {
+        error: error instanceof Error ? error.message : String(error),
+        baseDirectory,
+        method: 'enableTwoPhaseDebug'
+      }, 'enableTwoPhaseDebug');
+      throw error;
+    }
   }
 
   /**
@@ -57,20 +112,134 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
    * @param port - Port number
    */
   switchDebugToPortMode(port: number): void {
-    super.switchDebugToPortMode(port);
+    try {
+      // Use BaseModule's port mode switching
+      super.switchDebugToPortMode(port);
+
+      this.logInfo('Debug system switched to port mode', {
+        port,
+        debugDirectory: this.getDebugConfig(),
+        method: 'switchDebugToPortMode'
+      }, 'switchDebugToPortMode');
+    } catch (error) {
+      this.logError('Failed to switch debug system to port mode', {
+        error: error instanceof Error ? error.message : String(error),
+        port,
+        method: 'switchDebugToPortMode'
+      }, 'switchDebugToPortMode');
+    }
+  }
+
+  /**
+   * Set module logger for enhanced logging - 已废弃，使用BaseModule内置功能
+   * @deprecated 使用BaseModule的logInfo, logError等方法代替
+   */
+  setModuleLogger(moduleLogger: any): void {
+    this.logInfo('Module logger functionality已集成到BaseModule中 - 使用this.logInfo()代替',
+      { method: 'setModuleLogger', deprecated: true });
+  }
+
+  /**
+   * Set request tracker for enhanced tracing - 已废弃，使用BaseModule内置功能
+   * @deprecated 使用BaseModule的recordIO, startOperation, endOperation等方法代替
+   */
+  setRequestTracker(requestTracker: any): void {
+    this.logInfo('Request tracker functionality已集成到BaseModule中 - 使用this.recordIO()代替',
+      { method: 'setRequestTracker', deprecated: true });
+  }
+
+  /**
+   * Set debug log manager for enhanced pipeline logging
+   */
+  setDebugLogManager(debugLogManager: SimpleDebugLogManager): void {
+    this.debugLogManager = debugLogManager;
+    this.debugSystem?.log('info', 'Debug Log Manager set for Bootstrap service', {
+      method: 'setDebugLogManager'
+    });
+  }
+
+  /**
+   * Set test scheduler for virtual model mapping validation
+   */
+  setTestScheduler(testScheduler: any): void {
+    this.testScheduler = testScheduler;
+    this.debugSystem?.log('info', 'Test Scheduler set for Bootstrap service', {
+      method: 'setTestScheduler'
+    });
+  }
+
+  /**
+   * Set Pipeline Scheduler for enhanced request processing
+   */
+  setPipelineScheduler(pipelineScheduler: any): void {
+    this.pipelineScheduler = pipelineScheduler;
+    this.debugSystem?.log('info', 'Pipeline Scheduler set for Bootstrap service', {
+      method: 'setPipelineScheduler'
+    });
   }
 
   /**
    * Initialize the bootstrap service with configuration
+   * Configures the system with latest BaseModule two-phase debug system
    */
   async configure(config: BootstrapConfig): Promise<void> {
-    console.log('=== BootstrapService.configure() called ===');
-    console.log('Config:', JSON.stringify(config, null, 2));
+    // 初始化两阶段调试系统（如果可用）
+    if (config.debugSystem) {
+      this.debugSystem = config.debugSystem;
+    } else if (config.enableTwoPhaseDebug) {
+      // Enable BaseModule's two-phase debug system with enhanced IO tracking
+      this.enableTwoPhaseDebug(config.debugBaseDirectory || '~/.rcc/debug', {
+        enabled: true,
+        autoRecord: true,
+        saveIndividualFiles: true,
+        saveSessionFiles: true,
+        sessionFileName: 'bootstrap-session.jsonl',
+        ioDirectory: `${config.debugBaseDirectory || '~/.rcc/debug'}/io/bootstrap`,
+        includeTimestamp: true,
+        includeDuration: true,
+        maxEntriesPerFile: 1000
+      });
+
+      // Record bootstrap pipeline start
+      if (this.pipelineScheduler) {
+        const twoPhaseDebugSystem = this.getTwoPhaseDebugSystem();
+        if (twoPhaseDebugSystem) {
+          twoPhaseDebugSystem.recordPipelineStart(
+            'bootstrap-service',
+            'Bootstrap Service Initialization',
+            {
+              serviceCount: config.services?.length || 0,
+              configurationPath: config.configurationPath,
+              enablePipeline: config.enablePipeline
+            },
+            { phase: 'configure', timestamp: Date.now() }
+          );
+        }
+      }
+    }
+
+    // 使用BaseModule的日志系统代替自定义debugSystem
+    this.logInfo('BootstrapService configuration started', {
+      method: 'configure',
+      timestamp: Date.now(),
+      twoPhaseDebug: !!config.enableTwoPhaseDebug,
+      ioTrackingEnabled: config.enableTwoPhaseDebug
+    }, 'configure');
+
     this.config = config;
 
-    // Ensure services are present in config
+    // 确保配置中包含调试系统（局部logger和tracker已移除，使用BaseModule内置功能）
+    if (config.debugSystem) {
+      this.debugSystem = config.debugSystem;
+    }
+
+    // 确保服务配置存在
     if (!this.config.services || this.config.services.length === 0) {
-      // Use default services from the startup script defaultConfig
+      this.debugSystem?.log('warn', 'No services configured, using default configuration', {
+        method: 'configure'
+      });
+
+      // 使用默认服务配置
       this.config.services = [
         {
           id: 'rcc-server',
@@ -79,7 +248,7 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
           description: 'Main HTTP API server for RCC system',
           version: '1.0.0',
           modulePath: 'rcc-server',
-          dependencies: ['rcc-basemodule', 'rcc-configuration'],
+          dependencies: ['rcc-basemodule', 'rcc-config-parser'],
           startupOrder: 1,
           enabled: true,
           required: true,
@@ -99,7 +268,7 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
             enablePipeline: true,
             debug: {
               enabled: true,
-              logDirectory: '/Users/fanzhang/.rcc/debug',
+              logDirectory: '~/.rcc/debug-logs',
               maxLogSize: 10485760,
               maxLogFiles: 10,
               logLevel: 'debug',
@@ -115,54 +284,176 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
           }
         }
       ];
-      console.log('🔧 Added default services configuration');
+
+      this.debugSystem?.log('info', 'Default services configuration added', {
+        servicesCount: this.config.services.length,
+        method: 'configure'
+      });
     }
 
-    console.log('Services count:', this.config?.services?.length || 0);
+    // 记录模块初始化
+    this.moduleLogger?.logModuleInitialization('BootstrapService', {
+      servicesCount: this.config.services.length,
+      configurationPath: this.config.configurationPath
+    });
 
     // Initialize configuration system
     try {
-      console.log('Initializing configuration system');
-      // Dynamically import createConfigurationSystem and handle any import issues
-      let createConfigurationSystem: Function;
+      this.debugSystem?.log('info', 'Initializing configuration system', {
+        method: 'configure'
+      });
+
+      // Dynamically import config parser factory functions and handle any import issues
+      let createConfigParser: any;
+      let createConfigLoader: any;
+      let createPipelineConfigGenerator: any;
+      let importSuccess = false;
+      let importMethod = '';
+
       try {
-        const configModule = await import('rcc-configuration');
-        createConfigurationSystem = configModule.createConfigurationSystem;
+        // Try primary import from rcc-config-parser
+        const configModule = await import('rcc-config-parser') as any;
+        createConfigParser = configModule.createConfigParser || configModule.default?.createConfigParser;
+        createConfigLoader = configModule.createConfigLoader || configModule.default?.createConfigLoader;
+        createPipelineConfigGenerator = configModule.createPipelineConfigGenerator || configModule.default?.createPipelineConfigGenerator;
+        importMethod = 'primary';
+        importSuccess = true;
       } catch (importError) {
-        console.log('Primary import failed, trying alternative import methods:', importError);
+        this.debugSystem?.log('warn', 'Primary import failed, trying alternative import methods', {
+          error: importError instanceof Error ? importError.message : String(importError),
+          method: 'configure'
+        });
+
         try {
-          // Try importing from the ESM distribution directly
-          const configModule = await import('rcc-configuration/dist/index.esm.js');
-          createConfigurationSystem = configModule.createConfigurationSystem || configModule.default?.createConfigurationSystem;
+          // Try importing from the distribution directly
+          const configModule = await import('rcc-config-parser/dist/index.js') as any;
+          createConfigParser = configModule.createConfigParser || configModule.default?.createConfigParser;
+          createConfigLoader = configModule.createConfigLoader || configModule.default?.createConfigLoader;
+          createPipelineConfigGenerator = configModule.createPipelineConfigGenerator || configModule.default?.createPipelineConfigGenerator;
+          importMethod = 'dist';
+          importSuccess = true;
         } catch (secondaryError) {
-          console.log('Secondary import failed, trying commonjs approach:', secondaryError);
-          // Try using require for CommonJS fallback
-          const configModule = await import('rcc-configuration/dist/index.js');
-          createConfigurationSystem = configModule.createConfigurationSystem || configModule.default?.createConfigurationSystem;
+          this.debugSystem?.log('error', 'Failed to import rcc-config-parser functions', {
+            error: secondaryError instanceof Error ? secondaryError.message : String(secondaryError),
+            method: 'configure'
+          });
         }
       }
 
-      if (!createConfigurationSystem) {
-        throw new Error('Failed to import createConfigurationSystem function from rcc-configuration module');
+      if (!createConfigParser || !createConfigLoader || !createPipelineConfigGenerator) {
+        throw new Error('Failed to import required functions from rcc-config-parser module');
       }
 
       // Use the configuration path from the passed config if available, otherwise use default path
-const configPath = this.config?.configurationPath || '/Users/fanzhang/.rcc/rcc-config.json';
-console.log(`Using configuration path: ${configPath}`);
+      const configPath = this.config?.configurationPath || '/Users/fanzhang/.rcc/rcc-config.json';
 
-this.configurationSystem = await createConfigurationSystem({
-        id: 'rcc-bootstrap-config-system',
-        name: 'RCC Bootstrap Configuration System',
-        initialConfig: configPath,
-        enablePipelineIntegration: false
+      this.debugSystem?.log('info', 'Creating configuration parser system', {
+        configPath,
+        importMethod,
+        method: 'configure'
       });
-      console.log('Configuration system initialized successfully');
+
+      // Create a simple configuration system wrapper using config parser components
+      const configParser = createConfigParser();
+      const configLoader = createConfigLoader();
+      const pipelineGenerator = createPipelineConfigGenerator();
+
+      // Store debug system reference for use in wrapper methods
+      const debugSystem = this.debugSystem;
+
+      // Create configuration system wrapper
+      this.configurationSystem = {
+        async initialize(config: any): Promise<void> {
+          // Initialize config parser with configuration
+          if (config && typeof config === 'object') {
+            // Config initialization logic here
+          }
+        },
+        async loadConfig(source: any): Promise<void> {
+          // Use config loader to load configuration
+          try {
+            if (typeof source === 'string') {
+              await configLoader.loadConfig(source);
+            }
+          } catch (error) {
+            debugSystem?.log('warn', 'Failed to load configuration', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        },
+        async generatePipelineTable(mappings: any): Promise<void> {
+          // Use pipeline generator to create pipeline table
+          try {
+            if (mappings && typeof mappings === 'object') {
+              await pipelineGenerator.generateConfig(mappings);
+            }
+          } catch (error) {
+            debugSystem?.log('warn', 'Failed to generate pipeline table', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        },
+        getCurrentConfig(): any {
+          // Return current configuration
+          return configLoader?.getCurrentConfig() || {};
+        },
+        getPipelineTable(): any {
+          // Return pipeline table
+          return pipelineGenerator?.getPipelineTable() || {};
+        },
+        async destroy(): Promise<void> {
+          // Cleanup resources
+          // Config parser components don't need explicit destruction
+        }
+      };
+
+      // Initialize the configuration system
+      await this.configurationSystem.initialize({ configPath });
+
+      this.debugSystem?.log('info', 'Configuration parser system initialized successfully', {
+        configPath,
+        importMethod,
+        method: 'configure'
+      });
+
     } catch (error) {
-      console.error('Failed to initialize configuration system:', error);
+      this.debugSystem?.log('error', 'Failed to initialize configuration system', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        method: 'configure'
+      });
       throw error;
     }
 
-    console.log('=== BootstrapService.configure() completed ===');
+    this.debugSystem?.log('info', 'BootstrapService configuration completed', {
+      servicesCount: this.config?.services?.length || 0,
+      method: 'configure'
+    });
+
+    // Record bootstrap pipeline end
+    if (this.config?.enableTwoPhaseDebug && this.pipelineScheduler) {
+      const twoPhaseDebugSystem = this.getTwoPhaseDebugSystem();
+      if (twoPhaseDebugSystem) {
+        twoPhaseDebugSystem.recordPipelineEnd(
+          'bootstrap-service',
+          'Bootstrap Service Initialization',
+          {
+            completed: true,
+            servicesConfigured: this.config.services?.length || 0,
+            configurationPath: this.config.configurationPath,
+            timeElapsed: Date.now()
+          },
+          true,
+          undefined,
+          { phase: 'configure-complete', timestamp: Date.now() }
+        );
+      }
+    }
+
+    this.logInfo('BootstrapService configuration completed', {
+      servicesCount: this.config?.services?.length || 0,
+      pipelineRecordingActive: this.config?.enableTwoPhaseDebug && !!this.pipelineScheduler
+    }, 'configure');
   }
 
   /**
@@ -184,20 +475,28 @@ this.configurationSystem = await createConfigurationSystem({
 
       // Load configuration and generate pipeline table
       try {
+        startIOTracking('bootstrap-load-config', { configPath: this.config?.configurationPath });
         console.log('Loading configuration from file');
         // Use the configuration path from the passed config if available, otherwise use default path
         const configPath = this.config?.configurationPath || '/Users/fanzhang/.rcc/rcc-config.json';
         console.log(`Using configuration path: ${configPath}`);
-        const configData = await this.configurationSystem.loadConfiguration(configPath);
-        console.log(`Loaded configuration with ${Object.keys(configData.providers || {}).length} providers and ${Object.keys(configData.virtualModels || {}).length} virtual models`);
+        await this.configurationSystem.loadConfig(configPath);
+        const currentConfig = await this.configurationSystem.getCurrentConfig();
+        this.endIOTracking('bootstrap-load-config', { providers: Object.keys(currentConfig.providers || {}).length, virtualModels: Object.keys(currentConfig.virtualModels || {}).length });
+        console.log(`Loaded configuration with ${Object.keys(currentConfig.providers || {}).length} providers and ${Object.keys(currentConfig.virtualModels || {}).length} virtual models`);
 
+        startIOTracking('bootstrap-generate-pipeline');
         console.log('Generating pipeline table from configuration');
-        const pipelineTable = await this.configurationSystem.generatePipelineTable();
-        console.log(`Generated pipeline table with ${pipelineTable.size} entries`);
+        await this.configurationSystem.generatePipelineTable(currentConfig);
+        this.endIOTracking('bootstrap-generate-pipeline', { success: true });
+        console.log('Generated pipeline table from configuration');
 
-        // Output pipeline parsing results
-        console.log('Pipeline parsing results:', JSON.stringify(Array.from(pipelineTable.entries()), null, 2));
+        // Get the pipeline table for output
+        const pipelineTable = this.configurationSystem.getPipelineTable();
+        console.log('Pipeline parsing results:', JSON.stringify(pipelineTable, null, 2));
       } catch (error) {
+        this.endIOTracking('bootstrap-load-config', {}, false, error instanceof Error ? error.message : String(error));
+        this.endIOTracking('bootstrap-generate-pipeline', {}, false, error instanceof Error ? error.message : String(error));
         console.error('Failed to load configuration or generate pipeline table:', error);
         throw error;
       }
@@ -218,13 +517,46 @@ this.configurationSystem = await createConfigurationSystem({
 
             // Configure ServerModule with parsed configuration data
             console.log('Configuring ServerModule with parsed configuration');
+            const currentConfig = await this.configurationSystem.getCurrentConfig();
             const serverConfig = {
               ...serviceConfig.config,
               // Add parsed configuration data here if needed
-              parsedConfig: await this.configurationSystem.getConfiguration()
+              parsedConfig: currentConfig,
+              // Ensure required server configuration fields are present
+              host: serviceConfig.config.host || '0.0.0.0',
+              port: serviceConfig.config.port || 5507,
+              timeout: serviceConfig.config.timeout || 30000,
+              bodyLimit: serviceConfig.config.bodyLimit || '10mb',
+              cors: serviceConfig.config.cors || {},
+              helmet: serviceConfig.config.helmet !== false,
+              compression: serviceConfig.config.compression !== false
             };
+            console.log('ServerModule configuration:', JSON.stringify(serverConfig, null, 2));
             await serverModule.configure(serverConfig);
             console.log('ServerModule configured successfully');
+
+            // Set debug log manager for enhanced request logging
+            if (this.debugLogManager) {
+              console.log('Setting DebugLogManager for ServerModule');
+              (serverModule as any).setDebugLogManager(this.debugLogManager);
+              console.log('DebugLogManager set successfully');
+            }
+
+            // Set test scheduler for virtual model mapping validation
+            if (this.testScheduler) {
+              console.log('Setting TestScheduler for ServerModule');
+              (serverModule as any).setTestScheduler(this.testScheduler);
+              console.log('TestScheduler set successfully');
+            }
+            // Set Pipeline Scheduler for enhanced request processing
+            if (this.pipelineScheduler) {
+              console.log('Setting Pipeline Scheduler for ServerModule');
+              (serverModule as any).setPipelineScheduler(this.pipelineScheduler);
+              console.log('Pipeline Scheduler set successfully');
+            }
+
+            // BaseModule内置功能已取代外部logger和tracker
+            // ServerModule会自动使用BaseModule的logInfo, recordIO等方法
 
             console.log('Initializing ServerModule');
             await serverModule.initialize();

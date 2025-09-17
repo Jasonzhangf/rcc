@@ -32,6 +32,7 @@
     "noUncheckedIndexedAccess": false,
     "noImplicitOverride": true,
     "useUnknownInCatchVariables": true,
+    "downlevelIteration": true,
     "paths": {
       "@/*": ["./src/*"]
     }

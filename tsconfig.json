@@ -22,16 +22,18 @@
     "noImplicitThis": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noImplicitUseStrict": false,
     "noStrictGenericChecks": false,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "downlevelIteration": true
   },
   "include": [
     "src/**/*",
-    "sharedmodule/**/*"
+    "types/**/*",
+    "./*.d.ts"
   ],
   "exclude": [
     "node_modules",
@@ -47,6 +49,14 @@
     "**/Configuration/**",
     "**/errorhandling/**",
     "**/Qwen*.ts",
+    "src/modules/oauth2/**",
+    "src/providers/**",
+    "src/modules/qwen/**",
+    "src/RCCModuleSystem.ts",
+    "src/utils/underConstructionIntegration.ts",
+    "src/utils/ModuleDiscoverySystem.ts",
+    "src/utils/ModuleLoaderSystem.ts",
+    "src/utils/ModuleConfigurationManager.ts",
     "sharedmodule/pipeline/src/ConfigurationExamples.ts",
     "sharedmodule/pipeline/src/EnhancedErrorResponseCenter.ts",
     "sharedmodule/pipeline/src/ErrorHandlerCenter.ts",

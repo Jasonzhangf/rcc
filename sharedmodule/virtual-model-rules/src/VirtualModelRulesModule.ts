@@ -82,9 +82,9 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       this.logInfo('Virtual Model Rules Module initialized successfully', 'initialize');
       
       // Notify initialization complete
-      this.broadcastMessage('virtual-model-rules-initialized', { 
+      this.broadcastMessage('virtual-model-rules-initialized', {
         ruleCount: this.rules.size,
-        scheduleCount: this.schedules.size 
+        scheduleCount: this.schedules.size
       });
       
     } catch (error) {
@@ -330,7 +330,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
     this.logInfo('Rule enabled state updated successfully', 'setRuleEnabled');
     
     // Notify rule state changed
-    this.broadcastMessage('rule-state-changed', { ruleId, enabled });
+    this.broadcastMessage('rule-state-changed', { ruleId });
   }
 
   /**
@@ -400,7 +400,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
   /**
    * Get configuration
    */
-  public override getConfig(): any {
+  public getConfig(): any {
     return super.getConfig();
   }
 
@@ -419,7 +419,7 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
   /**
    * Handle incoming messages
    */
-  public override async handleMessage(message: any): Promise<any> {
+  public async handleMessage(message: any): Promise<any> {
     this.log('Handling message', { type: message?.type, source: message?.source }, 'handleMessage');
 
     switch (message?.type) {

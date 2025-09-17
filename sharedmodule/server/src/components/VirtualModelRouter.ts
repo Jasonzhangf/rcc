@@ -3,6 +3,11 @@
 import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { IVirtualModelRouter } from '../interfaces/IServerModule';
 import { VirtualModelConfig, ClientRequest, RoutingRule } from '../types/ServerTypes';
+// Import required types from rcc-pipeline
+import VirtualModelSchedulerManager from 'rcc-pipeline';
+import PipelineTracker from 'rcc-pipeline';
+import BaseProvider from 'rcc-pipeline';
+import { PipelineScheduler } from 'rcc-pipeline';
 
 export interface RoutingDecision {
   model: VirtualModelConfig;
@@ -28,23 +33,110 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   private routingRules: Map<string, RoutingRule[]> = new Map();
   private modelMetrics: Map<string, ModelMetrics> = new Map();
 
+  // New scheduler integration
+  private schedulerManager: VirtualModelSchedulerManager;
+  private pipelineTracker: PipelineTracker;
+  private providers: Map<string, BaseProvider> = new Map();
+  private isSchedulerEnabled: boolean = false;
+
   constructor() {
     const moduleInfo: ModuleInfo = {
       id: 'VirtualModelRouter',
       name: 'Virtual Model Router',
-      version: '1.0.0',
-      description: 'Virtual model routing with rule evaluation',
+      version: '2.0.0',
+      description: 'Virtual model routing with intelligent scheduling',
       type: 'component',
-      capabilities: ['virtual-model-routing', 'rule-evaluation'],
-      dependencies: ['rcc-basemodule'],
+      capabilities: ['virtual-model-routing', 'intelligent-scheduling', 'load-balancing'],
+      dependencies: ['rcc-basemodule', 'rcc-pipeline'],
       config: {},
       metadata: {
         author: 'RCC Development Team',
         license: 'MIT'
       }
     };
-    
+
     super(moduleInfo);
+
+    // Initialize pipeline tracker for debugging
+    this.pipelineTracker = new PipelineTracker({
+      enabled: true,
+      baseDirectory: './logs',
+      paths: {
+        requests: 'requests',
+        responses: 'responses',
+        errors: 'errors',
+        pipeline: 'pipeline',
+        system: 'system'
+      },
+      logLevel: 'info',
+      requestTracking: {
+        enabled: true,
+        generateRequestIds: true,
+        includeTimestamps: true,
+        trackMetadata: true
+      },
+      contentFiltering: {
+        enabled: true,
+        sensitiveFields: ['api_key', 'password', 'token', 'secret', 'authorization'],
+        maxContentLength: 10000,
+        sanitizeResponses: true
+      },
+      fileManagement: {
+        maxFileSize: 10,
+        maxFiles: 100,
+        compressOldLogs: true,
+        retentionDays: 30
+      },
+      performanceTracking: {
+        enabled: true,
+        trackTiming: true,
+        trackMemoryUsage: false,
+        trackSuccessRates: true
+      }
+    });
+
+    // Initialize scheduler manager
+    this.schedulerManager = new VirtualModelSchedulerManager(
+      {
+        maxSchedulers: 100,
+        defaultSchedulerConfig: {
+          maxConcurrentRequests: 50,
+          requestTimeout: 30000,
+          healthCheckInterval: 60000,
+          retryStrategy: {
+            maxRetries: 3,
+            baseDelay: 1000,
+            maxDelay: 10000,
+            backoffMultiplier: 2
+          },
+          loadBalancingStrategy: 'round-robin',
+          enableCircuitBreaker: true,
+          circuitBreakerThreshold: 5,
+          circuitBreakerTimeout: 300000
+        },
+        pipelineFactoryConfig: {
+          defaultTimeout: 30000,
+          defaultHealthCheckInterval: 60000,
+          defaultMaxRetries: 3,
+          defaultLoadBalancingStrategy: 'round-robin',
+          enableHealthChecks: true,
+          metricsEnabled: true
+        },
+        enableAutoScaling: true,
+        scalingThresholds: {
+          minRequestsPerMinute: 10,
+          maxRequestsPerMinute: 1000,
+          scaleUpCooldown: 300000,
+          scaleDownCooldown: 600000
+        },
+        healthCheckInterval: 30000,
+        metricsRetentionPeriod: 86400000, // 24 hours
+        enableMetricsExport: true
+      },
+      this.pipelineTracker
+    );
+
+    this.isSchedulerEnabled = true;
   }
 
   /**
@@ -63,6 +155,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     });
     console.log(`[${requestId}] Available virtual models:`, Array.from(this.virtualModels.keys()));
     console.log(`[${requestId}] Enabled virtual models:`, this.getEnabledModels().map(m => m.id));
+    console.log(`[${requestId}] Scheduler enabled:`, this.isSchedulerEnabled);
 
     this.log('Routing request', {
       method: 'routeRequest',
@@ -71,7 +164,38 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       virtualModel: request.virtualModel
     });
 
-    // If specific virtual model is requested, use it
+    // Use scheduler if enabled and available
+    if (this.isSchedulerEnabled && request.virtualModel) {
+      try {
+        console.log(`[${requestId}] Attempting to use scheduler for virtual model:`, request.virtualModel);
+
+        // Check if we have a scheduler for this virtual model
+        const scheduler = this.schedulerManager.getVirtualModelScheduler(request.virtualModel);
+        if (scheduler) {
+          console.log(`[${requestId}] Found scheduler for virtual model, executing request`);
+
+          // Execute through scheduler
+          const operation: 'chat' | 'streamChat' | 'healthCheck' =
+            request.path.includes('stream') ? 'streamChat' : 'chat';
+
+          // Note: This is a routing decision - actual execution happens elsewhere
+          // For now, we'll return the model configuration and let the actual execution happen
+          const model = this.virtualModels.get(request.virtualModel);
+          if (model && (model.enabled ?? true)) {
+            console.log(`[${requestId}] Using scheduler-based routing for virtual model:`, request.virtualModel);
+            await this.recordRequestMetrics(model.id, true);
+            return model;
+          }
+        } else {
+          console.log(`[${requestId}] No scheduler found for virtual model:`, request.virtualModel);
+        }
+      } catch (error) {
+        console.warn(`[${requestId}] Scheduler execution failed, falling back to traditional routing:`, error);
+        // Fallback to traditional routing
+      }
+    }
+
+    // Fallback to traditional routing
     if (request.virtualModel) {
       console.log(`[${requestId}] Specific virtual model requested:`, request.virtualModel);
       const model = this.virtualModels.get(request.virtualModel);
@@ -129,27 +253,14 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     } catch (error) {
       console.error(`[${requestId}] Routing decision failed:`, error);
 
-      // 如果智能路由失败，尝试使用第一个可用的模型作为后备
-      const enabledModels = this.getEnabledModels();
-      if (enabledModels.length > 0) {
-    const fallbackModel = enabledModels[0];
-    if (!fallbackModel) {
-      throw error;
-    }
-    console.log(`[${requestId}] Using fallback model: ${fallbackModel.id}`);
+      // 智能路由失败时，明确抛出错误而不是使用fallback
+      this.error('Intelligent routing failed - no fallback mechanism available', {
+        method: 'routeRequest',
+        requestId,
+        error: error instanceof Error ? error.message : String(error)
+      });
 
-    this.warn('Using fallback model due to routing failure', {
-      method: 'routeRequest',
-      requestId,
-      fallbackModel: fallbackModel.id,
-      error: error instanceof Error ? error.message : String(error)
-    });
-
-    await this.recordRequestMetrics(fallbackModel.id, true);
-    return fallbackModel;
-      }
-
-      throw error;
+      throw new Error(`Virtual model routing failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -189,12 +300,49 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       throughput: 0
     });
 
-    this.log('Virtual model registered successfully', {
-      method: 'registerModel',
-      modelId: model.id,
-      capabilities: processedModel.capabilities,
-      targetsCount: processedModel.targets?.length || 0
-    });
+    // Register with scheduler if enabled
+    if (this.isSchedulerEnabled && processedModel.targets && processedModel.targets.length > 0) {
+      try {
+        // Create providers map for this virtual model
+        const providers = new Map<string, BaseProvider>();
+
+        // Note: In a real implementation, you would create actual provider instances
+        // For now, we'll register without providers and let them be added later
+        const schedulerId = await this.schedulerManager.registerVirtualModel(
+          processedModel,
+          providers,
+          {
+            metadata: {
+              virtualModelName: processedModel.name,
+              capabilities: processedModel.capabilities,
+              registeredAt: Date.now()
+            }
+          }
+        );
+
+        this.log('Virtual model registered with scheduler successfully', {
+          method: 'registerModel',
+          modelId: model.id,
+          schedulerId,
+          capabilities: processedModel.capabilities,
+          targetsCount: processedModel.targets?.length || 0
+        });
+      } catch (error) {
+        this.warn('Failed to register virtual model with scheduler, continuing without it', {
+          method: 'registerModel',
+          modelId: model.id,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } else {
+      this.log('Virtual model registered successfully (scheduler disabled or no targets)', {
+        method: 'registerModel',
+        modelId: model.id,
+        capabilities: processedModel.capabilities,
+        targetsCount: processedModel.targets?.length || 0,
+        schedulerEnabled: this.isSchedulerEnabled
+      });
+    }
   }
 
   /**
@@ -621,7 +769,6 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       if (score > 0) {
         candidates.push({
           ...model,
-          // 临时存储分数用于后续排序
           routingScore: score
         } as any);
         console.log(`Model ${model.id} scored ${score.toFixed(1)}: ${reasons.join(', ')}`);
@@ -631,7 +778,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     // 按分数排序
     candidates.sort((a: any, b: any) => (b.routingScore || 0) - (a.routingScore || 0));
 
-    // 移除临时分数属性
+    // 移除排序分数属性
     return candidates.map(model => {
       const { routingScore, ...cleanModel } = model as any;
       return cleanModel;
@@ -801,15 +948,15 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       throw new Error('Model configuration missing required fields: id, name, provider');
     }
 
-    // 为可选字段提供默认值
+    // 虚拟模型是路由机制，端点和能力从targets动态生成，不需要警告
     if (!model.endpoint) {
-      this.warn(`Model ${model.id} missing endpoint, using default`, { method: 'validateModelConfig' });
-      model.endpoint = 'http://localhost:8000/v1';
+      // 端点将在processTargets中从targets动态生成
+      model.endpoint = '';
     }
 
     if (!model.capabilities || model.capabilities.length === 0) {
-      this.warn(`Model ${model.id} missing capabilities, using defaults`, { method: 'validateModelConfig' });
-      model.capabilities = ['chat', 'streaming', 'tools'];
+      // 能力将在processTargets中从targets动态推断
+      model.capabilities = [];
     }
 
     // 为数值字段提供默认值和验证
@@ -949,10 +1096,142 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   public override async destroy(): Promise<void> {
     this.log('Cleaning up Virtual Model Router', { method: 'destroy' });
 
+    // Destroy scheduler manager
+    if (this.schedulerManager) {
+      this.schedulerManager.destroy();
+    }
+
+    // Clear collections
     this.virtualModels.clear();
     this.routingRules.clear();
     this.modelMetrics.clear();
+    this.providers.clear();
 
     await super.destroy();
+  }
+
+  /**
+   * Add provider to scheduler system
+   */
+  public async addProvider(providerId: string, provider: BaseProvider): Promise<void> {
+    this.providers.set(providerId, provider);
+    this.log('Provider added to scheduler system', {
+      method: 'addProvider',
+      providerId,
+      providerName: provider.getInfo().name
+    });
+  }
+
+  /**
+   * Remove provider from scheduler system
+   */
+  public async removeProvider(providerId: string): Promise<boolean> {
+    const removed = this.providers.delete(providerId);
+    if (removed) {
+      this.log('Provider removed from scheduler system', {
+        method: 'removeProvider',
+        providerId
+      });
+    }
+    return removed;
+  }
+
+  /**
+   * Execute request through scheduler
+   */
+  public async executeWithScheduler(
+    virtualModelId: string,
+    request: any,
+    operation: 'chat' | 'streamChat' | 'healthCheck' = 'chat',
+    options?: {
+      timeout?: number;
+      retries?: number;
+      priority?: 'low' | 'medium' | 'high' | 'critical';
+      metadata?: Record<string, any>;
+    }
+  ): Promise<any> {
+    if (!this.isSchedulerEnabled) {
+      throw new Error('Scheduler is not enabled');
+    }
+
+    return this.schedulerManager.execute(virtualModelId, request, operation, options);
+  }
+
+  /**
+   * Execute streaming request through scheduler
+   */
+  public async *executeStreamingWithScheduler(
+    virtualModelId: string,
+    request: any,
+    operation: 'chat' | 'streamChat' | 'healthCheck' = 'streamChat',
+    options?: {
+      timeout?: number;
+      retries?: number;
+      priority?: 'low' | 'medium' | 'high' | 'critical';
+      metadata?: Record<string, any>;
+    }
+  ): AsyncGenerator<any, void, unknown> {
+    if (!this.isSchedulerEnabled) {
+      throw new Error('Scheduler is not enabled');
+    }
+
+    for await (const chunk of this.schedulerManager.executeStreaming(virtualModelId, request, operation, options)) {
+      yield chunk;
+    }
+  }
+
+  /**
+   * Get scheduler metrics
+   */
+  public getSchedulerMetrics(): any {
+    if (!this.isSchedulerEnabled) {
+      return null;
+    }
+
+    return this.schedulerManager.getManagerMetrics();
+  }
+
+  /**
+   * Get scheduler health
+   */
+  public getSchedulerHealth(): any {
+    if (!this.isSchedulerEnabled) {
+      return null;
+    }
+
+    return this.schedulerManager.getManagerHealth();
+  }
+
+  /**
+   * Enable/disable scheduler
+   */
+  public setSchedulerEnabled(enabled: boolean): void {
+    this.isSchedulerEnabled = enabled;
+    this.log('Scheduler ' + (enabled ? 'enabled' : 'disabled'), {
+      method: 'setSchedulerEnabled',
+      enabled
+    });
+  }
+
+  /**
+   * Get virtual model scheduler
+   */
+  public getVirtualModelScheduler(virtualModelId: string): PipelineScheduler | null {
+    if (!this.isSchedulerEnabled) {
+      return null;
+    }
+
+    return this.schedulerManager.getVirtualModelScheduler(virtualModelId);
+  }
+
+  /**
+   * Get all virtual model mappings
+   */
+  public getVirtualModelMappings(): any[] {
+    if (!this.isSchedulerEnabled) {
+      return [];
+    }
+
+    return this.schedulerManager.getVirtualModelMappings();
   }
 }

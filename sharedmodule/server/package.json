@@ -42,20 +42,21 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
-    "rcc-basemodule": ">=0.1.0",
-    "rcc-configuration": "^0.1.1",
-    "rcc-errorhandling": ">=0.1.0",
-    "rcc-pipeline": "^0.1.2",
-    "rcc-underconstruction": ">=0.1.0",
-    "rcc-virtual-model-rules": "file:../virtual-model-rules",
+    "rcc-basemodule": "^0.1.8",
+    "rcc-config-parser": "^0.1.0",
+    "rcc-errorhandling": "^1.0.3",
+    "rcc-pipeline": "^0.1.0",
+    "rcc-underconstruction": "file:../underconstruction",
+    "rcc-virtual-model-rules": "^1.0.5",
     "uuid": "^9.0.1"
   },
   "peerDependencies": {
     "rcc-basemodule": ">=0.1.0",
-    "rcc-configuration": "^0.1.1",
-    "rcc-errorhandling": ">=0.1.0",
-    "rcc-pipeline": "^0.1.2",
-    "rcc-underconstruction": ">=0.1.0"
+    "rcc-config-parser": ">=0.1.0",
+    "rcc-errorhandling": ">=1.0.0",
+    "rcc-pipeline": ">=0.1.0",
+    "rcc-underconstruction": ">=0.1.0",
+    "rcc-virtual-model-rules": ">=1.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",

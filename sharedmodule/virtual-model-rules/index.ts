@@ -27,4 +27,4 @@ export type {
 } from './src/types/VirtualModelRulesTypes';
 
 // Default exports
-export default VirtualModelRulesModule;
+export { VirtualModelRulesModule as default };

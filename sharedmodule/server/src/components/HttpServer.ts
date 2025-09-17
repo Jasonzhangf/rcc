@@ -92,29 +92,39 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       return;
     }
 
+    this.log(`Starting HTTP server on ${host}:${port}`, { method: 'listen' });
+
     return new Promise((resolve, reject) => {
       this.server = createServer(this.app);
-      
+
       this.server.listen(port, host, () => {
         this.isRunning = true;
-        this.log(`HTTP server listening on ${host}:${port}`, { method: 'listen' });
+        this.logInfo(`HTTP server successfully listening on ${host}:${port}`, { method: 'listen' });
+        console.log(`✅ HTTP server listening on ${host}:${port}`);
         resolve();
       });
-      
-      this.server.on('error', (error) => {
-        this.error('HTTP server error', { method: 'listen' });
+
+      this.server.on('error', (error: any) => {
+        this.error('HTTP server failed to start', {
+          method: 'listen',
+          error: error.message,
+          port,
+          host,
+          code: error.code
+        });
+        console.error(`❌ Failed to start HTTP server on ${host}:${port}: ${error.message}`);
         reject(error);
       });
-      
+
       this.server.on('connection', (socket) => {
-        this.log(`New connection established from ${socket.remoteAddress}`, { method: 'listen' });
-        
+        this.logDebug(`New connection established from ${socket.remoteAddress}`, { method: 'listen' });
+
         socket.on('close', () => {
-          this.log(`Connection closed from ${socket.remoteAddress}`, { method: 'listen' });
+          this.logDebug(`Connection closed from ${socket.remoteAddress}`, { method: 'listen' });
         });
-        
-        socket.on('error', () => {
-          this.warn('Connection error', { method: 'listen' });
+
+        socket.on('error', (error) => {
+          this.warn(`Connection error: ${error.message}`, { method: 'listen' });
         });
       });
     });

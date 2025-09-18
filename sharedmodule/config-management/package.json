@@ -1,0 +1,102 @@
+{
+  "name": "rcc-config-management",
+  "version": "0.1.0",
+  "description": "RCC Configuration Management Module - WebGUI and configuration management system",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rcc/rcc-config-management.git"
+  },
+  "homepage": "https://github.com/rcc/rcc-config-management#readme",
+  "bugs": {
+    "url": "https://github.com/rcc/rcc-config-management/issues"
+  },
+  "keywords": [
+    "rcc",
+    "configuration",
+    "config-management",
+    "webui",
+    "typescript",
+    "modular-architecture",
+    "gui",
+    "management-system"
+  ],
+  "author": "RCC Development Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "rcc-basemodule": "file:../basemodule",
+    "rcc-config-parser": "file:../config-parser"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.9.2"
+  },
+  "scripts": {
+    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
+    "build:cjs": "rollup -c rollup.config.js",
+    "build:esm": "rollup -c rollup.config.js",
+    "clean": "rimraf dist",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"__test__/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"__test__/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run lint && npm run test",
+    "prepublishOnly": "npm run build",
+    "version": "npm run build && git add -A dist",
+    "postversion": "git push && git push --tags"
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "extends": [
+      "eslint:recommended",
+      "@typescript-eslint/recommended"
+    ],
+    "rules": {
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/explicit-function-return-type": "warn"
+    },
+    "env": {
+      "node": true,
+      "jest": true
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false
+  }
+}

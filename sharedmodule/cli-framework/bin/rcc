@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+
+/**
+ * RCC Global CLI Entry Point
+ * This file replaces the existing rcc command with the new framework
+ */
+
+import { executeCommand } from '../dist/index.js';
+
+async function main() {
+  try {
+    await executeCommand(process.argv);
+  } catch (error) {
+    console.error('Error:', error.message);
+    
+    // Provide helpful error messages
+    if (error.code === 'COMMAND_NOT_FOUND') {
+      console.log('\nUse "rcc --help" to see available commands.');
+    } else if (error.code === 'COMMAND_VALIDATION_FAILED') {
+      console.log('\nCheck command usage with "rcc <command> --help"');
+    }
+    
+    process.exit(1);
+  }
+}
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error.message);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Execute the CLI
+if (require.main === module) {
+  main();
+}

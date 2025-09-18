@@ -16,7 +16,7 @@
     "rcc-config-parser": "^0.1.0",
     "rcc-errorhandling": "^1.0.3",
     "rcc-pipeline": "^0.1.0",
-    "rcc-server": "file:sharedmodule/server",
+    "rcc-server": "^0.2.1",
     "rcc-underconstruction": "^0.1.0",
     "uuid": "^9.0.1"
   },
@@ -73,7 +73,7 @@
   "scripts": {
     "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-    "build:cjs": "rollup -c rollup.config.cjs.js",
+    "build:cjs": "rollup -c rollup.config.js",
     "build:esm": "rollup -c rollup.config.esm.js",
     "clean": "rimraf dist",
     "dev": "tsc --watch",
@@ -171,5 +171,5 @@
   "directories": {
     "doc": "docs"
   },
-  "type": "commonjs"
+  "type": "module"
 }

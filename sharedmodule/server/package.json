@@ -1,10 +1,10 @@
 {
   "name": "rcc-server",
-  "version": "0.1.8",
+  "version": "0.2.1",
   "description": "RCC Server Module - Client input proxy response server with virtual model routing",
   "type": "module",
-  "main": "dist/index.esm.js",
-  "module": "dist/index.esm.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*",
@@ -42,12 +42,13 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
-    "rcc-basemodule": "^0.1.8",
-    "rcc-config-parser": "^0.1.0",
-    "rcc-errorhandling": "^1.0.3",
-    "rcc-pipeline": "^0.1.0",
-    "rcc-underconstruction": "file:../underconstruction",
-    "rcc-virtual-model-rules": "^1.0.5",
+    "rcc-basemodule": "^0.2.1",
+    "rcc-config-parser": ">=0.1.0",
+    "rcc-debugcenter": "^0.1.0",
+    "rcc-errorhandling": ">=1.0.0",
+    "rcc-pipeline": ">=0.1.0",
+    "rcc-underconstruction": ">=0.1.0",
+    "rcc-virtual-model-rules": ">=1.0.0",
     "uuid": "^9.0.1"
   },
   "peerDependencies": {
@@ -59,6 +60,7 @@
     "rcc-virtual-model-rules": ">=1.0.0"
   },
   "devDependencies": {
+    "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/body-parser": "^1.19.5",
     "@types/compression": "^1.7.5",
@@ -81,13 +83,12 @@
     "typescript": "^5.9.2"
   },
   "scripts": {
-    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm",
+    "build": "npm run clean && npm run build:types && npm run build:esm",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-    "build:cjs": "rollup -c rollup.config.js",
     "build:esm": "rollup -c rollup.config.js",
     "clean": "rimraf dist",
     "dev": "tsc --watch",
-    "test": "jest",
+    "test": "jest --config jest.config.js",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",

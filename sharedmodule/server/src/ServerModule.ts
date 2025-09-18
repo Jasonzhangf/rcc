@@ -1,21 +1,9 @@
 // Main Server Module for RCC
 
-import { BaseModule } from 'rcc-basemodule';
-import { ModuleInfo } from 'rcc-basemodule';
+import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { IServerModule } from './interfaces/IServerModule';
 import { HttpServerComponent } from './components/HttpServer';
 import { VirtualModelRouter } from './components/VirtualModelRouter';
-// Test Scheduler interface
-interface TestScheduler {
-  processVirtualModelRequest(request: any, model: any): Promise<any>;
-}
-
-// Virtual Model Scheduler Manager interface
-interface VirtualModelSchedulerManager {
-  initialize(): Promise<void>;
-  destroy(): Promise<void>;
-  registerVirtualModel(config: any): Promise<void>;
-}
 import { 
   ServerConfig, 
   ClientRequest, 
@@ -34,7 +22,7 @@ import {
   } from './types/ServerTypes';
 
 import { UnderConstruction } from 'rcc-underconstruction';
-// import { VirtualModelRulesModule } from 'rcc-virtual-model-rules'; // Temporarily disabled for compilation
+
 // PipelineScheduler import removed - not available in current pipeline module
 
 export class ServerModule extends BaseModule implements IServerModule {
@@ -48,15 +36,13 @@ export class ServerModule extends BaseModule implements IServerModule {
   private isRunning: boolean = false;
   private messageHandlers: Map<string, (message: any) => Promise<void>> = new Map();
 
-  // Pipeline Scheduler Integration
-  private virtualModelSchedulerManager: VirtualModelSchedulerManager | null = null;
+  // Pipeline Scheduler Integration (under construction)
+  private pipelineScheduler: any = null;
 
-  
-  // Test Scheduler Integration
-  private testScheduler: TestScheduler | null = null;
+  // Test Scheduler Integration (under construction)
+  private testScheduler: any = null;
 
-  // Virtual Model Rules Integration
-  // private virtualModelRulesModule: VirtualModelRulesModule | null = null; // Temporarily disabled
+
 
   // Debug Log Manager Integration
   private debugLogManager: any = null;
@@ -74,7 +60,7 @@ export class ServerModule extends BaseModule implements IServerModule {
       id: 'ServerModule',
       name: 'RCC Server Module',
       version: '1.0.0',
-      description: 'HTTP server with virtual model routing and rule evaluation for RCC framework',
+      description: 'HTTP server with virtual model routing for RCC framework',
       type: 'server',
       capabilities: ['http-server', 'virtual-model-routing', 'websocket', 'configuration-integration', 'pipeline-integration'],
       dependencies: ['rcc-basemodule', 'rcc-configuration', 'rcc-pipeline'],
@@ -186,10 +172,8 @@ export class ServerModule extends BaseModule implements IServerModule {
       }
 
       // Initialize Virtual Model Scheduler Manager
-      await this.initializeVirtualModelSchedulerManager();
+      await this.initializePipelineScheduler();
 
-      // Initialize Virtual Model Rules Module
-      await this.initializeVirtualModelRulesIntegration();
 
       // Set up request handling
       this.setupRequestHandling();
@@ -318,9 +302,21 @@ export class ServerModule extends BaseModule implements IServerModule {
 
     const startTime = Date.now();
     let requestContext: any = null;
+    const operationId = `http-request-${request.id}-${Date.now()}`;
 
     try {
       this.log('Handling request with enhanced logging');
+
+      // Start I/O tracking for the entire request
+      this.startIOTracking(operationId, {
+        method: request.method,
+        path: request.path,
+        headers: request.headers,
+        body: request.body,
+        query: request.query,
+        clientId: request.clientId,
+        virtualModel: request.virtualModel
+      }, 'handleRequest');
 
       // Start request tracking if DebugLogManager is available
       if (this.debugLogManager) {
@@ -349,8 +345,26 @@ export class ServerModule extends BaseModule implements IServerModule {
         }
       }
 
-      // Route to virtual model
+      // Route to virtual model with I/O tracking
+      const routingOperationId = `${operationId}-routing`;
+      this.startIOTracking(routingOperationId, {
+        request: {
+          method: request.method,
+          path: request.path,
+          virtualModel: request.virtualModel
+        },
+        availableModels: this.virtualModelRouter.getEnabledModels().map(m => m.id)
+      }, 'routeRequest');
+
       const virtualModel = await this.virtualModelRouter.routeRequest(request);
+
+      // Record routing decision
+      this.endIOTracking(routingOperationId, {
+        selectedModel: virtualModel.id,
+        provider: virtualModel.provider,
+        capabilities: virtualModel.capabilities,
+        routingDecision: 'success'
+      }, true);
 
       // Complete routing stage
       if (this.debugLogManager && requestContext) {
@@ -373,8 +387,30 @@ export class ServerModule extends BaseModule implements IServerModule {
         }
       }
 
-      // Process the request through the virtual model
+      // Process the request through the virtual model with I/O tracking
+      const processingOperationId = `${operationId}-processing`;
+      this.startIOTracking(processingOperationId, {
+        model: virtualModel.id,
+        provider: virtualModel.provider,
+        request: {
+          method: request.method,
+          path: request.path,
+          headers: request.headers,
+          body: request.body
+        }
+      }, 'processVirtualModelRequest');
+
       const response = await this.processVirtualModelRequest(request, virtualModel);
+
+      // Record processing result
+      this.endIOTracking(processingOperationId, {
+        response: {
+          status: response.status,
+          headers: response.headers,
+          body: response.body
+        },
+        processingTime: response.processingTime
+      }, true);
 
       // Complete processing stage
       if (this.debugLogManager && requestContext) {
@@ -424,6 +460,21 @@ export class ServerModule extends BaseModule implements IServerModule {
         }
       }
 
+      // Complete I/O tracking for the entire request
+      this.endIOTracking(operationId, {
+        response: {
+          status: response.status,
+          headers: response.headers,
+          body: response.body
+        },
+        processingTime: processingTime,
+        virtualModel: virtualModel.id,
+        metrics: {
+          totalRequests: this.requestMetrics.length,
+          errorRate: this.calculateErrorRate()
+        }
+      }, true);
+
       this.logInfo('Request processed successfully with enhanced logging');
 
       return response;
@@ -464,6 +515,14 @@ export class ServerModule extends BaseModule implements IServerModule {
           this.warn('Failed to log request error', { error: logError instanceof Error ? logError.message : String(logError) });
         }
       }
+
+      // Complete I/O tracking with error
+      this.endIOTracking(operationId, {
+        error: error instanceof Error ? error.message : String(error),
+        processingTime: processingTime,
+        virtualModel: request.virtualModel || 'unknown',
+        errorPhase: 'request-processing'
+      }, false, error instanceof Error ? error.message : String(error));
 
       // Create standardized error response using Pipeline error handling if available
       const errorResponse = this.createErrorResponse(error, request);
@@ -636,7 +695,7 @@ export class ServerModule extends BaseModule implements IServerModule {
               await this.virtualModelRouter.registerModel(virtualModelConfig);
 
               // Register the virtual model with scheduler if available
-              if (this.virtualModelSchedulerManager) {
+              if (this.pipelineScheduler) {
                 try {
                   // Convert virtual model config to scheduler format
                   const schedulerConfig = {
@@ -651,7 +710,7 @@ export class ServerModule extends BaseModule implements IServerModule {
                     timeout: 30000
                   };
 
-                  await this.virtualModelSchedulerManager.registerVirtualModel(schedulerConfig);
+                  await this.pipelineScheduler.registerVirtualModel(schedulerConfig);
                   this.logInfo(`Virtual model registered with scheduler: ${modelId}`, {
                     modelId: modelId,
                     provider: virtualModelConfig.provider,
@@ -758,7 +817,7 @@ export class ServerModule extends BaseModule implements IServerModule {
       },
       pipelineIntegration: {
         enabled: this.pipelineIntegrationConfig.enabled,
-        schedulerAvailable: this.virtualModelSchedulerManager !== null,
+        schedulerAvailable: this.pipelineScheduler !== null,
         processingMethod: 'direct',
         fallbackEnabled: true,
         unifiedErrorHandling: this.pipelineIntegrationConfig.unifiedErrorHandling || false,
@@ -798,7 +857,7 @@ export class ServerModule extends BaseModule implements IServerModule {
     underConstructionModule?: boolean;
     errorHandling?: boolean;
     monitoring?: boolean;
-    virtualModelSchedulerManager?: boolean;
+    pipelineScheduler?: boolean;
   }> {
     const checks: Record<string, boolean> = {};
     
@@ -826,10 +885,8 @@ export class ServerModule extends BaseModule implements IServerModule {
     }
     
     // Check virtual model scheduler integration
-    checks['virtual_model_scheduler_integration'] = this.virtualModelSchedulerManager !== null;
+    checks['virtual_model_scheduler_integration'] = this.pipelineScheduler !== null;
 
-    // Check virtual model rules integration
-    checks['virtual_model_rules_integration'] = false; // this.virtualModelRulesModule !== null;
     
     // Check unified error handling
     checks['unified_error_handling'] = this.pipelineIntegrationConfig.unifiedErrorHandling || false;
@@ -853,7 +910,7 @@ export class ServerModule extends BaseModule implements IServerModule {
       status,
       checks,
       timestamp: Date.now(),
-      virtualModelSchedulerManager: this.virtualModelSchedulerManager !== null,
+      pipelineScheduler: this.pipelineScheduler !== null,
       errorHandling: this.pipelineIntegrationConfig.unifiedErrorHandling || false,
       monitoring: this.pipelineIntegrationConfig.unifiedMonitoring || false
     };
@@ -909,22 +966,15 @@ export class ServerModule extends BaseModule implements IServerModule {
   }
 
   
-  /**
-   * Initialize Pipeline Scheduler - Removed, using DebugLogManager instead
-   */
-  private async initializePipelineScheduler(): Promise<void> {
-    this.log('Pipeline Scheduler removed - using DebugLogManager for request tracking');
-    this.logInfo('Request tracking handled by DebugLogManager');
-  }
-  
+    
   /**
    * Set Virtual Model Scheduler Manager
    */
-  public setVirtualModelSchedulerManager(schedulerManager: VirtualModelSchedulerManager): void {
+  public setVirtualModelSchedulerManager(schedulerManager: any): void {
     this.log('Setting Virtual Model Scheduler Manager');
 
     try {
-      this.virtualModelSchedulerManager = schedulerManager;
+      this.pipelineScheduler = schedulerManager;
       this.logInfo('Virtual Model Scheduler Manager set successfully');
 
       // Broadcast scheduler integration event
@@ -942,7 +992,7 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * Set Test Scheduler for virtual model mapping validation
    */
-  public setTestScheduler(testScheduler: TestScheduler): void {
+  public setTestScheduler(testScheduler: any): void {
     this.log('Setting Test Scheduler for virtual model mapping validation');
 
     try {
@@ -964,7 +1014,7 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * Initialize Virtual Model Scheduler Manager
    */
-  private async initializeVirtualModelSchedulerManager(): Promise<void> {
+  private async initializePipelineScheduler(): Promise<void> {
     this.log('Initializing Virtual Model Scheduler Manager');
 
     try {
@@ -979,25 +1029,7 @@ export class ServerModule extends BaseModule implements IServerModule {
     }
   }
 
-  /**
-   * Initialize Virtual Model Rules Integration
-   */
-  private async initializeVirtualModelRulesIntegration(): Promise<void> {
-    this.log('Initializing Virtual Model Rules Integration');
-    
-    try {
-      // Initialize Virtual Model Rules Module
-      // this.virtualModelRulesModule = new VirtualModelRulesModule(); // Temporarily disabled
-      // await this.virtualModelRulesModule.initialize(); // Temporarily disabled
-      
-      this.logInfo('Virtual Model Rules Integration initialized successfully');
-      
-    } catch (error) {
-      this.error('Failed to initialize Virtual Model Rules Integration');
-      // Don't throw error - allow server to start without virtual model rules integration
-      this.warn('Virtual Model Rules Integration failed, continuing without it');
-    }
-  }
+
 
   /**
    * Get Virtual Model Configuration
@@ -1055,10 +1087,22 @@ export class ServerModule extends BaseModule implements IServerModule {
               'X-Integration-Status': 'rcc-v4-test-scheduler'
             },
             body: {
-              message: 'Virtual model request processed via test scheduler',
-              virtualModelId: model.id,
-              provider: model.provider,
-              testSchedulerResult: schedulerResult
+              id: `msg_${request.id}_${Date.now()}`,
+              type: 'message',
+              role: 'assistant',
+              content: [
+                {
+                  type: 'text',
+                  text: `Virtual model request processed via test scheduler. Model: ${model.id}, Provider: ${model.provider}`
+                }
+              ],
+              model: model.id,
+              stop_reason: 'end_turn',
+              stop_sequence: null,
+              usage: {
+                input_tokens: 10,
+                output_tokens: 20
+              }
             },
             timestamp: Date.now(),
             processingTime: Date.now() - startTime,
@@ -1108,9 +1152,22 @@ export class ServerModule extends BaseModule implements IServerModule {
           'X-Integration-Status': 'rcc-v4-fallback'
         },
         body: {
-          message: 'Virtual model request processed via fallback',
-          virtualModelId: model.id,
-          provider: model.provider
+          id: `msg_${request.id}_${Date.now()}`,
+          type: 'message',
+          role: 'assistant',
+          content: [
+            {
+              type: 'text',
+              text: `Virtual model request processed via fallback. Model: ${model.id}, Provider: ${model.provider}`
+            }
+          ],
+          model: model.id,
+          stop_reason: 'end_turn',
+          stop_sequence: null,
+          usage: {
+            input_tokens: 10,
+            output_tokens: 20
+          }
         },
         timestamp: Date.now(),
         processingTime: Date.now() - startTime,
@@ -1659,9 +1716,9 @@ export class ServerModule extends BaseModule implements IServerModule {
       }
       
             
-      if (this.virtualModelSchedulerManager) {
-        await this.virtualModelSchedulerManager.destroy();
-        this.virtualModelSchedulerManager = null;
+      if (this.pipelineScheduler) {
+        await this.pipelineScheduler.destroy();
+        this.pipelineScheduler = null;
       }
 
       // if (this.virtualModelRulesModule) {

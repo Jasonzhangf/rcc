@@ -1,2 +1,0 @@
-{"timestamp":1757923442838,"level":"info","message":"Debug system switched to port mode","method":"switchToPortMode","data":{"port":5506,"portDirectory":"debug-logs/port-5506"},"phase":"port","port":5506,"directory":"debug-logs/port-5506"}
-{"timestamp":1757923442838,"level":"info","message":"Debug system switched to port mode","method":"switchDebugToPortMode","data":{"port":5506},"phase":"port","port":5506,"directory":"debug-logs/port-5506"}

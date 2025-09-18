@@ -1,4 +1,0 @@
-# File Creation Allowlist (LEGACY - Use JSON instead)
-# This file is maintained for backward compatibility.
-# Please use .claude/file-allowlist.json for manual editing.
-

@@ -5,7 +5,7 @@ import { ServerConfig, ClientRequest, ClientResponse } from '../types/ServerType
 export declare class HttpServerComponent extends BaseModule implements IHttpServer {
     private app;
     private server;
-    private config;
+    private serverConfig;
     private isRunning;
     constructor();
     /**
@@ -78,4 +78,3 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
      */
     destroy(): Promise<void>;
 }
-//# sourceMappingURL=HttpServer.d.ts.map

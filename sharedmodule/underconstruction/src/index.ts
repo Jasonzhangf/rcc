@@ -12,6 +12,6 @@ export type {
 export { UnderConstructionError } from './UnderConstructionSimple';
 
 // Re-export commonly used types from BaseModule
-export type { ModuleInfo } from '../../basemodule/src/interfaces/ModuleInfo';
-export type { ConnectionInfo, DataTransfer } from '../../basemodule/src/interfaces/Connection';
-export type { DebugLevel, DebugLogEntry } from '../../basemodule/src/DebugModule';
+export type { ModuleInfo } from 'rcc-basemodule';
+export type { ConnectionInfo, DataTransfer } from 'rcc-basemodule';
+export type { DebugLevel, DebugLogEntry } from 'rcc-basemodule';

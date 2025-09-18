@@ -1,7 +1,0 @@
-"use strict";
-/**
- * 简化的配置数据结构
- *
- * 用于配置模块的核心数据结构，只包含必要的配置信息
- */
-Object.defineProperty(exports, "__esModule", { value: true });

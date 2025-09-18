@@ -1,6 +1,7 @@
 import { BaseModule } from 'rcc-basemodule';
 import { IVirtualModelRouter } from '../interfaces/IServerModule';
 import { VirtualModelConfig, ClientRequest, RoutingRule } from '../types/ServerTypes';
+type BaseProvider = any;
 export interface RoutingDecision {
     model: VirtualModelConfig;
     confidence: number;
@@ -22,6 +23,10 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
     private virtualModels;
     private routingRules;
     private modelMetrics;
+    private schedulerManager;
+    private pipelineTracker;
+    private providers;
+    private isSchedulerEnabled;
     constructor();
     /**
      * Route a request to the appropriate virtual model
@@ -143,5 +148,51 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
      * Cleanup resources
      */
     destroy(): Promise<void>;
+    /**
+     * Add provider to scheduler system
+     */
+    addProvider(providerId: string, provider: BaseProvider): Promise<void>;
+    /**
+     * Remove provider from scheduler system
+     */
+    removeProvider(providerId: string): Promise<boolean>;
+    /**
+     * Execute request through scheduler
+     */
+    executeWithScheduler(virtualModelId: string, request: any, operation?: 'chat' | 'streamChat' | 'healthCheck', options?: {
+        timeout?: number;
+        retries?: number;
+        priority?: 'low' | 'medium' | 'high' | 'critical';
+        metadata?: Record<string, any>;
+    }): Promise<any>;
+    /**
+     * Execute streaming request through scheduler
+     */
+    executeStreamingWithScheduler(virtualModelId: string, request: any, operation?: 'chat' | 'streamChat' | 'healthCheck', options?: {
+        timeout?: number;
+        retries?: number;
+        priority?: 'low' | 'medium' | 'high' | 'critical';
+        metadata?: Record<string, any>;
+    }): AsyncGenerator<any, void, unknown>;
+    /**
+     * Get scheduler metrics
+     */
+    getSchedulerMetrics(): any;
+    /**
+     * Get scheduler health
+     */
+    getSchedulerHealth(): any;
+    /**
+     * Enable/disable scheduler
+     */
+    setSchedulerEnabled(enabled: boolean): void;
+    /**
+     * Get virtual model scheduler
+     */
+    getVirtualModelScheduler(virtualModelId: string): any | null;
+    /**
+     * Get all virtual model mappings
+     */
+    getVirtualModelMappings(): any[];
 }
-//# sourceMappingURL=VirtualModelRouter.d.ts.map
+export {};

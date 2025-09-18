@@ -13,11 +13,11 @@ import { ServerConfig, ClientRequest, ClientResponse } from '../types/ServerType
 export class HttpServerComponent extends BaseModule implements IHttpServer {
   private app: ExpressApplication;
   private server: HttpServer | null = null;
-  private config: ServerConfig | null = null;
+  private serverConfig: ServerConfig | null = null;
   private isRunning: boolean = false;
 
   constructor() {
-    const moduleInfo: ModuleInfo = {
+    const moduleInfo: ModuleInfo & { capabilities: string[], dependencies: string[], config: any } = {
       id: 'HttpServer',
       name: 'HTTP Server Component',
       version: '1.0.0',
@@ -41,32 +41,33 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
    */
   public override configure(config: ServerConfig): void {
     super.configure(config);
-    this.config = config;
+    this.serverConfig = config;
+    this.config = config; // Set parent class config
   }
 
   public override async initialize(): Promise<void> {
     this.log('Initializing HTTP server component');
     
-    if (!this.config) {
+    if (!this.serverConfig) {
       throw new Error('HTTP server not configured');
     }
-    
+
     // Apply security middleware
-    if (this.config.helmet) {
+    if (this.serverConfig.helmet) {
       this.app.use(helmet());
     }
     
     // Enable CORS
-    this.app.use(cors(this.config.cors));
+    this.app.use(cors(this.serverConfig.cors));
     
     // Enable compression
-    if (this.config.compression) {
+    if (this.serverConfig.compression) {
       this.app.use(compression());
     }
     
     // Parse request bodies
-    this.app.use(bodyParser.json({ limit: this.config.bodyLimit }));
-    this.app.use(bodyParser.urlencoded({ extended: true, limit: this.config.bodyLimit }));
+    this.app.use(bodyParser.json({ limit: this.serverConfig.bodyLimit }));
+    this.app.use(bodyParser.urlencoded({ extended: true, limit: this.serverConfig.bodyLimit }));
     
     // Add request logging middleware
     this.app.use(this.requestLogger.bind(this));
@@ -117,10 +118,10 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       });
 
       this.server.on('connection', (socket) => {
-        this.logDebug(`New connection established from ${socket.remoteAddress}`, { method: 'listen' });
+        this.trace(`New connection established from ${socket.remoteAddress}`, { method: 'listen' });
 
         socket.on('close', () => {
-          this.logDebug(`Connection closed from ${socket.remoteAddress}`, { method: 'listen' });
+          this.trace(`Connection closed from ${socket.remoteAddress}`, { method: 'listen' });
         });
 
         socket.on('error', (error) => {
@@ -361,7 +362,8 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
     }
     
     this.app = express();
-    this.config = null;
+    this.serverConfig = null;
+    this.config = {};
     
     super.destroy();
   }

@@ -287,6 +287,12 @@
       "description": "Manually added",
       "allowed": true,
       "notes": "Added via command line"
+    },
+    {
+      "path": ".gitignore",
+      "description": "Manually added",
+      "allowed": true,
+      "notes": "Added via command line"
     }
   ]
 }

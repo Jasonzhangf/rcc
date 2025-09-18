@@ -14,3 +14,5 @@
 {"timestamp":1758083235331,"level":"info","message":"Debug system switched to port mode","method":"switchDebugToPortMode","data":{"port":3000},"phase":"port","port":3000,"directory":"debug-logs/port-3000"}
 {"timestamp":1758083710033,"level":"info","message":"Debug system switched to port mode","method":"switchToPortMode","data":{"port":3000,"portDirectory":"debug-logs/port-3000"},"phase":"port","port":3000,"directory":"debug-logs/port-3000"}
 {"timestamp":1758083710033,"level":"info","message":"Debug system switched to port mode","method":"switchDebugToPortMode","data":{"port":3000},"phase":"port","port":3000,"directory":"debug-logs/port-3000"}
+{"timestamp":1758085031899,"level":"info","message":"Debug system switched to port mode","method":"switchToPortMode","data":{"port":3000,"portDirectory":"debug-logs/port-3000"},"phase":"port","port":3000,"directory":"debug-logs/port-3000"}
+{"timestamp":1758085031899,"level":"info","message":"Debug system switched to port mode","method":"switchDebugToPortMode","data":{"port":3000},"phase":"port","port":3000,"directory":"debug-logs/port-3000"}

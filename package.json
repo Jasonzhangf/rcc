@@ -7,7 +7,7 @@
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "rcc": "./rcc4"
+    "rcc": "./rcc"
   },
   "dependencies": {
     "axios": "^1.11.0",
@@ -16,6 +16,7 @@
     "rcc-config-parser": "^0.1.0",
     "rcc-errorhandling": "^1.0.3",
     "rcc-pipeline": "^0.1.0",
+    "rcc-server": "file:sharedmodule/server",
     "rcc-underconstruction": "^0.1.0",
     "uuid": "^9.0.1"
   },

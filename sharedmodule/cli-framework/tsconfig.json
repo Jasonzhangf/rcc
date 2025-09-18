@@ -1,38 +1,45 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "moduleDetection": "force",
     "lib": ["ES2020"],
     "declaration": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["src/*"],
-      "@/interfaces/*": ["src/interfaces/*"],
-      "@/core/*": ["src/core/*"],
-      "@/utils/*": ["src/utils/*"]
-    },
-    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitUseStrict": false,
+    "noStrictGenericChecks": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "downlevelIteration": true,
+    "baseUrl": ".",
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "bin/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "__test__"
+    "__test__",
+    "**/*.test.ts",
+    "**/test-*.ts"
   ]
 }

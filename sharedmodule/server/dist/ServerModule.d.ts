@@ -1,5 +1,13 @@
 import { BaseModule } from 'rcc-basemodule';
 import { IServerModule } from './interfaces/IServerModule';
+interface TestScheduler {
+    processVirtualModelRequest(request: any, model: any): Promise<any>;
+}
+interface VirtualModelSchedulerManager {
+    initialize(): Promise<void>;
+    destroy(): Promise<void>;
+    registerVirtualModel(config: any): Promise<void>;
+}
 import { ServerConfig, ClientRequest, ClientResponse, VirtualModelConfig, RouteConfig, ServerStatus, RequestMetrics, ConnectionInfo, MiddlewareConfig, PipelineIntegrationConfig } from './types/ServerTypes';
 import { UnderConstruction } from 'rcc-underconstruction';
 export declare class ServerModule extends BaseModule implements IServerModule {
@@ -7,12 +15,14 @@ export declare class ServerModule extends BaseModule implements IServerModule {
     private virtualModelRouter;
     private underConstruction;
     private pipelineIntegrationConfig;
-    private config;
+    private serverConfig;
     private isInitialized;
     private isRunning;
     private messageHandlers;
-    private pipelineScheduler;
+    private virtualModelSchedulerManager;
+    private testScheduler;
     private virtualModelRulesModule;
+    private debugLogManager;
     private routes;
     private middlewares;
     private requestMetrics;
@@ -40,7 +50,7 @@ export declare class ServerModule extends BaseModule implements IServerModule {
      */
     restart(): Promise<void>;
     /**
-     * Handle client request
+     * Handle client request with enhanced logging via DebugLogManager
      */
     handleRequest(request: ClientRequest): Promise<ClientResponse>;
     /**
@@ -109,6 +119,7 @@ export declare class ServerModule extends BaseModule implements IServerModule {
         underConstructionModule?: boolean;
         errorHandling?: boolean;
         monitoring?: boolean;
+        virtualModelSchedulerManager?: boolean;
     }>;
     /**
      * Update server configuration
@@ -127,9 +138,21 @@ export declare class ServerModule extends BaseModule implements IServerModule {
      */
     handleMessage(message: any): Promise<any>;
     /**
-     * Initialize Pipeline Scheduler
+     * Initialize Pipeline Scheduler - Removed, using DebugLogManager instead
      */
     private initializePipelineScheduler;
+    /**
+     * Set Virtual Model Scheduler Manager
+     */
+    setVirtualModelSchedulerManager(schedulerManager: VirtualModelSchedulerManager): void;
+    /**
+     * Set Test Scheduler for virtual model mapping validation
+     */
+    setTestScheduler(testScheduler: TestScheduler): void;
+    /**
+     * Initialize Virtual Model Scheduler Manager
+     */
+    private initializeVirtualModelSchedulerManager;
     /**
      * Initialize Virtual Model Rules Integration
      */
@@ -146,6 +169,10 @@ export declare class ServerModule extends BaseModule implements IServerModule {
      * Process request via Pipeline Scheduler
      */
     private _processViaPipelineScheduler;
+    /**
+     * Set Debug Log Manager for enhanced request logging
+     */
+    setDebugLogManager(debugLogManager: any): void;
     /**
      * Set UnderConstruction Module
      */
@@ -208,4 +235,3 @@ export declare class ServerModule extends BaseModule implements IServerModule {
     destroy(): Promise<void>;
 }
 export default ServerModule;
-//# sourceMappingURL=ServerModule.d.ts.map

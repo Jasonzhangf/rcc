@@ -206,4 +206,3 @@ export interface PipelineIntegrationConfig {
         enablePerformanceMonitoring?: boolean;
     };
 }
-//# sourceMappingURL=ServerTypes.d.ts.map

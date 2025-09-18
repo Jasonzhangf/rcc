@@ -1,5 +1,4 @@
-import { BaseModule } from '../../basemodule/src/BaseModule';
-import { ModuleInfo } from '../../basemodule/src/interfaces/ModuleInfo';
+import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { v4 as uuidv4 } from 'uuid';
 import {
   UnderConstructionFeature,

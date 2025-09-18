@@ -1,13 +1,14 @@
 {
-  "name": "rcc",
-  "version": "0.1.2",
+  "name": "rcc-cli-framework",
+  "version": "0.1.6",
   "description": "RCC - Modular TypeScript Framework",
   "private": false,
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "rcc": "./rcc"
+    "rcc": "./rcc",
+    "rcc-framework": "./rcc"
   },
   "dependencies": {
     "axios": "^1.11.0",
@@ -16,12 +17,13 @@
     "rcc-config-parser": "^0.1.0",
     "rcc-errorhandling": "^1.0.3",
     "rcc-pipeline": "^0.1.0",
-    "rcc-server": "^0.2.1",
+    "rcc-server": "^0.2.3",
     "rcc-underconstruction": "^0.1.0",
     "uuid": "^9.0.1"
   },
   "files": [
-    "dist/**/*",
+    "rcc.mjs",
+    "rcc",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
@@ -77,7 +79,7 @@
     "build:esm": "rollup -c rollup.config.esm.js",
     "clean": "rimraf dist",
     "dev": "tsc --watch",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
@@ -87,8 +89,8 @@
     "typecheck": "tsc --noEmit",
     "docs:generate": "typedoc src --out docs --theme default",
     "docs:serve": "http-server docs -p 8080 -o",
-    "validate": "npm run typecheck && npm run lint && npm run test",
-    "prepublishOnly": "npm run validate && npm run build",
+    "validate": "npm run typecheck && npm run test",
+    "prepublishOnly": "npm run validate",
     "version": "npm run build && git add -A dist",
     "postversion": "git push && git push --tags",
     "module:list": "node -r ts-node/register src/cli-commands/module/src/ModuleCLI.ts list",

@@ -93,3 +93,4 @@ export interface IServerMetrics {
     }>;
     resetMetrics(): Promise<void>;
 }
+//# sourceMappingURL=IServerModule.d.ts.map

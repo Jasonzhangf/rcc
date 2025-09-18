@@ -196,3 +196,4 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
     getVirtualModelMappings(): any[];
 }
 export {};
+//# sourceMappingURL=VirtualModelRouter.d.ts.map

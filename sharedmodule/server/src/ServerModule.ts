@@ -4,15 +4,16 @@ import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { IServerModule } from './interfaces/IServerModule';
 import { HttpServerComponent } from './components/HttpServer';
 import { VirtualModelRouter } from './components/VirtualModelRouter';
-import { 
-  ServerConfig, 
-  ClientRequest, 
-  ClientResponse, 
-  VirtualModelConfig, 
-  RouteConfig, 
-  ServerStatus, 
-  RequestMetrics, 
-  ConnectionInfo, 
+import { Pipeline, PipelineConfig, PipelineTarget } from 'rcc-pipeline';
+import {
+  ServerConfig,
+  ClientRequest,
+  ClientResponse,
+  VirtualModelConfig,
+  RouteConfig,
+  ServerStatus,
+  RequestMetrics,
+  ConnectionInfo,
   MiddlewareConfig,
   PipelineIntegrationConfig,
   PipelineRequestContext,
@@ -22,6 +23,7 @@ import {
   } from './types/ServerTypes';
 
 import { UnderConstruction } from 'rcc-underconstruction';
+import { DebugCenter } from 'rcc-debugcenter';
 
 // PipelineScheduler import removed - not available in current pipeline module
 
@@ -39,13 +41,16 @@ export class ServerModule extends BaseModule implements IServerModule {
   // Pipeline Scheduler Integration (under construction)
   private pipelineScheduler: any = null;
 
-  // Test Scheduler Integration (under construction)
-  private testScheduler: any = null;
-
+  
 
 
   // Debug Log Manager Integration
-  private debugLogManager: any = null;
+  private debugLogManager: DebugCenter | null = null;
+  private debugEventBus: any = null;
+
+  // Debug Center integration
+  public debugCenter: DebugCenter | null = null;
+  public debugCenterSessionId: string | null = null;
   
   // Internal state
   private routes: Map<string, RouteConfig> = new Map();
@@ -98,38 +103,48 @@ export class ServerModule extends BaseModule implements IServerModule {
     console.log('config.parsedConfig exists:', !!config.parsedConfig);
 
     if (config.parsedConfig) {
-      console.log('config.parsedConfig.keys:', Object.keys(config.parsedConfig));
-      console.log('config.parsedConfig.virtualModels:', config.parsedConfig.virtualModels);
-      console.log('config.parsedConfig.virtualModels exists:', !!config.parsedConfig.virtualModels);
-      if (config.parsedConfig.virtualModels) {
-        console.log('config.parsedConfig.virtualModels type:', typeof config.parsedConfig.virtualModels);
-        console.log('config.parsedConfig.virtualModels keys:', Object.keys(config.parsedConfig.virtualModels));
+      console.log('config.parsedConfig.keys:', Object.keys((config as any).parsedConfig));
+      console.log('config.parsedConfig.virtualModels:', (config as any).parsedConfig.virtualModels);
+      console.log('config.parsedConfig.virtualModels exists:', !!(config as any).parsedConfig.virtualModels);
+      if ((config as any).parsedConfig.virtualModels) {
+        console.log('config.parsedConfig.virtualModels type:', typeof (config as any).parsedConfig.virtualModels);
+        console.log('config.parsedConfig.virtualModels keys:', Object.keys((config as any).parsedConfig.virtualModels));
       }
     }
 
     this.log('ServerModule.configure called', { hasParsedConfig: !!config.parsedConfig, configKeys: Object.keys(config) });
 
-    // Load virtual models from parsed configuration if available
+    // Load virtual models from configuration
     console.log('=== Checking condition for loading virtual models ===');
-    console.log('config.parsedConfig exists:', !!config.parsedConfig);
-    console.log('config.parsedConfig.virtualModels exists:', !!(config.parsedConfig && config.parsedConfig.virtualModels));
+    console.log('config.virtualModels exists:', !!(config as any).virtualModels);
     console.log('Full config object keys:', Object.keys(config));
 
-    if (config.parsedConfig && config.parsedConfig.virtualModels) {
-      this.log('Loading virtual models from parsedConfig', {
-        virtualModelsCount: Object.keys(config.parsedConfig.virtualModels).length,
-        virtualModelsKeys: Object.keys(config.parsedConfig.virtualModels)
+    if ((config as any).virtualModels) {
+      this.log('Loading virtual models from config', {
+        virtualModelsCount: Object.keys((config as any).virtualModels).length,
+        virtualModelsKeys: Object.keys((config as any).virtualModels)
       });
       console.log('=== Calling loadVirtualModelsFromConfig ===');
-      console.log('Virtual models to load:', config.parsedConfig.virtualModels);
-      await this.loadVirtualModelsFromConfig(config.parsedConfig.virtualModels);
+      console.log('Virtual models to load:', (config as any).virtualModels);
+      await this.loadVirtualModelsFromConfig((config as any).virtualModels);
       console.log('=== loadVirtualModelsFromConfig call completed ===');
+    } else if ((config as any).parsedConfig && (config as any).parsedConfig.virtualModels) {
+      // Fallback to old parsedConfig structure for backward compatibility
+      this.log('Loading virtual models from parsedConfig (fallback)', {
+        virtualModelsCount: Object.keys((config as any).parsedConfig.virtualModels).length,
+        virtualModelsKeys: Object.keys((config as any).parsedConfig.virtualModels)
+      });
+      console.log('=== Calling loadVirtualModelsFromConfig (fallback) ===');
+      console.log('Virtual models to load:', (config as any).parsedConfig.virtualModels);
+      await this.loadVirtualModelsFromConfig((config as any).parsedConfig.virtualModels);
+      console.log('=== loadVirtualModelsFromConfig call completed (fallback) ===');
     } else {
-      this.log('No parsedConfig or virtualModels found', {
+      this.log('No virtualModels found in config', {
+        hasVirtualModels: !!(config as any).virtualModels,
         hasParsedConfig: !!config.parsedConfig,
-        hasVirtualModels: !!(config.parsedConfig && config.parsedConfig.virtualModels),
-        parsedConfigType: typeof config.parsedConfig,
-        parsedConfigKeys: config.parsedConfig ? Object.keys(config.parsedConfig) : 'null'
+        hasParsedConfigVirtualModels: !!(config.parsedConfig && config.parsedConfig.virtualModels),
+        configType: typeof config,
+        configKeys: config ? Object.keys(config) : 'null'
       });
       console.log('=== NOT calling loadVirtualModelsFromConfig - condition not met ===');
     }
@@ -173,6 +188,11 @@ export class ServerModule extends BaseModule implements IServerModule {
 
       // Initialize Virtual Model Scheduler Manager
       await this.initializePipelineScheduler();
+
+      // Set scheduler manager in VirtualModelRouter if available
+      if (this.pipelineScheduler) {
+        this.virtualModelRouter.setSchedulerManager(this.pipelineScheduler);
+      }
 
 
       // Set up request handling
@@ -321,15 +341,26 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Start request tracking if DebugLogManager is available
       if (this.debugLogManager) {
         try {
-          requestContext = this.debugLogManager.startRequest('http-server', 'incoming-request', {
-            requestId: request.id,
-            method: request.method,
-            path: request.path,
+          // Use DebugEventBus instead of direct DebugCenter method
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${request.id}`,
             timestamp: startTime,
-            virtualModel: request.virtualModel,
-            headers: request.headers,
-            sourceIp: request.clientId
+            type: 'start',
+            position: 'start',
+            data: {
+              requestId: request.id,
+              method: request.method,
+              path: request.path,
+              virtualModel: request.virtualModel,
+              headers: request.headers,
+              sourceIp: request.clientId
+            }
           });
+          requestContext = {
+            getRequestId: () => request.id
+          };
           this.log('Request tracking started', { requestId: request.id, contextId: requestContext?.getRequestId?.() });
         } catch (trackingError) {
           this.warn('Failed to start request tracking', { error: trackingError instanceof Error ? trackingError.message : String(trackingError) });
@@ -339,7 +370,18 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Track request routing stage
       if (this.debugLogManager && requestContext) {
         try {
-          this.debugLogManager.trackStage(requestContext.getRequestId(), 'virtual-model-routing');
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${requestContext.getRequestId()}-routing`,
+            timestamp: Date.now(),
+            type: 'start',
+            position: 'middle',
+            data: {
+              stage: 'virtual-model-routing',
+              requestId: requestContext.getRequestId()
+            }
+          });
         } catch (stageError) {
           this.warn('Failed to track routing stage', { error: stageError instanceof Error ? stageError.message : String(stageError) });
         }
@@ -369,9 +411,19 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Complete routing stage
       if (this.debugLogManager && requestContext) {
         try {
-          this.debugLogManager.completeStage(requestContext.getRequestId(), 'virtual-model-routing', {
-            virtualModelId: virtualModel.id,
-            routingTime: Date.now() - startTime
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${requestContext.getRequestId()}-routing-complete`,
+            timestamp: Date.now(),
+            type: 'end',
+            position: 'middle',
+            data: {
+              stage: 'virtual-model-routing',
+              virtualModelId: virtualModel.id,
+              routingTime: Date.now() - startTime,
+              requestId: requestContext.getRequestId()
+            }
           });
         } catch (stageError) {
           this.warn('Failed to complete routing stage', { error: stageError instanceof Error ? stageError.message : String(stageError) });
@@ -381,7 +433,18 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Track request processing stage
       if (this.debugLogManager && requestContext) {
         try {
-          this.debugLogManager.trackStage(requestContext.getRequestId(), 'virtual-model-processing');
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${requestContext.getRequestId()}-processing`,
+            timestamp: Date.now(),
+            type: 'start',
+            position: 'middle',
+            data: {
+              stage: 'virtual-model-processing',
+              requestId: requestContext.getRequestId()
+            }
+          });
         } catch (stageError) {
           this.warn('Failed to track processing stage', { error: stageError instanceof Error ? stageError.message : String(stageError) });
         }
@@ -415,9 +478,19 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Complete processing stage
       if (this.debugLogManager && requestContext) {
         try {
-          this.debugLogManager.completeStage(requestContext.getRequestId(), 'virtual-model-processing', {
-            responseStatus: response.status,
-            processingTime: Date.now() - startTime
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${requestContext.getRequestId()}-processing-complete`,
+            timestamp: Date.now(),
+            type: 'end',
+            position: 'middle',
+            data: {
+              stage: 'virtual-model-processing',
+              responseStatus: response.status,
+              processingTime: Date.now() - startTime,
+              requestId: requestContext.getRequestId()
+            }
           });
         } catch (stageError) {
           this.warn('Failed to complete processing stage', { error: stageError instanceof Error ? stageError.message : String(stageError) });
@@ -441,19 +514,28 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Log successful request completion
       if (this.debugLogManager && requestContext) {
         try {
-          await this.debugLogManager.logSuccess(requestContext, {
-            method: request.method,
-            path: request.path,
-            headers: request.headers,
-            body: request.body,
-            query: request.query,
-            timestamp: startTime
-          }, {
-            status: response.status,
-            headers: response.headers,
-            body: response.body,
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${requestContext.getRequestId()}-success`,
             timestamp: Date.now(),
-            processingTime
+            type: 'end',
+            position: 'end',
+            data: {
+              method: request.method,
+              path: request.path,
+              headers: request.headers,
+              body: request.body,
+              query: request.query,
+              timestamp: startTime,
+              response: {
+                status: response.status,
+                headers: response.headers,
+                body: response.body,
+                processingTime
+              },
+              success: true
+            }
           });
         } catch (logError) {
           this.warn('Failed to log request success', { error: logError instanceof Error ? logError.message : String(logError) });
@@ -500,16 +582,24 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Log request error if DebugLogManager is available
       if (this.debugLogManager && requestContext) {
         try {
-          await this.debugLogManager.logError(requestContext, error, {
-            method: request.method,
-            path: request.path,
-            headers: request.headers,
-            body: request.body,
-            query: request.query,
-            timestamp: startTime
-          }, 'virtual-model-processing', {
-            errorPhase: 'request-processing',
-            virtualModel: request.virtualModel
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${requestContext.getRequestId()}-error`,
+            timestamp: Date.now(),
+            type: 'error',
+            position: 'end',
+            data: {
+              method: request.method,
+              path: request.path,
+              headers: request.headers,
+              body: request.body,
+              query: request.query,
+              timestamp: startTime,
+              error: error instanceof Error ? error.message : String(error),
+              errorPhase: 'request-processing',
+              virtualModel: request.virtualModel
+            }
           });
         } catch (logError) {
           this.warn('Failed to log request error', { error: logError instanceof Error ? logError.message : String(logError) });
@@ -686,7 +776,8 @@ export class ServerModule extends BaseModule implements IServerModule {
                 temperature: 0.7, // Default value
                 topP: 1.0, // Default value
                 enabled: typedVmConfig.enabled !== false,
-                routingRules: [] // No custom routing rules by default
+                routingRules: [], // No custom routing rules by default
+                targets: typedVmConfig.targets // Preserve targets for proper capability inference
               };
 
               console.log(`Virtual model config for ${modelId}:`, virtualModelConfig);
@@ -697,22 +788,28 @@ export class ServerModule extends BaseModule implements IServerModule {
               // Register the virtual model with scheduler if available
               if (this.pipelineScheduler) {
                 try {
-                  // Convert virtual model config to scheduler format
-                  const schedulerConfig = {
-                    virtualModelId: modelId,
-                    provider: firstTarget.providerId,
-                    model: firstTarget.modelId,
-                    enabled: typedVmConfig.enabled !== false,
-                    targets: typedVmConfig.targets || [],
-                    schedulingStrategy: 'round-robin',
-                    healthCheckInterval: 30000,
-                    maxRetries: 3,
-                    timeout: 30000
-                  };
+                  // Create providers map for this virtual model
+                  const providers = new Map<string, any>();
 
-                  await this.pipelineScheduler.registerVirtualModel(schedulerConfig);
+                  // TODO: In a real implementation, you would create actual provider instances
+                  // For now, we'll register with an empty providers map and let them be added later
+
+                  // Register with the actual VirtualModelSchedulerManager
+                  const schedulerId = await this.pipelineScheduler.registerVirtualModel(
+                    virtualModelConfig,
+                    providers,
+                    {
+                      metadata: {
+                        virtualModelName: virtualModelConfig.name,
+                        capabilities: virtualModelConfig.capabilities,
+                        registeredAt: Date.now()
+                      }
+                    }
+                  );
+
                   this.logInfo(`Virtual model registered with scheduler: ${modelId}`, {
                     modelId: modelId,
+                    schedulerId: schedulerId,
                     provider: virtualModelConfig.provider,
                     targetsCount: typedVmConfig.targets?.length || 0
                   });
@@ -759,6 +856,17 @@ export class ServerModule extends BaseModule implements IServerModule {
    */
   public getVirtualModel(modelId: string): VirtualModelConfig | undefined {
     return this.virtualModelRouter.getModel(modelId);
+  }
+
+  /**
+   * Get provider configuration by provider ID
+   */
+  private getProviderConfig(providerId: string): any | undefined {
+    const serverConfigAny = this.serverConfig as any;
+    if (serverConfigAny && serverConfigAny.parsedConfig && serverConfigAny.parsedConfig.providers) {
+      return serverConfigAny.parsedConfig.providers[providerId];
+    }
+    return undefined;
   }
 
   /**
@@ -989,27 +1097,6 @@ export class ServerModule extends BaseModule implements IServerModule {
     }
   }
 
-  /**
-   * Set Test Scheduler for virtual model mapping validation
-   */
-  public setTestScheduler(testScheduler: any): void {
-    this.log('Setting Test Scheduler for virtual model mapping validation');
-
-    try {
-      this.testScheduler = testScheduler;
-      this.logInfo('Test Scheduler set successfully - will print detailed mapping information');
-
-      // Broadcast test scheduler integration event
-      (this as any).sendMessage('test-scheduler-integrated', {
-        enabled: true,
-        capabilities: ['virtual-model-mapping', 'request-distribution', 'logging']
-      });
-
-    } catch (error) {
-      this.error('Failed to set Test Scheduler');
-      throw error;
-    }
-  }
 
   /**
    * Initialize Virtual Model Scheduler Manager
@@ -1018,12 +1105,103 @@ export class ServerModule extends BaseModule implements IServerModule {
     this.log('Initializing Virtual Model Scheduler Manager');
 
     try {
-      this.logInfo('Virtual Model Scheduler Manager interface initialized (concrete implementation not available in current pipeline module)');
+      // Import the actual VirtualModelSchedulerManager and PipelineTracker from pipeline module
+      const pipelineModule: any = await import('rcc-pipeline');
+      const VirtualModelSchedulerManager = pipelineModule.VirtualModelSchedulerManager;
+      const PipelineTracker = pipelineModule.PipelineTracker;
 
-      this.logInfo('Virtual Model Scheduler Manager initialized successfully');
+      if (VirtualModelSchedulerManager && PipelineTracker) {
+        // Create pipeline tracker configuration
+        const trackerConfig = {
+          enabled: true,
+          baseDirectory: './logs',
+          paths: {
+            requests: 'requests',
+            responses: 'responses',
+            errors: 'errors',
+            pipeline: 'pipeline',
+            system: 'system'
+          },
+          logLevel: 'info',
+          requestTracking: {
+            enabled: true,
+            generateRequestIds: true,
+            includeTimestamps: true,
+            trackMetadata: true
+          },
+          contentFiltering: {
+            enabled: true,
+            sensitiveFields: ['api_key', 'password', 'token', 'secret', 'authorization'],
+            maxContentLength: 10000,
+            sanitizeResponses: true
+          },
+          fileManagement: {
+            maxFileSize: 10,
+            maxFiles: 100,
+            compressOldLogs: true,
+            retentionDays: 30
+          },
+          performanceTracking: {
+            enabled: true,
+            trackTiming: true,
+            trackMemoryUsage: false,
+            trackSuccessRates: true
+          }
+        };
+
+        // Create pipeline tracker
+        const pipelineTracker = new PipelineTracker(trackerConfig);
+
+        // Create manager configuration
+        const managerConfig = {
+          maxSchedulers: 100,
+          defaultSchedulerConfig: {
+            maxConcurrentRequests: 50,
+            requestTimeout: 30000,
+            healthCheckInterval: 60000,
+            retryStrategy: {
+              maxRetries: 3,
+              baseDelay: 1000,
+              maxDelay: 10000,
+              backoffMultiplier: 2
+            },
+            loadBalancingStrategy: 'round-robin',
+            enableCircuitBreaker: true,
+            circuitBreakerThreshold: 5,
+            circuitBreakerTimeout: 300000
+          },
+          pipelineFactoryConfig: {
+            defaultTimeout: 30000,
+            defaultHealthCheckInterval: 60000,
+            defaultMaxRetries: 3,
+            defaultLoadBalancingStrategy: 'round-robin',
+            enableHealthChecks: true,
+            metricsEnabled: true
+          },
+          enableAutoScaling: true,
+          scalingThresholds: {
+            minRequestsPerMinute: 10,
+            maxRequestsPerMinute: 1000,
+            scaleUpCooldown: 300000,
+            scaleDownCooldown: 600000
+          },
+          healthCheckInterval: 30000,
+          metricsRetentionPeriod: 86400000, // 24 hours
+          enableMetricsExport: true
+        };
+
+        // Create actual VirtualModelSchedulerManager instance
+        this.pipelineScheduler = new VirtualModelSchedulerManager(managerConfig);
+
+        this.logInfo('Virtual Model Scheduler Manager initialized successfully with concrete implementation');
+      } else {
+        this.warn('VirtualModelSchedulerManager not available in pipeline module');
+      }
 
     } catch (error) {
-      this.error('Failed to initialize Virtual Model Scheduler Manager');
+      this.error('Failed to initialize Virtual Model Scheduler Manager', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       // Don't throw error - allow server to start without scheduler
       this.warn('Virtual Model Scheduler Manager failed, continuing without it');
     }
@@ -1046,7 +1224,7 @@ export class ServerModule extends BaseModule implements IServerModule {
         purpose: '获取虚拟模型配置'
       });
     }
-    
+
     // Fallback implementation
     return {
       id: virtualModelId,
@@ -1064,18 +1242,47 @@ export class ServerModule extends BaseModule implements IServerModule {
    * Process request through virtual model
    */
   public async processVirtualModelRequest(request: ClientRequest, model: VirtualModelConfig): Promise<ClientResponse> {
-    this.log('Processing request with virtual model using scheduler');
+    this.log('Processing request with virtual model using pipeline');
 
     try {
       const startTime = Date.now();
 
-      // Use the test scheduler for virtual model mapping validation
-      if (this.testScheduler) {
-        try {
-          // Route request through test scheduler
-          const schedulerResult = await this.testScheduler.processVirtualModelRequest(request, model);
+      // Convert client request to OpenAI format
+      const openaiRequest = {
+        model: model.model || 'default',
+        messages: request.body?.messages || [],
+        temperature: model.temperature,
+        top_p: model.topP,
+        max_tokens: model.maxTokens
+      };
 
-          // Create response from test scheduler result
+      // Check if we have a scheduler manager and use it for execution
+      if (this.pipelineScheduler) {
+        try {
+          // Determine operation type based on request path
+          const operationType = request.path.includes('stream') ? 'streamChat' : 'chat';
+
+          // Execute through pipeline scheduler
+          const result = await this.pipelineScheduler.execute(
+            model.id,
+            openaiRequest,
+            operationType,
+            {
+              timeout: 30000,
+              retries: 3,
+              priority: 'medium',
+              metadata: {
+                requestId: request.id,
+                clientId: request.clientId,
+                path: request.path,
+                method: request.method
+              }
+            }
+          );
+
+          const processingTime = Date.now() - startTime;
+
+          // Return successful response
           return {
             id: request.id,
             status: 200,
@@ -1083,97 +1290,303 @@ export class ServerModule extends BaseModule implements IServerModule {
               'Content-Type': 'application/json',
               'X-Virtual-Model': model.id,
               'X-Provider': model.provider,
-              'X-Processing-Method': 'test-scheduler',
-              'X-Integration-Status': 'rcc-v4-test-scheduler'
+              'X-Processing-Method': 'pipeline-scheduler',
+              'X-Integration-Status': 'rcc-v4-pipeline'
             },
-            body: {
-              id: `msg_${request.id}_${Date.now()}`,
-              type: 'message',
-              role: 'assistant',
-              content: [
-                {
-                  type: 'text',
-                  text: `Virtual model request processed via test scheduler. Model: ${model.id}, Provider: ${model.provider}`
-                }
-              ],
-              model: model.id,
-              stop_reason: 'end_turn',
-              stop_sequence: null,
-              usage: {
-                input_tokens: 10,
-                output_tokens: 20
-              }
-            },
+            body: result,
             timestamp: Date.now(),
-            processingTime: Date.now() - startTime,
+            processingTime: processingTime,
             requestId: request.id
           };
         } catch (schedulerError) {
-          this.warn('Test scheduler processing failed, falling back to direct processing', {
-            error: schedulerError instanceof Error ? schedulerError.message : String(schedulerError)
+          this.error('Pipeline scheduler execution failed', {
+            modelId: model.id,
+            error: schedulerError instanceof Error ? schedulerError.message : String(schedulerError),
+            duration: Date.now() - startTime
           });
-          // Fall back to direct processing
-        }
-      }
 
-      // Fallback to direct processing with DebugLogManager
-      if (this.debugLogManager) {
-        try {
-          await this.debugLogManager.logRequest({
-            requestId: request.id,
-            provider: model.provider,
-            operation: 'process-virtual-model',
-            request: {
-              method: request.method,
-              path: request.path,
-              headers: request.headers,
-              body: request.body
+          // Create error response
+          const errorResponse = this.createErrorResponse(schedulerError, request);
+          const processingTime = Date.now() - startTime;
+
+          return {
+            id: request.id,
+            status: errorResponse.httpStatus || 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Error': errorResponse.error.code,
+              'X-Error-Category': errorResponse.error.category,
+              'X-Processing-Method': 'pipeline-scheduler'
             },
-            metadata: {
-              virtualModelId: model.id,
-              clientId: request.clientId,
-              source: 'server-module-fallback'
+            body: errorResponse,
+            timestamp: Date.now(),
+            processingTime: processingTime,
+            requestId: request.id
+          };
+        }
+      } else {
+        // Fallback to direct pipeline execution when scheduler is not available
+        // Create pipeline targets from virtual model configuration
+        const pipelineTargets: PipelineTarget[] = [];
+
+        if (model.targets && model.targets.length > 0) {
+          // Create actual provider instances for each target
+          for (const target of model.targets) {
+            try {
+              // Dynamically import the provider based on providerId
+              const pipelineModule: any = await import('rcc-pipeline');
+              let ProviderClass: any;
+              if (target.providerId === 'qwen') {
+                ProviderClass = pipelineModule.QwenProvider;
+              } else if (target.providerId === 'iflow') {
+                ProviderClass = pipelineModule.IFlowProvider;
+              }
+
+              try {
+                if (ProviderClass) {
+                  // Get provider configuration
+                  const providerConfig = this.getProviderConfig(target.providerId);
+
+                  // Create provider instance with proper configuration
+                  const providerEndpoint = providerConfig?.config?.baseUrl ||
+                                        (target.providerId === 'qwen' ? 'https://dashscope.aliyuncs.com/api/v1' :
+                                         target.providerId === 'iflow' ? 'https://apis.iflow.cn/v1' :
+                                         `https://${target.providerId}.com/api/v1`);
+
+                  const provider = new ProviderClass({
+                    name: target.providerId,
+                    endpoint: providerEndpoint,
+                    supportedModels: [target.modelId],
+                    defaultModel: target.modelId,
+                    ...providerConfig?.config
+                  });
+
+                  const pipelineTarget: any = {
+                    provider: provider,
+                    weight: target.weight || 1,
+                    enabled: target.enabled !== false,
+                    healthStatus: 'unknown',
+                    lastHealthCheck: Date.now(),
+                    requestCount: 0,
+                    errorCount: 0,
+                    metadata: {
+                      providerId: target.providerId,
+                      modelId: target.modelId,
+                      keyIndex: target.keyIndex
+                    }
+                  };
+                  pipelineTarget.id = `${target.providerId}-${target.modelId}`;
+                  pipelineTargets.push(pipelineTarget);
+
+                  this.logInfo(`Provider ${target.providerId} initialized successfully for model ${target.modelId}`);
+                } else {
+                  // Fallback to mock provider if class not found
+                  this.warn(`Provider ${target.providerId} not found, using mock provider`);
+                  const pipelineTarget: any = {
+                    provider: {
+                      id: target.providerId,
+                      name: target.providerId,
+                      config: {
+                        name: target.providerId,
+                        endpoint: undefined,
+                        supportedModels: [target.modelId],
+                        defaultModel: target.modelId
+                      },
+                      capabilities: {
+                        streaming: false,
+                        tools: false,
+                        vision: false,
+                        jsonMode: false
+                      },
+                      executeRequest: async (request: any, operationType: string) => {
+                        return {
+                          success: false,
+                          error: `Provider ${target.providerId} not available`,
+                          duration: 0
+                        };
+                      }
+                    } as any,
+                    weight: target.weight || 1,
+                    enabled: target.enabled !== false,
+                    healthStatus: 'unknown',
+                    lastHealthCheck: Date.now(),
+                    requestCount: 0,
+                    errorCount: 0,
+                    metadata: {
+                      providerId: target.providerId,
+                      modelId: target.modelId,
+                      keyIndex: target.keyIndex
+                    }
+                  };
+                  pipelineTarget.id = `${target.providerId}-${target.modelId}`;
+                  pipelineTargets.push(pipelineTarget);
+                }
+              } catch (providerError) {
+                // Fallback to mock provider if creation fails
+                this.warn(`Failed to create provider ${target.providerId}, using mock provider`, {
+                  error: providerError instanceof Error ? providerError.message : String(providerError)
+                });
+
+                const pipelineTarget: any = {
+                  provider: {
+                    id: target.providerId,
+                    name: target.providerId,
+                    config: {
+                      name: target.providerId,
+                      endpoint: undefined,
+                      supportedModels: [target.modelId],
+                      defaultModel: target.modelId
+                    },
+                    capabilities: {
+                      streaming: false,
+                      tools: false,
+                      vision: false,
+                      jsonMode: false
+                    },
+                    executeRequest: async (request: any, operationType: string) => {
+                      return {
+                        success: false,
+                        error: `Provider ${target.providerId} initialization failed: ${providerError instanceof Error ? providerError.message : String(providerError)}`,
+                        duration: 0
+                      };
+                    }
+                  } as any,
+                  weight: target.weight || 1,
+                  enabled: target.enabled !== false,
+                  healthStatus: 'unknown',
+                  lastHealthCheck: Date.now(),
+                  requestCount: 0,
+                  errorCount: 0,
+                  metadata: {
+                    providerId: target.providerId,
+                    modelId: target.modelId,
+                    keyIndex: target.keyIndex
+                  }
+                };
+                pipelineTarget.id = `${target.providerId}-${target.modelId}`;
+                pipelineTargets.push(pipelineTarget);
+              }
+            } catch (providerError) {
+              // Fallback to mock provider if creation fails
+              this.warn(`Failed to create provider ${target.providerId}, using mock provider`, {
+                error: providerError instanceof Error ? providerError.message : String(providerError)
+              });
+
+              const pipelineTarget: any = {
+                provider: {
+                  id: target.providerId,
+                  name: target.providerId,
+                  config: {
+                    name: target.providerId,
+                    endpoint: undefined,
+                    supportedModels: [target.modelId],
+                    defaultModel: target.modelId
+                  },
+                  capabilities: {
+                    streaming: false,
+                    tools: false,
+                    vision: false,
+                    jsonMode: false
+                  },
+                  executeRequest: async (request: any, operationType: string) => {
+                    return {
+                      success: false,
+                      error: `Provider ${target.providerId} initialization failed: ${providerError instanceof Error ? providerError.message : String(providerError)}`,
+                      duration: 0
+                    };
+                  }
+                } as any,
+                weight: target.weight || 1,
+                enabled: target.enabled !== false,
+                healthStatus: 'unknown',
+                lastHealthCheck: Date.now(),
+                requestCount: 0,
+                errorCount: 0,
+                metadata: {
+                  providerId: target.providerId,
+                  modelId: target.modelId,
+                  keyIndex: target.keyIndex
+                }
+              };
+              pipelineTarget.id = `${target.providerId}-${target.modelId}`;
+              pipelineTargets.push(pipelineTarget);
             }
+          }
+        }
+
+        // Create pipeline configuration based on virtual model
+        const pipelineConfig: PipelineConfig = {
+          id: `pipeline-${model.id}`,
+          name: `Pipeline for ${model.id}`,
+          virtualModelId: model.id,
+          targets: pipelineTargets,
+          loadBalancingStrategy: 'round-robin',
+          healthCheckInterval: 30000,
+          maxRetries: 3,
+          timeout: 30000
+        };
+
+        // Create pipeline tracker
+        const pipelineTracker = {
+          createRequestContext: () => ({}),
+          addStage: () => {},
+          completeStage: () => {},
+          failStage: () => {},
+          getStageFactory: () => ({
+            createStageFromObject: () => ({})
+          })
+        };
+
+        // Create pipeline instance
+        const pipeline = new Pipeline(pipelineConfig, pipelineTracker);
+
+        // Execute request through pipeline
+        const result = await pipeline.execute(openaiRequest, 'chat');
+
+        if (result.success && result.response) {
+          // Return successful response
+          return {
+            id: request.id,
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Virtual-Model': model.id,
+              'X-Provider': model.provider,
+              'X-Processing-Method': 'pipeline',
+              'X-Integration-Status': 'rcc-v4-pipeline'
+            },
+            body: result.response,
+            timestamp: Date.now(),
+            processingTime: result.duration,
+            requestId: request.id
+          };
+        } else {
+          // Handle pipeline execution failure
+          this.error('Pipeline execution failed', {
+            modelId: model.id,
+            error: result.error,
+            duration: result.duration
           });
-        } catch (logError) {
-          this.warn('Failed to log request to DebugLogManager', { error: logError });
+
+          // Create error response
+          const errorResponse = this.createErrorResponse(new Error(result.error || 'Pipeline execution failed'), request);
+
+          return {
+            id: request.id,
+            status: errorResponse.httpStatus || 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Error': errorResponse.error.code,
+              'X-Error-Category': errorResponse.error.category,
+              'X-Processing-Method': 'pipeline'
+            },
+            body: errorResponse,
+            timestamp: Date.now(),
+            processingTime: result.duration,
+            requestId: request.id
+          };
         }
       }
-
-      // Return fallback response
-      return {
-        id: request.id,
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Virtual-Model': model.id,
-          'X-Provider': model.provider,
-          'X-Processing-Method': 'direct-fallback',
-          'X-Integration-Status': 'rcc-v4-fallback'
-        },
-        body: {
-          id: `msg_${request.id}_${Date.now()}`,
-          type: 'message',
-          role: 'assistant',
-          content: [
-            {
-              type: 'text',
-              text: `Virtual model request processed via fallback. Model: ${model.id}, Provider: ${model.provider}`
-            }
-          ],
-          model: model.id,
-          stop_reason: 'end_turn',
-          stop_sequence: null,
-          usage: {
-            input_tokens: 10,
-            output_tokens: 20
-          }
-        },
-        timestamp: Date.now(),
-        processingTime: Date.now() - startTime,
-        requestId: request.id
-      };
-
     } catch (error) {
       this.error('Virtual model processing failed', {
         modelId: model.id,
@@ -1198,20 +1611,28 @@ export class ServerModule extends BaseModule implements IServerModule {
       // Log the request with DebugLogManager if available
       if (this.debugLogManager) {
         try {
-          await this.debugLogManager.logRequest({
-            requestId: request.id,
-            provider: model.provider,
-            operation: 'pipeline-scheduler-replacement',
-            request: {
-              method: request.method,
-              path: request.path,
-              headers: request.headers,
-              body: request.body
-            },
-            metadata: {
-              virtualModelId: model.id,
-              clientId: request.clientId,
-              source: 'server-module-internal'
+          this.publishDebugEvent({
+            sessionId: 'http-server-session',
+            moduleId: 'ServerModule',
+            operationId: `request-${request.id}-pipeline-replacement`,
+            timestamp: Date.now(),
+            type: 'info',
+            position: 'middle',
+            data: {
+              requestId: request.id,
+              provider: model.provider,
+              operation: 'pipeline-scheduler-replacement',
+              request: {
+                method: request.method,
+                path: request.path,
+                headers: request.headers,
+                body: request.body
+              },
+              metadata: {
+                virtualModelId: model.id,
+                clientId: request.clientId,
+                source: 'server-module-internal'
+              }
             }
           });
         } catch (logError) {
@@ -1290,6 +1711,12 @@ export class ServerModule extends BaseModule implements IServerModule {
 
     try {
       this.debugLogManager = debugLogManager;
+
+      // Also set up DebugEventBus if available
+      if (debugLogManager && typeof debugLogManager.constructor.getInstance === 'function') {
+        this.debugEventBus = debugLogManager.constructor.getInstance();
+      }
+
       this.logInfo('Debug Log Manager set successfully - all HTTP requests will be tracked');
 
       // Broadcast debug log manager integration event
@@ -1301,6 +1728,27 @@ export class ServerModule extends BaseModule implements IServerModule {
     } catch (error) {
       this.error('Failed to set Debug Log Manager');
       throw error;
+    }
+  }
+
+  /**
+   * Publish debug event through DebugEventBus
+   */
+  private publishDebugEvent(event: any): void {
+    if (this.debugEventBus && typeof this.debugEventBus.publish === 'function') {
+      try {
+        this.debugEventBus.publish({
+          sessionId: event.sessionId || 'default-session',
+          moduleId: event.moduleId || 'ServerModule',
+          operationId: event.operationId || 'unknown-operation',
+          timestamp: event.timestamp || Date.now(),
+          type: event.type || 'info',
+          position: event.position || 'middle',
+          data: event.data || {}
+        });
+      } catch (error) {
+        this.warn('Failed to publish debug event', { error });
+      }
     }
   }
 

@@ -1,2 +1,0 @@
-// Server module types
-export {};

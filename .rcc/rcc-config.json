@@ -1,0 +1,71 @@
+{
+  "version": "1.0.0",
+  "system": {
+    "port": 5506,
+    "host": "0.0.0.0",
+    "debug": {
+      "enabled": true,
+      "level": "info",
+      "logRequests": true,
+      "logResponses": true,
+      "maxLogSize": 10485760,
+      "maxLogFiles": 10
+    }
+  },
+  "providers": {
+    "qwen": {
+      "type": "qwen",
+      "enabled": true,
+      "config": {
+        "apiKey": "test-qwen-key",
+        "baseUrl": "https://dashscope.aliyuncs.com/api/v1",
+        "model": "qwen-turbo"
+      }
+    },
+    "iflow": {
+      "type": "iflow",
+      "enabled": true,
+      "config": {
+        "apiKey": "test-iflow-key",
+        "baseUrl": "https://apis.iflow.cn/v1",
+        "strictFields": false
+      }
+    }
+  },
+  "virtualModels": {
+    "default": {
+      "targets": [
+        {
+          "providerId": "qwen",
+          "modelId": "qwen-turbo",
+          "enabled": true
+        }
+      ],
+      "enabled": true
+    },
+    "iflow-compatible": {
+      "targets": [
+        {
+          "providerId": "iflow",
+          "modelId": "qwen3-coder-plus",
+          "enabled": true
+        }
+      ],
+      "enabled": true
+    }
+  },
+  "pipeline": {
+    "enabled": true,
+    "tracking": true,
+    "maxConcurrentRequests": 10,
+    "retryAttempts": 3,
+    "autoRestart": true
+  },
+  "debug": {
+    "enabled": true,
+    "twoPhaseEnabled": true,
+    "basePath": "~/.rcc/debug-logs",
+    "saveIndividualFiles": true,
+    "saveSessionFiles": true
+  }
+}

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-09-18
+
+### Added
+- **I/O Tracking System**: Comprehensive operation recording and debugging with automatic file persistence
+- **Two-Phase Debug System**: System startup and port-specific logging phases with dynamic directory management
+- **Recording Manager**: Automatic cycle-based operation tracking with individual file generation
+- **Request Context Management**: Enhanced request lifecycle and correlation tracking
+- **Performance Metrics**: Operation duration and success rate tracking
+- **File Organization**: Organized logs by module, operation, and timestamp
+
+### Enhanced
+- **Debug System**: Added runtime directory updates without system restart
+- **Build System**: Improved TypeScript configuration and rollup build process
+- **Testing**: Comprehensive test coverage for all new features including I/O tracking
+- **Documentation**: Updated README with detailed feature descriptions and usage examples
+
+### Fixed
+- **TypeScript Compilation**: Resolved type errors and improved configuration
+- **Module Dependencies**: Fixed import/export issues and dependency management
+- **Build Process**: Enhanced rollup configuration for better output generation
+- **Test Coverage**: Improved test reliability and comprehensive feature validation
+
+### Performance
+- **Logging Efficiency**: Optimized debug logging with configurable output levels
+- **File Management**: Improved I/O tracking file creation and management
+- **Memory Usage**: Enhanced resource cleanup and memory management
+- **Operation Tracking**: Streamlined operation recording with reduced overhead
+
 ## [0.1.0] - 2024-09-10
 
 ### Added

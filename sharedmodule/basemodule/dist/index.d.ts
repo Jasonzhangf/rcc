@@ -1,3 +1,6 @@
+import { DebugEventBus } from 'rcc-debugcenter';
+export { DebugEvent, DebugEventBus } from 'rcc-debugcenter';
+
 /**
  * Interface for connection information
  */
@@ -1994,72 +1997,6 @@ declare class MessageCenter {
 }
 
 /**
- * Debug Event Bus - 事件驱动的调试通信总线
- * Event-driven debug communication bus
- *
- * Note: This is now a compatibility layer that re-exports from rcc-debugcenter
- * For new development, import DebugEventBus directly from 'rcc-debugcenter'
- */
-interface DebugEvent {
-    sessionId: string;
-    moduleId: string;
-    operationId: string;
-    timestamp: number;
-    type: 'start' | 'end' | 'error';
-    position: 'start' | 'middle' | 'end';
-    data?: any;
-}
-declare class DebugEventBus {
-    private static instance;
-    private subscribers;
-    private eventQueue;
-    private maxQueueSize;
-    private constructor();
-    static getInstance(): DebugEventBus;
-    /**
-     * Publish a debug event
-     * @param event - Debug event to publish
-     */
-    publish(event: DebugEvent): void;
-    /**
-     * Subscribe to debug events
-     * @param eventType - Event type to subscribe to ('*' for all events)
-     * @param callback - Callback function
-     */
-    subscribe(eventType: string, callback: Function): void;
-    /**
-     * Unsubscribe from debug events
-     * @param eventType - Event type to unsubscribe from
-     * @param callback - Callback function to remove
-     */
-    unsubscribe(eventType: string, callback: Function): void;
-    /**
-     * Get recent events from the queue
-     * @param limit - Maximum number of events to return
-     * @param type - Optional event type filter
-     */
-    getRecentEvents(limit?: number, type?: string): DebugEvent[];
-    /**
-     * Clear the event queue and subscribers
-     */
-    clear(): void;
-    /**
-     * Get queue statistics
-     */
-    getStats(): {
-        queueSize: number;
-        subscriberCount: number;
-        eventTypes: string[];
-        maxQueueSize: number;
-    };
-    /**
-     * Set maximum queue size
-     * @param size - Maximum queue size
-     */
-    setMaxQueueSize(size: number): void;
-}
-
-/**
  * Debug log levels
  */
 type DebugLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
@@ -2429,5 +2366,5 @@ declare abstract class BaseModule implements MessageHandler {
     endIOTracking(operationId: string, output: any, success?: boolean, error?: string): void;
 }
 
-export { ActionPriority, ActionStatus, ActionType, AnnotationType, BaseModule, ConditionOperator, ConfigValidator, ConfigValidator as ConfigurationValidation, CycleRecorder, CycleRecorder as CycleRecording, DebugEventBus, ErrorImpact, ErrorRecorder, ErrorRecorder as ErrorRecording, ErrorRecoverability, ErrorSeverity, ErrorSource, ErrorType, FieldTruncator as FieldTruncation, FieldTruncator, GlobalConfigManager, GlobalConfigManager as GlobalConfiguration, HandlingStatus, LogicalOperator, MessageCenter, PathResolver as PathResolution, PathResolver, PolicyType, RecordingManager, RequestContextManager, RequestContextManager as RequestContextTracking, ResponseActionType, ResponseStatus, RuleType };
-export type { Action, AppError, BaseModuleOptions, BaseModuleRecordingConfig, ChainConfigValidationResult, ChainStatus, CircuitBreakerConfig, ConfigChangeCallback, ConfigSyncResult, ConfigUpdateResult, ConnectionInfo, ConsistencyValidationResult, CycleHandle, CycleInfo, CycleRecord, CycleRecordingConfig, DataTransfer, DebugConfig, DebugEvent, DebugLevel, DebugLogEntry, ErrorCategory, ErrorClassification, ErrorContext, ErrorFilters, ErrorHandlingConfig, ErrorLevel, ErrorRecord, ErrorRecordData, ErrorRecordingConfig, ErrorRecordingOptions, ErrorResponse, ErrorStatistics, ErrorTrendPoint, FieldTruncationConfig, FieldTruncationRule, FileManagementConfig, GlobalConsistencyResult, GlobalRecordingConfig, HandlingMetrics, HandlingResult, IDebugModule, Message, MessageCenterStats, MessageHandler, MessageResponse, ModuleAnnotation, ModuleErrorStatistics, ModuleInfo, ModuleRecordingConfig, ModuleRegistration, ModuleResponse, ModuleResponseData, ModuleSource, PathPatternRule, RecordingConfigSnapshot, RecordingTemplates, RelatedInfo, RequestContext, RequestContextOptions, ResponseAction, ResponseAnnotation, ResponseData, ResponseHandler, ResponseMetadata, RetryPolicy, RouteCondition, TraceReport, TruncationContext, TruncationReport, TruncationStatistics, ValidatedRecordingConfig, ValidationResult, ValidationRule };
+export { ActionPriority, ActionStatus, ActionType, AnnotationType, BaseModule, ConditionOperator, ConfigValidator, ConfigValidator as ConfigurationValidation, CycleRecorder, CycleRecorder as CycleRecording, ErrorImpact, ErrorRecorder, ErrorRecorder as ErrorRecording, ErrorRecoverability, ErrorSeverity, ErrorSource, ErrorType, FieldTruncator as FieldTruncation, FieldTruncator, GlobalConfigManager, GlobalConfigManager as GlobalConfiguration, HandlingStatus, LogicalOperator, MessageCenter, PathResolver as PathResolution, PathResolver, PolicyType, RecordingManager, RequestContextManager, RequestContextManager as RequestContextTracking, ResponseActionType, ResponseStatus, RuleType };
+export type { Action, AppError, BaseModuleOptions, BaseModuleRecordingConfig, ChainConfigValidationResult, ChainStatus, CircuitBreakerConfig, ConfigChangeCallback, ConfigSyncResult, ConfigUpdateResult, ConnectionInfo, ConsistencyValidationResult, CycleHandle, CycleInfo, CycleRecord, CycleRecordingConfig, DataTransfer, DebugConfig, DebugLevel, DebugLogEntry, ErrorCategory, ErrorClassification, ErrorContext, ErrorFilters, ErrorHandlingConfig, ErrorLevel, ErrorRecord, ErrorRecordData, ErrorRecordingConfig, ErrorRecordingOptions, ErrorResponse, ErrorStatistics, ErrorTrendPoint, FieldTruncationConfig, FieldTruncationRule, FileManagementConfig, GlobalConsistencyResult, GlobalRecordingConfig, HandlingMetrics, HandlingResult, IDebugModule, Message, MessageCenterStats, MessageHandler, MessageResponse, ModuleAnnotation, ModuleErrorStatistics, ModuleInfo, ModuleRecordingConfig, ModuleRegistration, ModuleResponse, ModuleResponseData, ModuleSource, PathPatternRule, RecordingConfigSnapshot, RecordingTemplates, RelatedInfo, RequestContext, RequestContextOptions, ResponseAction, ResponseAnnotation, ResponseData, ResponseHandler, ResponseMetadata, RetryPolicy, RouteCondition, TraceReport, TruncationContext, TruncationReport, TruncationStatistics, ValidatedRecordingConfig, ValidationResult, ValidationRule };

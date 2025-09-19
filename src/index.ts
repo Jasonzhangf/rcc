@@ -1,13 +1,9 @@
-import { CLIEngine } from './core/CLIEngine';
-export { CLIEngine } from './core/CLIEngine';
-export { CommandRegistry } from './core/CommandRegistry';
-export { ArgumentParser } from './core/ArgumentParser';
-export * from './types';
+import stopCommand from './commands/stop';
+import codeCommand from './commands/code';
+import restartCommand from './commands/restart';
+import * as CLI_TYPES from './types/cli-types';
 
-// Export built-in commands
-export { startCommand } from './commands/start';
-export { stopCommand } from './commands/stop';
-export { codeCommand } from './commands/code';
+export { stopCommand, codeCommand, restartCommand, CLI_TYPES };
 
 // Default CLI engine configuration
 export const defaultCLIConfig = {
@@ -17,7 +13,7 @@ export const defaultCLIConfig = {
   commandDiscovery: {
     commandDirs: [
       // Built-in commands
-      __dirname + '/commands',
+      import.meta.url + '/commands',
       // Project-specific commands
       process.cwd() + '/commands',
       process.cwd() + '/src/commands',
@@ -28,12 +24,3 @@ export const defaultCLIConfig = {
   },
   defaultCommand: 'help',
 };
-
-// Create default CLI engine instance
-export const cliEngine = new CLIEngine(defaultCLIConfig);
-
-// Utility function for quick command execution
-export async function executeCommand(argv: string[] = process.argv): Promise<void> {
-  await cliEngine.initialize();
-  return cliEngine.execute(argv);
-}

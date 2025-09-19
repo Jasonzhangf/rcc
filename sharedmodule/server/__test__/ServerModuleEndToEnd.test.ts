@@ -14,7 +14,6 @@ import { ServerModule } from '../src/ServerModule';
 import { IPipelineScheduler, PipelineExecutionResult, SchedulerStats } from 'rcc-pipeline';
 import { ConfigurationToPipelineModule } from 'rcc-configuration';
 import { ConfigurationSystem } from 'rcc-configuration';
-import { VirtualModelRulesModule } from 'rcc-virtual-model-rules';
 import { 
   createMockServerConfig, 
   createMockClientRequest, 
@@ -28,7 +27,6 @@ describe('Complete End-to-End Integration', () => {
   let mockPipelineScheduler: jest.Mocked<IPipelineScheduler>;
   let mockConfigurationSystem: any;
   let mockPipelineAssembler: any;
-  let mockVirtualModelRulesModule: any;
   let mockConfigurationToPipelineModule: any;
 
   beforeEach(async () => {
@@ -85,10 +83,7 @@ describe('Complete End-to-End Integration', () => {
       getActivePipeline: jest.fn().mockReturnValue('test-pipeline')
     };
 
-    mockVirtualModelRulesModule = {
-      initialize: jest.fn().mockResolvedValue(undefined as never),
-      destroy: jest.fn().mockResolvedValue(undefined as never)
-    };
+
 
     mockConfigurationToPipelineModule = {
       initialize: jest.fn().mockResolvedValue(undefined as never),
@@ -118,7 +113,7 @@ describe('Complete End-to-End Integration', () => {
     // Mock the modules in the server
     (serverModule as any).configurationSystem = mockConfigurationSystem;
     (serverModule as any).pipelineAssembler = mockPipelineAssembler;
-    (serverModule as any).virtualModelRulesModule = mockVirtualModelRulesModule;
+
     (serverModule as any).configurationToPipelineModule = mockConfigurationToPipelineModule;
   });
 

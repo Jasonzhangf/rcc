@@ -4,7 +4,9 @@ import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { IServerModule } from './interfaces/IServerModule';
 import { HttpServerComponent } from './components/HttpServer';
 import { VirtualModelRouter } from './components/VirtualModelRouter';
-import { Pipeline, PipelineConfig, PipelineTarget } from 'rcc-pipeline';
+import { ServerCore } from './core/ServerCore';
+import { VirtualModelManager } from './core/VirtualModelManager';
+import { RequestHandlerService } from './services/RequestHandlerService';
 import {
   ServerConfig,
   ClientRequest,
@@ -16,11 +18,7 @@ import {
   ConnectionInfo,
   MiddlewareConfig,
   PipelineIntegrationConfig,
-  PipelineRequestContext,
-  PipelineResponseContext,
-  PipelineExecutionResult,
-  PipelineExecutionStatus
-  } from './types/ServerTypes';
+    } from './types/ServerTypes';
 
 import { UnderConstruction } from 'rcc-underconstruction';
 import { DebugCenter } from 'rcc-debugcenter';
@@ -30,6 +28,9 @@ import { DebugCenter } from 'rcc-debugcenter';
 export class ServerModule extends BaseModule implements IServerModule {
   private httpServer: HttpServerComponent;
   private virtualModelRouter: VirtualModelRouter;
+  private serverCore: ServerCore;
+  private virtualModelManager: VirtualModelManager;
+  private requestHandlerService: RequestHandlerService;
   private underConstruction: UnderConstruction | null = null;
   private pipelineIntegrationConfig: PipelineIntegrationConfig;
   // Using serverConfig instead of config to avoid inheritance conflict
@@ -59,8 +60,8 @@ export class ServerModule extends BaseModule implements IServerModule {
   private connections: Map<string, ConnectionInfo> = new Map();
   private startTime: number = 0;
   
-    
-  constructor() {
+  
+  constructor(schedulerManager?: any, initialConfig?: ServerConfig) {
     const moduleInfo: ModuleInfo & { capabilities: string[], dependencies: string[], config: any } = {
       id: 'ServerModule',
       name: 'RCC Server Module',
@@ -76,78 +77,55 @@ export class ServerModule extends BaseModule implements IServerModule {
         repository: 'https://github.com/rcc/rcc-server'
       }
     };
-    
+
     super(moduleInfo);
+
+    // Initialize components
     this.httpServer = new HttpServerComponent();
     this.virtualModelRouter = new VirtualModelRouter();
+    this.serverCore = new ServerCore();
+    this.virtualModelManager = new VirtualModelManager();
+    this.requestHandlerService = new RequestHandlerService(this.serverCore, this.virtualModelManager);
     this.underConstruction = null;
     this.pipelineIntegrationConfig = this.getDefaultPipelineIntegrationConfig();
+
+    // Set scheduler manager if provided (T3: 流水线优先架构)
+    if (schedulerManager) {
+      this.pipelineScheduler = schedulerManager;
+      this.logInfo('VirtualModelSchedulerManager provided in constructor', {
+        hasScheduler: true,
+        schedulerType: typeof schedulerManager
+      });
+    }
+
+    // Store initial config if provided
+    if (initialConfig) {
+      this.serverConfig = initialConfig;
+      this.logInfo('Initial configuration provided in constructor', {
+        hasConfig: true,
+        configKeys: Object.keys(initialConfig)
+      });
+    }
   }
 
   /**
    * Configure the server module
    */
   public override async configure(config: Record<string, any>): Promise<void> {
-    console.error('=== ServerModule.configure called ===');
-    this.log('ServerModule.configure method called', { method: 'configure' });
-    console.log('Config keys:', Object.keys(config));
-    console.log('Config:', JSON.stringify(config, null, 2));
+    console.log('=== ServerModule.configure called ===');
 
     super.configure(config);
+
+    // Configure server core
+    await this.serverCore.configure(config);
+
+    // Configure virtual models
+    if (config.virtualModels) {
+      await this.virtualModelManager.loadVirtualModelsFromConfig(config.virtualModels);
+    }
+
     this.serverConfig = config as ServerConfig;
     this.config = config; // Set parent class config
-
-    console.log('=== ServerModule.configure - checking parsedConfig ===');
-    console.log('config.parsedConfig:', config.parsedConfig);
-    console.log('config.parsedConfig type:', typeof config.parsedConfig);
-    console.log('config.parsedConfig exists:', !!config.parsedConfig);
-
-    if (config.parsedConfig) {
-      console.log('config.parsedConfig.keys:', Object.keys((config as any).parsedConfig));
-      console.log('config.parsedConfig.virtualModels:', (config as any).parsedConfig.virtualModels);
-      console.log('config.parsedConfig.virtualModels exists:', !!(config as any).parsedConfig.virtualModels);
-      if ((config as any).parsedConfig.virtualModels) {
-        console.log('config.parsedConfig.virtualModels type:', typeof (config as any).parsedConfig.virtualModels);
-        console.log('config.parsedConfig.virtualModels keys:', Object.keys((config as any).parsedConfig.virtualModels));
-      }
-    }
-
-    this.log('ServerModule.configure called', { hasParsedConfig: !!config.parsedConfig, configKeys: Object.keys(config) });
-
-    // Load virtual models from configuration
-    console.log('=== Checking condition for loading virtual models ===');
-    console.log('config.virtualModels exists:', !!(config as any).virtualModels);
-    console.log('Full config object keys:', Object.keys(config));
-
-    if ((config as any).virtualModels) {
-      this.log('Loading virtual models from config', {
-        virtualModelsCount: Object.keys((config as any).virtualModels).length,
-        virtualModelsKeys: Object.keys((config as any).virtualModels)
-      });
-      console.log('=== Calling loadVirtualModelsFromConfig ===');
-      console.log('Virtual models to load:', (config as any).virtualModels);
-      await this.loadVirtualModelsFromConfig((config as any).virtualModels);
-      console.log('=== loadVirtualModelsFromConfig call completed ===');
-    } else if ((config as any).parsedConfig && (config as any).parsedConfig.virtualModels) {
-      // Fallback to old parsedConfig structure for backward compatibility
-      this.log('Loading virtual models from parsedConfig (fallback)', {
-        virtualModelsCount: Object.keys((config as any).parsedConfig.virtualModels).length,
-        virtualModelsKeys: Object.keys((config as any).parsedConfig.virtualModels)
-      });
-      console.log('=== Calling loadVirtualModelsFromConfig (fallback) ===');
-      console.log('Virtual models to load:', (config as any).parsedConfig.virtualModels);
-      await this.loadVirtualModelsFromConfig((config as any).parsedConfig.virtualModels);
-      console.log('=== loadVirtualModelsFromConfig call completed (fallback) ===');
-    } else {
-      this.log('No virtualModels found in config', {
-        hasVirtualModels: !!(config as any).virtualModels,
-        hasParsedConfig: !!config.parsedConfig,
-        hasParsedConfigVirtualModels: !!(config.parsedConfig && config.parsedConfig.virtualModels),
-        configType: typeof config,
-        configKeys: config ? Object.keys(config) : 'null'
-      });
-      console.log('=== NOT calling loadVirtualModelsFromConfig - condition not met ===');
-    }
 
     console.log('=== ServerModule.configure completed ===');
   }
@@ -186,14 +164,47 @@ export class ServerModule extends BaseModule implements IServerModule {
         await this.underConstruction.initialize();
       }
 
-      // Initialize Virtual Model Scheduler Manager
-      await this.initializePipelineScheduler();
+      // Set up Virtual Model Scheduler Manager
+      if (!this.pipelineScheduler) {
+        // No scheduler provided - initialize internally (backward compatibility)
+        this.logInfo('No external scheduler provided - initializing internally');
+        await this.initializePipelineScheduler();
 
-      // Set scheduler manager in VirtualModelRouter if available
-      if (this.pipelineScheduler) {
+        // Set scheduler manager in VirtualModelRouter if available
+        if (this.pipelineScheduler) {
+          this.virtualModelRouter.setSchedulerManager(this.pipelineScheduler);
+        }
+      } else {
+        // External scheduler provided via constructor (T3: 流水线优先架构)
         this.virtualModelRouter.setSchedulerManager(this.pipelineScheduler);
+        this.logInfo('Using externally provided VirtualModelSchedulerManager from constructor');
       }
 
+      // Load virtual models from configuration after scheduler is initialized
+      if (this.serverConfig) {
+        console.log('=== Loading virtual models from configuration after scheduler initialization ===');
+        console.log('serverConfig keys:', Object.keys(this.serverConfig));
+
+        if ((this.serverConfig as any).virtualModels) {
+          this.log('Loading virtual models from config after scheduler init', {
+            virtualModelsCount: Object.keys((this.serverConfig as any).virtualModels).length,
+            virtualModelsKeys: Object.keys((this.serverConfig as any).virtualModels)
+          });
+          console.log('=== Calling loadVirtualModelsFromConfig after scheduler init ===');
+          console.log('Virtual models to load:', (this.serverConfig as any).virtualModels);
+          await this.loadVirtualModelsFromConfig((this.serverConfig as any).virtualModels);
+          console.log('=== loadVirtualModelsFromConfig call completed after scheduler init ===');
+        } else {
+          this.log('No virtualModels found in serverConfig after scheduler init', {
+            hasVirtualModels: !!(this.serverConfig as any).virtualModels,
+            hasParsedConfig: !!(this.serverConfig as any).parsedConfig,
+            hasParsedConfigVirtualModels: !!((this.serverConfig as any).parsedConfig && (this.serverConfig as any).parsedConfig.virtualModels),
+            configType: typeof this.serverConfig,
+            configKeys: this.serverConfig ? Object.keys(this.serverConfig) : 'null'
+          });
+          console.log('=== NOT calling loadVirtualModelsFromConfig after scheduler init - condition not met ===');
+        }
+      }
 
       // Set up request handling
       this.setupRequestHandling();
@@ -785,45 +796,35 @@ export class ServerModule extends BaseModule implements IServerModule {
               // Register the virtual model with traditional router
               await this.virtualModelRouter.registerModel(virtualModelConfig);
 
-              // Register the virtual model with scheduler if available
+              // Register the virtual model with scheduler if available (T3: 流水线优先架构)
+              // 注意：由于调度器已经通过构造函数传入，这里只需要注册虚拟模型到路由器即可
+              // 调度器中的虚拟模型映射应该已经通过PipelineAssembler创建
               if (this.pipelineScheduler) {
                 try {
-                  // Create providers map for this virtual model
-                  const providers = new Map<string, any>();
+                  // Verify that the virtual model exists in scheduler mappings
+                  const virtualModelMappings = this.pipelineScheduler.getVirtualModelMappings ?
+                    this.pipelineScheduler.getVirtualModelMappings() : [];
 
-                  // TODO: In a real implementation, you would create actual provider instances
-                  // For now, we'll register with an empty providers map and let them be added later
+                  const existingMapping = virtualModelMappings.find(m => m.virtualModelId === modelId);
 
-                  // Register with the actual VirtualModelSchedulerManager
-                  const schedulerId = await this.pipelineScheduler.registerVirtualModel(
-                    virtualModelConfig,
-                    providers,
-                    {
-                      metadata: {
-                        virtualModelName: virtualModelConfig.name,
-                        capabilities: virtualModelConfig.capabilities,
-                        registeredAt: Date.now()
-                      }
-                    }
-                  );
-
-                  this.logInfo(`Virtual model registered with scheduler: ${modelId}`, {
-                    modelId: modelId,
-                    schedulerId: schedulerId,
-                    provider: virtualModelConfig.provider,
-                    targetsCount: typedVmConfig.targets?.length || 0
+                  if (existingMapping) {
+                    this.logInfo(`Virtual model verified in scheduler mappings: ${modelId}`, {
+                      modelId: modelId,
+                      schedulerId: existingMapping.schedulerId,
+                      enabled: existingMapping.enabled
+                    });
+                  } else {
+                    this.warn(`Virtual model ${modelId} not found in scheduler mappings - may need manual registration`);
+                  }
+                } catch (verificationError) {
+                  this.warn(`Failed to verify virtual model ${modelId} in scheduler mappings`, {
+                    error: verificationError instanceof Error ? verificationError.message : String(verificationError)
                   });
-                } catch (schedulerError) {
-                  this.warn(`Failed to register virtual model ${modelId} with scheduler`, {
-                    error: schedulerError instanceof Error ? schedulerError.message : String(schedulerError)
-                  });
-                  // Continue with traditional routing if scheduler registration fails
                 }
               }
 
               this.logInfo(`Virtual model registered successfully: ${modelId}`, {
                 modelId: modelId,
-                provider: virtualModelConfig.provider,
                 model: virtualModelConfig.model
               });
               console.log(`✅ Virtual model registered successfully: ${modelId}`);
@@ -858,17 +859,7 @@ export class ServerModule extends BaseModule implements IServerModule {
     return this.virtualModelRouter.getModel(modelId);
   }
 
-  /**
-   * Get provider configuration by provider ID
-   */
-  private getProviderConfig(providerId: string): any | undefined {
-    const serverConfigAny = this.serverConfig as any;
-    if (serverConfigAny && serverConfigAny.parsedConfig && serverConfigAny.parsedConfig.providers) {
-      return serverConfigAny.parsedConfig.providers[providerId];
-    }
-    return undefined;
-  }
-
+  
   /**
    * Get all virtual models
    */
@@ -927,7 +918,7 @@ export class ServerModule extends BaseModule implements IServerModule {
         enabled: this.pipelineIntegrationConfig.enabled,
         schedulerAvailable: this.pipelineScheduler !== null,
         processingMethod: 'direct',
-        fallbackEnabled: true,
+        fallbackEnabled: false,
         unifiedErrorHandling: this.pipelineIntegrationConfig.unifiedErrorHandling || false,
         unifiedMonitoring: this.pipelineIntegrationConfig.unifiedMonitoring || false,
         errorMapping: this.pipelineIntegrationConfig.errorMapping || {}
@@ -1191,7 +1182,7 @@ export class ServerModule extends BaseModule implements IServerModule {
         };
 
         // Create actual VirtualModelSchedulerManager instance
-        this.pipelineScheduler = new VirtualModelSchedulerManager(managerConfig);
+        this.pipelineScheduler = new VirtualModelSchedulerManager(managerConfig, pipelineTracker);
 
         this.logInfo('Virtual Model Scheduler Manager initialized successfully with concrete implementation');
       } else {
@@ -1325,267 +1316,26 @@ export class ServerModule extends BaseModule implements IServerModule {
           };
         }
       } else {
-        // Fallback to direct pipeline execution when scheduler is not available
-        // Create pipeline targets from virtual model configuration
-        const pipelineTargets: PipelineTarget[] = [];
+        // Scheduler should always be available after proper initialization
+        // If we reach here, it indicates a configuration or initialization issue
+        console.warn(`⚠️  No scheduler available for virtual model '${model.id}' - this should not happen with proper initialization`);
 
-        if (model.targets && model.targets.length > 0) {
-          // Create actual provider instances for each target
-          for (const target of model.targets) {
-            try {
-              // Dynamically import the provider based on providerId
-              const pipelineModule: any = await import('rcc-pipeline');
-              let ProviderClass: any;
-              if (target.providerId === 'qwen') {
-                ProviderClass = pipelineModule.QwenProvider;
-              } else if (target.providerId === 'iflow') {
-                ProviderClass = pipelineModule.IFlowProvider;
-              }
+        // Return error response indicating scheduler unavailability
+        this.error('Scheduler not available for virtual model execution', {
+          modelId: model.id
+        });
 
-              try {
-                if (ProviderClass) {
-                  // Get provider configuration
-                  const providerConfig = this.getProviderConfig(target.providerId);
+        const errorResponse = this.createErrorResponse(new Error('Scheduler not available for virtual model execution'), request);
 
-                  // Create provider instance with proper configuration
-                  const providerEndpoint = providerConfig?.config?.baseUrl ||
-                                        (target.providerId === 'qwen' ? 'https://dashscope.aliyuncs.com/api/v1' :
-                                         target.providerId === 'iflow' ? 'https://apis.iflow.cn/v1' :
-                                         `https://${target.providerId}.com/api/v1`);
-
-                  const provider = new ProviderClass({
-                    name: target.providerId,
-                    endpoint: providerEndpoint,
-                    supportedModels: [target.modelId],
-                    defaultModel: target.modelId,
-                    ...providerConfig?.config
-                  });
-
-                  const pipelineTarget: any = {
-                    provider: provider,
-                    weight: target.weight || 1,
-                    enabled: target.enabled !== false,
-                    healthStatus: 'unknown',
-                    lastHealthCheck: Date.now(),
-                    requestCount: 0,
-                    errorCount: 0,
-                    metadata: {
-                      providerId: target.providerId,
-                      modelId: target.modelId,
-                      keyIndex: target.keyIndex
-                    }
-                  };
-                  pipelineTarget.id = `${target.providerId}-${target.modelId}`;
-                  pipelineTargets.push(pipelineTarget);
-
-                  this.logInfo(`Provider ${target.providerId} initialized successfully for model ${target.modelId}`);
-                } else {
-                  // Fallback to mock provider if class not found
-                  this.warn(`Provider ${target.providerId} not found, using mock provider`);
-                  const pipelineTarget: any = {
-                    provider: {
-                      id: target.providerId,
-                      name: target.providerId,
-                      config: {
-                        name: target.providerId,
-                        endpoint: undefined,
-                        supportedModels: [target.modelId],
-                        defaultModel: target.modelId
-                      },
-                      capabilities: {
-                        streaming: false,
-                        tools: false,
-                        vision: false,
-                        jsonMode: false
-                      },
-                      executeRequest: async (request: any, operationType: string) => {
-                        return {
-                          success: false,
-                          error: `Provider ${target.providerId} not available`,
-                          duration: 0
-                        };
-                      }
-                    } as any,
-                    weight: target.weight || 1,
-                    enabled: target.enabled !== false,
-                    healthStatus: 'unknown',
-                    lastHealthCheck: Date.now(),
-                    requestCount: 0,
-                    errorCount: 0,
-                    metadata: {
-                      providerId: target.providerId,
-                      modelId: target.modelId,
-                      keyIndex: target.keyIndex
-                    }
-                  };
-                  pipelineTarget.id = `${target.providerId}-${target.modelId}`;
-                  pipelineTargets.push(pipelineTarget);
-                }
-              } catch (providerError) {
-                // Fallback to mock provider if creation fails
-                this.warn(`Failed to create provider ${target.providerId}, using mock provider`, {
-                  error: providerError instanceof Error ? providerError.message : String(providerError)
-                });
-
-                const pipelineTarget: any = {
-                  provider: {
-                    id: target.providerId,
-                    name: target.providerId,
-                    config: {
-                      name: target.providerId,
-                      endpoint: undefined,
-                      supportedModels: [target.modelId],
-                      defaultModel: target.modelId
-                    },
-                    capabilities: {
-                      streaming: false,
-                      tools: false,
-                      vision: false,
-                      jsonMode: false
-                    },
-                    executeRequest: async (request: any, operationType: string) => {
-                      return {
-                        success: false,
-                        error: `Provider ${target.providerId} initialization failed: ${providerError instanceof Error ? providerError.message : String(providerError)}`,
-                        duration: 0
-                      };
-                    }
-                  } as any,
-                  weight: target.weight || 1,
-                  enabled: target.enabled !== false,
-                  healthStatus: 'unknown',
-                  lastHealthCheck: Date.now(),
-                  requestCount: 0,
-                  errorCount: 0,
-                  metadata: {
-                    providerId: target.providerId,
-                    modelId: target.modelId,
-                    keyIndex: target.keyIndex
-                  }
-                };
-                pipelineTarget.id = `${target.providerId}-${target.modelId}`;
-                pipelineTargets.push(pipelineTarget);
-              }
-            } catch (providerError) {
-              // Fallback to mock provider if creation fails
-              this.warn(`Failed to create provider ${target.providerId}, using mock provider`, {
-                error: providerError instanceof Error ? providerError.message : String(providerError)
-              });
-
-              const pipelineTarget: any = {
-                provider: {
-                  id: target.providerId,
-                  name: target.providerId,
-                  config: {
-                    name: target.providerId,
-                    endpoint: undefined,
-                    supportedModels: [target.modelId],
-                    defaultModel: target.modelId
-                  },
-                  capabilities: {
-                    streaming: false,
-                    tools: false,
-                    vision: false,
-                    jsonMode: false
-                  },
-                  executeRequest: async (request: any, operationType: string) => {
-                    return {
-                      success: false,
-                      error: `Provider ${target.providerId} initialization failed: ${providerError instanceof Error ? providerError.message : String(providerError)}`,
-                      duration: 0
-                    };
-                  }
-                } as any,
-                weight: target.weight || 1,
-                enabled: target.enabled !== false,
-                healthStatus: 'unknown',
-                lastHealthCheck: Date.now(),
-                requestCount: 0,
-                errorCount: 0,
-                metadata: {
-                  providerId: target.providerId,
-                  modelId: target.modelId,
-                  keyIndex: target.keyIndex
-                }
-              };
-              pipelineTarget.id = `${target.providerId}-${target.modelId}`;
-              pipelineTargets.push(pipelineTarget);
-            }
-          }
-        }
-
-        // Create pipeline configuration based on virtual model
-        const pipelineConfig: PipelineConfig = {
-          id: `pipeline-${model.id}`,
-          name: `Pipeline for ${model.id}`,
-          virtualModelId: model.id,
-          targets: pipelineTargets,
-          loadBalancingStrategy: 'round-robin',
-          healthCheckInterval: 30000,
-          maxRetries: 3,
-          timeout: 30000
+        return {
+          id: request.id,
+          status: errorResponse.httpStatus || 500,
+          headers: errorResponse.headers || {},
+          body: errorResponse.body,
+          timestamp: Date.now(),
+          processingTime: 0,
+          requestId: request.id
         };
-
-        // Create pipeline tracker
-        const pipelineTracker = {
-          createRequestContext: () => ({}),
-          addStage: () => {},
-          completeStage: () => {},
-          failStage: () => {},
-          getStageFactory: () => ({
-            createStageFromObject: () => ({})
-          })
-        };
-
-        // Create pipeline instance
-        const pipeline = new Pipeline(pipelineConfig, pipelineTracker);
-
-        // Execute request through pipeline
-        const result = await pipeline.execute(openaiRequest, 'chat');
-
-        if (result.success && result.response) {
-          // Return successful response
-          return {
-            id: request.id,
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Virtual-Model': model.id,
-              'X-Provider': model.provider,
-              'X-Processing-Method': 'pipeline',
-              'X-Integration-Status': 'rcc-v4-pipeline'
-            },
-            body: result.response,
-            timestamp: Date.now(),
-            processingTime: result.duration,
-            requestId: request.id
-          };
-        } else {
-          // Handle pipeline execution failure
-          this.error('Pipeline execution failed', {
-            modelId: model.id,
-            error: result.error,
-            duration: result.duration
-          });
-
-          // Create error response
-          const errorResponse = this.createErrorResponse(new Error(result.error || 'Pipeline execution failed'), request);
-
-          return {
-            id: request.id,
-            status: errorResponse.httpStatus || 500,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Error': errorResponse.error.code,
-              'X-Error-Category': errorResponse.error.category,
-              'X-Processing-Method': 'pipeline'
-            },
-            body: errorResponse,
-            timestamp: Date.now(),
-            processingTime: result.duration,
-            requestId: request.id
-          };
-        }
       }
     } catch (error) {
       this.error('Virtual model processing failed', {

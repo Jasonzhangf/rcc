@@ -1,13 +1,38 @@
 /**
- * OpenAI Compatible Providers Framework Entry Point
- * OpenAI兼容Providers框架入口点
+ * RCC Pipeline Module - Enhanced Pipeline System with Integrated Tracing
+ * RCC流水线模块 - 带有集成跟踪的增强流水线系统
  */
 
 // Enhanced base modules
 export { PipelineBaseModule, PipelineModuleConfig } from './modules/PipelineBaseModule';
 
+// Debuggable pipeline module
+export {
+  DebuggablePipelineModule,
+  DebuggablePipelineModuleConfig,
+  ExecutionOptions,
+  ExecutionResult,
+  ExecutionMetrics,
+  TraceSummary
+} from './core/DebuggablePipelineModule';
+
+// Core execution context system
+export {
+  PipelineExecutionContext,
+  ExecutionContextFactory,
+  ExecutionContextOptions,
+  ModuleInfo,
+  PipelineStage,
+  ExecutionError,
+  ExecutionStatistics
+} from './core/PipelineExecutionContext';
+
 // Framework classes
 export { default as BaseProvider } from './framework/BaseProvider';
+
+// Module discovery and assembly
+export { ModuleScanner, ProviderDiscoveryOptions } from './framework/ModuleScanner';
+export { PipelineAssembler, AssemblerConfig, AssemblyResult } from './framework/PipelineAssembler';
 
 // Scheduling system
 export { Pipeline } from './framework/Pipeline';
@@ -17,6 +42,17 @@ export { VirtualModelSchedulerManager } from './framework/VirtualModelSchedulerM
 
 // Pipeline tracking
 export { PipelineTracker } from './framework/PipelineTracker';
+
+// Error types
+export {
+  ErrorCategory,
+  ErrorSeverity,
+  TraceEventType,
+  EnhancedErrorInfo,
+  TraceEvent,
+  IErrorHandler,
+  IPerformanceMetrics
+} from './types/ErrorTypes';
 
 // OpenAI interface
 export * from './framework/OpenAIInterface';

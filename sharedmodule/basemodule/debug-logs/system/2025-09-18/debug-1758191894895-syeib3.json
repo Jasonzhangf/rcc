@@ -1,0 +1,15 @@
+{
+  "type": "debug",
+  "requestId": "system",
+  "provider": "system",
+  "operation": "debug",
+  "timestamp": 1758191894895,
+  "message": "Request started: direct-pipeline-test.debug-operation",
+  "data": {
+    "requestId": "req_1758191894895_caxv9df0c",
+    "metadata": {
+      "test": true,
+      "source": "pipeline-unit-test"
+    }
+  }
+}

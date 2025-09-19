@@ -5,9 +5,11 @@ export default {
   input: 'src/index.ts',
   output: [
     {
-      file: 'dist/index.js',
+      dir: 'dist',
       format: 'es',
       sourcemap: true,
+      entryFileNames: '[name].js',
+      chunkFileNames: '[name]-[hash].js'
     }
   ],
   plugins: [
@@ -28,8 +30,29 @@ export default {
     'compression',
     'body-parser',
     'uuid',
-    'rcc-basemodule',
     'rcc-underconstruction',
-    'rcc-virtual-model-rules'
+    'rcc-virtual-model-rules',
+    'axios',
+    'form-data',
+    'http',
+    'https',
+    'util',
+    'stream',
+    'zlib',
+    'events',
+    'url',
+    'fs',
+    'path',
+    'crypto',
+    'os',
+    'node:fs/promises',
+    'node:process',
+    'node:buffer',
+    'node:url',
+    'node:path',
+    'node:util',
+    'node:child_process',
+    'node:fs',
+    'node:os'
   ],
 };

@@ -2,9 +2,13 @@ import { BaseModule } from 'rcc-basemodule';
 import { IServerModule } from './interfaces/IServerModule';
 import { ServerConfig, ClientRequest, ClientResponse, VirtualModelConfig, RouteConfig, ServerStatus, RequestMetrics, ConnectionInfo, MiddlewareConfig, PipelineIntegrationConfig } from './types/ServerTypes';
 import { UnderConstruction } from 'rcc-underconstruction';
+import { DebugCenter } from 'rcc-debugcenter';
 export declare class ServerModule extends BaseModule implements IServerModule {
     private httpServer;
     private virtualModelRouter;
+    private serverCore;
+    private virtualModelManager;
+    private requestHandlerService;
     private underConstruction;
     private pipelineIntegrationConfig;
     private serverConfig;
@@ -12,8 +16,10 @@ export declare class ServerModule extends BaseModule implements IServerModule {
     private isRunning;
     private messageHandlers;
     private pipelineScheduler;
-    private testScheduler;
     private debugLogManager;
+    private debugEventBus;
+    debugCenter: DebugCenter | null;
+    debugCenterSessionId: string | null;
     private routes;
     private middlewares;
     private requestMetrics;
@@ -133,10 +139,6 @@ export declare class ServerModule extends BaseModule implements IServerModule {
      */
     setVirtualModelSchedulerManager(schedulerManager: any): void;
     /**
-     * Set Test Scheduler for virtual model mapping validation
-     */
-    setTestScheduler(testScheduler: any): void;
-    /**
      * Initialize Virtual Model Scheduler Manager
      */
     private initializePipelineScheduler;
@@ -156,6 +158,10 @@ export declare class ServerModule extends BaseModule implements IServerModule {
      * Set Debug Log Manager for enhanced request logging
      */
     setDebugLogManager(debugLogManager: any): void;
+    /**
+     * Publish debug event through DebugEventBus
+     */
+    private publishDebugEvent;
     /**
      * Set UnderConstruction Module
      */

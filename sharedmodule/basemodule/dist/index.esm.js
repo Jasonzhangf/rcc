@@ -4043,9 +4043,6 @@ class MessageCenter {
 /**
  * Debug Event Bus - 事件驱动的调试通信总线
  * Event-driven debug communication bus
- *
- * Note: This is now a compatibility layer that re-exports from rcc-debugcenter
- * For new development, import DebugEventBus directly from 'rcc-debugcenter'
  */
 class DebugEventBus {
     constructor() {
@@ -4064,12 +4061,19 @@ class DebugEventBus {
      * @param event - Debug event to publish
      */
     publish(event) {
-        // Add to queue for debugging
+        // Add to queue
         if (this.eventQueue.length >= this.maxQueueSize) {
             this.eventQueue.shift(); // Remove oldest event
         }
         this.eventQueue.push(event);
-        // Notify subscribers
+        // Process event immediately
+        this.processEvent(event);
+    }
+    /**
+     * Process a single event
+     * @param event - Event to process
+     */
+    processEvent(event) {
         const subscribers = this.subscribers.get(event.type) || [];
         const allSubscribers = this.subscribers.get('*') || [];
         // Notify type-specific subscribers
@@ -4129,7 +4133,7 @@ class DebugEventBus {
         return events.slice(-limit);
     }
     /**
-     * Clear the event queue and subscribers
+     * Clear the event queue
      */
     clear() {
         this.eventQueue = [];

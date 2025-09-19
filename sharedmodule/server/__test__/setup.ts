@@ -55,12 +55,12 @@ jest.mock('rcc-basemodule', () => {
 });
 
 // Setup global test utilities
-global.beforeEach(() => {
+beforeEach(() => {
   jest.clearAllMocks();
   jest.resetModules();
 });
 
 // Cleanup after all tests
-global.afterAll(() => {
+afterAll(() => {
   jest.clearAllMocks();
 });

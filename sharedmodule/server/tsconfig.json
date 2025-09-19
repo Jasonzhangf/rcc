@@ -24,6 +24,13 @@
     "noImplicitOverride": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "../../basemodule/dist/index.esm.js": ["../../basemodule/dist/index.esm.js"],
+      "../../underconstruction/dist/index.esm.js": ["../../underconstruction/dist/index.esm.js"]
+    },
+    "allowImportingTsExtensions": false,
     "allowJs": false,
     "checkJs": false,
     "noFallthroughCasesInSwitch": true,

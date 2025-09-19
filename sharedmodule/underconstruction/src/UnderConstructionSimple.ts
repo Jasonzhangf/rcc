@@ -1,5 +1,4 @@
-import { BaseModule } from 'rcc-basemodule';
-import { ModuleInfo } from 'rcc-basemodule';
+import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface UnderConstructionFeature {
@@ -70,9 +69,9 @@ export class UnderConstruction extends BaseModule {
     super(moduleInfo);
   }
 
-  public override async initialize(): Promise<void> {
+  public async initialize(): Promise<void> {
     await super.initialize();
-    this.log('UnderConstruction模块已初始化');
+    console.log('UnderConstruction模块已初始化');
   }
 
   public markFeature(featureName: string, description: string, options: any = {}): void {
@@ -89,11 +88,11 @@ export class UnderConstruction extends BaseModule {
     };
 
     this.underConstructionFeatures.set(featureName, feature);
-    this.log(`功能 '${featureName}' 已标记为未完成状态`);
+    console.log(`功能 '${featureName}' 已标记为未完成状态`);
   }
 
   public callUnderConstructionFeature(featureName: string, context?: CallContext): void {
-    const config = this.info.metadata?.['config'] as any;
+    const config = this.getInfo().metadata?.['config'] as any;
     
     if (!this.underConstructionFeatures.has(featureName)) {
       this.markFeature(featureName, 'Auto-marked feature');
@@ -116,7 +115,7 @@ export class UnderConstruction extends BaseModule {
       throw new UnderConstructionError(featureName, `功能 '${featureName}' 尚未完成`);
     }
 
-    this.log(`调用了未完成的功能: ${featureName}`);
+    console.log(`调用了未完成的功能: ${featureName}`);
   }
 
   public getUnderConstructionFeatures(): UnderConstructionFeature[] {
@@ -139,7 +138,7 @@ export class UnderConstruction extends BaseModule {
     }
 
     feature.status = 'completed';
-    this.log(`功能 '${featureName}' 已完成`);
+    console.log(`功能 '${featureName}' 已完成`);
     return true;
   }
 
@@ -154,7 +153,7 @@ export class UnderConstruction extends BaseModule {
       feature.intendedBehavior = newIntendedBehavior;
     }
 
-    this.log(`功能 '${featureName}' 描述已更新`);
+    console.log(`功能 '${featureName}' 描述已更新`);
     return true;
   }
 
@@ -183,15 +182,15 @@ export class UnderConstruction extends BaseModule {
 
   public clearCallHistory(): void {
     this.callHistory = [];
-    this.log('调用历史已清除');
+    console.log('调用历史已清除');
   }
 
-  public override async destroy(): Promise<void> {
-    this.log('销毁UnderConstruction模块');
-    
+  public async destroy(): Promise<void> {
+    console.log('销毁UnderConstruction模块');
+
     this.underConstructionFeatures.clear();
     this.callHistory = [];
-    
+
     await super.destroy();
   }
 }

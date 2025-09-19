@@ -11,6 +11,9 @@ A comprehensive TypeScript framework for modular development with strict archite
 - **Validation Framework**: Extensible validation rules for input data
 - **Type Safety**: Full TypeScript strict mode with comprehensive interfaces
 - **Testing Support**: Built-in testing framework with 100% coverage requirements
+- **I/O Tracking System**: Comprehensive operation recording and debugging
+- **Two-Phase Debug System**: System startup and port-specific logging phases
+- **Recording Manager**: Automatic cycle-based operation tracking with file persistence
 
 ## Installation
 
@@ -100,6 +103,42 @@ interface Message {
   ttl?: number;
   priority?: number;
 }
+```
+
+## I/O Tracking System
+
+The BaseModule includes a comprehensive I/O tracking system that records all module operations with automatic file persistence:
+
+### Recording Manager
+
+```typescript
+// Configure I/O tracking
+myModule.setDebugConfig({
+  enabled: true,
+  recordIO: true,
+  ioDirectory: '~/.rcc/debug-logs/io-logs',
+  trackOperations: true
+});
+
+// Operations are automatically recorded
+await myModule.performOperation(); // Creates JSON log file
+```
+
+### Features
+
+- **Individual Operation Files**: Each operation gets its own JSON file
+- **Cycle Recording**: Automatic cycle-based operation grouping
+- **Request Context Management**: Tracks request lifecycle and correlation
+- **Performance Metrics**: Operation duration and success rate tracking
+- **File Organization**: Organized logs by module, operation, and timestamp
+
+### Example Output
+```
+~/.rcc/debug-logs/io-logs/
+├── test-module_op1.json
+├── test-module_op2.json
+└── cycles/
+    └── cycle-001.json
 ```
 
 ## Debug System

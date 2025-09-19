@@ -86,7 +86,12 @@ export abstract class BaseProvider extends PipelineBaseModule {
     this.endpoint = config.endpoint;
     this.supportedModels = config.supportedModels || [];
     this.defaultModel = config.defaultModel;
+
+    // Initialize two-phase debug system
+    this.twoPhaseDebugSystem = null;
   }
+
+  protected twoPhaseDebugSystem: any | null;
   
   // 标准 OpenAI 聊天接口 - 主要入口
   async chat(openaiRequest: any, compatibility?: CompatibilityModule): Promise<any> {

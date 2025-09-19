@@ -1,6 +1,6 @@
 {
   "name": "rcc-basemodule",
-  "version": "0.1.8",
+  "version": "0.2.2",
   "description": "RCC BaseModule - Core framework for modular TypeScript development",
   "type": "module",
   "main": "dist/index.esm.js",
@@ -35,7 +35,8 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "rcc-debugcenter": "^0.1.0"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",

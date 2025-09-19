@@ -3,7 +3,7 @@ import { ConnectionInfo, DataTransfer } from './interfaces/Connection';
 import { ValidationRule, ValidationResult } from './interfaces/Validation';
 import { Message, MessageResponse, MessageHandler } from './interfaces/Message';
 import { MessageCenter } from './MessageCenter';
-import { DebugModule, IOTrackingConfig, DebugConfig as DebugModuleConfig } from './DebugModule';
+import { DebugEventBus, DebugEvent } from './debug/DebugEventBus';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -53,9 +53,17 @@ export interface DebugLogEntry {
 /**
  * Debug configuration
  */
-export interface DebugConfig extends Omit<DebugModuleConfig, 'ioTracking' | 'pipelineIO' | 'baseDirectory'> {
-  ioTracking?: IOTrackingConfig;
-  baseDirectory?: string;
+export interface DebugConfig {
+  enabled: boolean;
+  level: 'trace' | 'debug' | 'info' | 'warn' | 'error';
+  recordStack: boolean;
+  maxLogEntries: number;
+  consoleOutput: boolean;
+  trackDataFlow: boolean;
+  enableFileLogging: boolean;
+  maxFileSize: number;
+  maxLogFiles: number;
+  pipelinePosition?: 'start' | 'middle' | 'end';
 }
 
 /**
@@ -114,14 +122,19 @@ export abstract class BaseModule implements MessageHandler {
   protected debugLogs: DebugLogEntry[] = [];
   
   /**
-   * Two-phase debug system
+   * Debug event bus
    */
-  protected twoPhaseDebugSystem: DebugModule | null;
-  
+  protected eventBus: DebugEventBus;
+
   /**
-   * Whether to use two-phase debug system
+   * Current session ID for pipeline operations
    */
-  protected useTwoPhaseDebug: boolean = false;
+  protected currentSessionId?: string;
+
+  /**
+   * Pipeline position of this module
+   */
+  protected pipelinePosition?: 'start' | 'middle' | 'end';
   
   /**
    * Pending message requests
@@ -151,9 +164,9 @@ export abstract class BaseModule implements MessageHandler {
       maxFileSize: 10485760, // 10MB
       maxLogFiles: 5
     };
-    
-    // Initialize two-phase debug system
-    this.twoPhaseDebugSystem = null;
+
+    // Initialize debug event bus
+    this.eventBus = DebugEventBus.getInstance();
   }
   
   /**
@@ -172,76 +185,99 @@ export abstract class BaseModule implements MessageHandler {
    */
   public setDebugConfig(config: Partial<DebugConfig>): void {
     this.debugConfig = { ...this.debugConfig, ...config };
-
-    // If I/O tracking configuration is updated and two-phase debug is enabled, update DebugModule
-    if (config.ioTracking && this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
-      this.twoPhaseDebugSystem.updateIOTrackingConfig(config.ioTracking);
-    }
   }
-  
+
+  /**
+   * Sets the pipeline position for this module
+   * @param position - Pipeline position
+   */
+  public setPipelinePosition(position: 'start' | 'middle' | 'end'): void {
+    this.pipelinePosition = position;
+    this.debugConfig.pipelinePosition = position;
+  }
+
+  /**
+   * Sets the current session ID for pipeline operations
+   * @param sessionId - Session ID
+   */
+  public setCurrentSession(sessionId: string): void {
+    this.currentSessionId = sessionId;
+  }
+
   /**
    * Gets the current debug configuration
    * @returns Debug configuration
    */
   public getDebugConfig(): DebugConfig {
-    const config = { ...this.debugConfig };
-    config.enabled = this.useTwoPhaseDebug;
+    return { ...this.debugConfig };
+  }
+  
+  /**
+   * Start a pipeline session
+   * @param sessionId - Session ID
+   * @param pipelineConfig - Pipeline configuration
+   */
+  public startPipelineSession(sessionId: string, pipelineConfig: any): void {
+    this.currentSessionId = sessionId;
 
-    // Include ioTracking configuration if two-phase debug is enabled
-    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
-      config.ioTracking = this.twoPhaseDebugSystem.getIOTrackingConfig();
-      config.baseDirectory = this.twoPhaseDebugSystem.getLogDirectory();
-    }
+    const event: DebugEvent = {
+      sessionId,
+      moduleId: this.info.id,
+      operationId: 'session_start',
+      timestamp: Date.now(),
+      type: 'start',
+      position: this.pipelinePosition || 'middle',
+      data: {
+        pipelineConfig,
+        moduleInfo: {
+          id: this.info.id,
+          name: this.info.name,
+          version: this.info.version
+        }
+      }
+    };
 
-    return config;
+    this.eventBus.publish(event);
+
+    // Log locally for backward compatibility
+    this.logInfo('Pipeline session started', {
+      sessionId,
+      pipelinePosition: this.pipelinePosition
+    }, 'startPipelineSession');
   }
-  
+
   /**
-   * Enable two-phase debug system
-   * @param enabled - Whether to enable two-phase debug
-   * @param baseDirectory - Base directory for debug logs
-   * @param ioConfig - Optional I/O tracking configuration
+   * End a pipeline session
+   * @param sessionId - Session ID
+   * @param success - Whether session was successful
    */
-  public enableTwoPhaseDebug(enabled: boolean, baseDirectory: string = './debug-logs', ioConfig?: IOTrackingConfig): void {
-    this.useTwoPhaseDebug = enabled;
-    if (enabled) {
-      this.twoPhaseDebugSystem = new DebugModule(baseDirectory);
-      // Apply custom I/O tracking configuration if provided
-      if (ioConfig) {
-        this.twoPhaseDebugSystem.updateIOTrackingConfig(ioConfig);
+  public endPipelineSession(sessionId: string, success: boolean = true): void {
+    const event: DebugEvent = {
+      sessionId,
+      moduleId: this.info.id,
+      operationId: 'session_end',
+      timestamp: Date.now(),
+      type: success ? 'end' : 'error',
+      position: this.pipelinePosition || 'middle',
+      data: {
+        success,
+        moduleInfo: {
+          id: this.info.id,
+          name: this.info.name,
+          version: this.info.version
+        }
       }
-      // Enable basic debug logging when two-phase debug is enabled
-      this.debugConfig.enabled = true;
-      this.logInfo('Two-phase debug system enabled', { baseDirectory }, 'enableTwoPhaseDebug');
-    } else {
-      // Disable debug system
-      if (this.twoPhaseDebugSystem) {
-        this.twoPhaseDebugSystem.setIOTrackingEnabled(false);
-        this.twoPhaseDebugSystem = null;
-      }
-      // Also disable basic debug logging
-      this.debugConfig.enabled = false;
-      this.logInfo('Two-phase debug system disabled', {}, 'enableTwoPhaseDebug');
-    }
-  }
-  
-  /**
-   * Switch debug system to port mode
-   * @param port - Port number
-   */
-  public switchDebugToPortMode(port: number): void {
-    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
-      this.twoPhaseDebugSystem.switchToPortMode(port);
-      this.logInfo('Debug system switched to port mode', { port }, 'switchDebugToPortMode');
-    }
-  }
-  
-  /**
-   * Get two-phase debug system
-   * @returns Two-phase debug system instance
-   */
-  public getTwoPhaseDebugSystem(): DebugModule | null {
-    return this.twoPhaseDebugSystem;
+    };
+
+    this.eventBus.publish(event);
+    this.currentSessionId = undefined;
+
+    // Log locally for backward compatibility
+    this.logInfo('Pipeline session ended', {
+      sessionId,
+      success,
+      pipelinePosition: this.pipelinePosition
+    }, 'endPipelineSession');
   }
   
   /**
@@ -252,19 +288,13 @@ export abstract class BaseModule implements MessageHandler {
    * @param method - Method name where the log was generated
    */
   protected debug(level: DebugLevel, message: string, data?: any, method?: string): void {
-    // Use two-phase debug system if enabled
-    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
-      this.twoPhaseDebugSystem.log(level, message, data, method);
-      return;
-    }
-    
     // Check if debug is enabled and level is appropriate
     if (!this.debugConfig.enabled) return;
-    
+
     const levelOrder: DebugLevel[] = ['trace', 'debug', 'info', 'warn', 'error'];
     const currentLevelIndex = levelOrder.indexOf(this.debugConfig.level);
     const messageLevelIndex = levelOrder.indexOf(level);
-    
+
     if (messageLevelIndex < currentLevelIndex) return;
     
     // Create log entry
@@ -867,55 +897,81 @@ export abstract class BaseModule implements MessageHandler {
   // ========================================
 
   /**
-   * Record an I/O operation
-   * @param operationId - Unique identifier for the operation
-   * @param input - Input data
-   * @param output - Output data
-   * @param method - Method name that performed the operation
-   */
-  public recordIOOperation(operationId: string, input: any, output: any, method?: string): void {
-    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
-      const ioConfig = this.twoPhaseDebugSystem.getIOTrackingConfig();
-      if (ioConfig.enabled) {
-        this.twoPhaseDebugSystem.recordOperation(
-          this.info.id,
-          operationId,
-          input,
-          output,
-          method
-        );
-      }
-    }
-  }
-
-  /**
-   * Start tracking an I/O operation
+   * Record an I/O operation start
    * @param operationId - Unique identifier for the operation
    * @param input - Input data
    * @param method - Method name that performed the operation
    */
   public startIOTracking(operationId: string, input: any, method?: string): void {
-    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
-      const ioConfig = this.twoPhaseDebugSystem.getIOTrackingConfig();
-      if (ioConfig.enabled) {
-        this.twoPhaseDebugSystem.startOperation(this.info.id, operationId, input, method);
+    if (!this.currentSessionId || !this.debugConfig.enabled) return;
+
+    const event: DebugEvent = {
+      sessionId: this.currentSessionId,
+      moduleId: this.info.id,
+      operationId,
+      timestamp: Date.now(),
+      type: 'start',
+      position: this.pipelinePosition || 'middle',
+      data: {
+        input,
+        method,
+        pipelinePosition: this.pipelinePosition,
+        moduleInfo: {
+          id: this.info.id,
+          name: this.info.name,
+          version: this.info.version
+        }
       }
-    }
+    };
+
+    this.eventBus.publish(event);
+
+    // Log locally for backward compatibility
+    this.debug('debug', `I/O tracking started: ${operationId}`, {
+      sessionId: this.currentSessionId,
+      input: this.debugConfig.trackDataFlow ? input : '[INPUT_DATA]',
+      method
+    }, 'startIOTracking');
   }
 
   /**
-   * End tracking an I/O operation
+   * Record an I/O operation end
    * @param operationId - Unique identifier for the operation
    * @param output - Output data
    * @param success - Whether the operation was successful
    * @param error - Error message if operation failed
    */
   public endIOTracking(operationId: string, output: any, success: boolean = true, error?: string): void {
-    if (this.useTwoPhaseDebug && this.twoPhaseDebugSystem) {
-      const ioConfig = this.twoPhaseDebugSystem.getIOTrackingConfig();
-      if (ioConfig.enabled) {
-        this.twoPhaseDebugSystem.endOperation(this.info.id, operationId, output, success, error);
+    if (!this.currentSessionId || !this.debugConfig.enabled) return;
+
+    const event: DebugEvent = {
+      sessionId: this.currentSessionId,
+      moduleId: this.info.id,
+      operationId,
+      timestamp: Date.now(),
+      type: success ? 'end' : 'error',
+      position: this.pipelinePosition || 'middle',
+      data: {
+        output,
+        success,
+        error,
+        pipelinePosition: this.pipelinePosition,
+        moduleInfo: {
+          id: this.info.id,
+          name: this.info.name,
+          version: this.info.version
+        }
       }
-    }
+    };
+
+    this.eventBus.publish(event);
+
+    // Log locally for backward compatibility
+    this.debug('debug', `I/O tracking ended: ${operationId}`, {
+      sessionId: this.currentSessionId,
+      output: this.debugConfig.trackDataFlow ? output : '[OUTPUT_DATA]',
+      success,
+      error
+    }, 'endIOTracking');
   }
 }

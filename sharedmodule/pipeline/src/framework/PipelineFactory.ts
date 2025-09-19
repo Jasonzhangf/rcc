@@ -114,25 +114,19 @@ export class PipelineFactory {
       errors.push('Virtual model name is required');
     }
 
-    if (!config.virtualModel.provider) {
-      errors.push('Virtual model provider is required');
-    }
-
     // Validate targets
     if (!config.virtualModel.targets || config.virtualModel.targets.length === 0) {
       errors.push('Virtual model must have at least one target');
     }
 
-    // Validate providers
-    if (config.providers.size === 0) {
-      errors.push('No providers available for pipeline creation');
-    }
-
-    // Check if all target providers exist
+    // Validate target configuration
     if (config.virtualModel.targets) {
       for (const target of config.virtualModel.targets) {
-        if (!config.providers.has(target.providerId)) {
-          errors.push(`Provider '${target.providerId}' not found for target '${target.modelId}'`);
+        if (!target.providerId) {
+          errors.push(`Target '${target.modelId}' must have a providerId`);
+        }
+        if (!target.modelId) {
+          errors.push(`Target must have a modelId`);
         }
       }
     }

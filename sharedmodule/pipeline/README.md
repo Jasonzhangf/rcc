@@ -169,6 +169,11 @@ for await (const chunk of processStreamRequest(streamRequest)) {
   - 导出OpenAI接口和具体Provider实现：`QwenProvider`, `IFlowProvider`
   - 提供版本信息和模块名称
 
+- **`src/index-build.ts`** - 构建专用的入口文件
+  - 用于构建过程的特殊入口点
+  - 提供构建时需要的特定导出
+  - 支持不同的构建配置和环境
+
 #### 核心模块层 (`src/modules/`)
 - **`PipelineBaseModule.ts`** - 流水线基础模块，所有Pipeline组件的基类
   - 继承自`rcc-basemodule`的`BaseModule`，提供统一的模块管理能力
@@ -178,6 +183,31 @@ for await (const chunk of processStreamRequest(streamRequest)) {
   - 提供流水线阶段记录：`recordPipelineStage()`
   - 集成错误处理中心：`handlePipelineError()`
   - 支持动态配置更新和指标收集
+
+- **`PipelineBaseModule.d.ts`** - PipelineBaseModule的类型定义文件
+  - 提供完整的TypeScript类型声明
+  - 包含所有公共接口和方法的类型定义
+  - 支持IDE智能提示和类型检查
+
+#### 核心处理层 (`src/core/`)
+- **`PipelineProcessor.ts`** - 流水线处理器
+  - 实现流水线的核心处理逻辑
+  - 提供请求处理和响应管理
+  - 集成各个组件的协调工作
+  - 处理流水线生命周期的各个阶段
+
+- **`PipelineExecutionContext.ts`** - 流水线执行上下文
+  - 管理流水线执行的上下文信息
+  - 提供请求状态和执行环境的管理
+  - 支持上下文数据的存储和检索
+  - 实现执行环境的隔离和安全控制
+
+- **`DebuggablePipelineModule.ts`** - 可调试的流水线模块
+  - 继承自PipelineBaseModule，增强调试能力
+  - 提供详细的调试信息和状态输出
+  - 支持断点设置和逐步执行
+  - 集成开发环境的调试接口
+  - 包含完整的执行跟踪和错误处理功能
 
 #### 框架层 (`src/framework/`)
 
@@ -240,15 +270,15 @@ for await (const chunk of processStreamRequest(streamRequest)) {
   - 提供类型安全的接口定义
   - 支持流式和非流式响应格式
 
-##### 调试和日志组件
-- **`PipelineTracker.ts`** - 流水线跟踪器，集成了rcc-basemodule的两阶段调试系统
-  - 实现请求上下文管理和I/O跟踪
-  - 提供流水线阶段管理和状态跟踪
-  - 集成PipelineIOEntry记录完整的请求生命周期
-  - 支持调试配置和性能指标收集
+##### 工具组件
+- **`ModuleScanner.ts`** - 模块扫描器
+  - 自动发现和扫描pipeline模块
+  - 支持动态模块加载和注册
+  - 提供模块依赖分析和验证
+  - 实现模块生命周期管理
+
 
 #### Provider实现层 (`src/providers/`)
-
 - **`qwen.ts`** - Qwen Provider实现
   - 继承自`BaseProvider`，实现Qwen API的完整集成
   - 支持OAuth 2.0 Device Flow认证流程
@@ -272,7 +302,6 @@ for await (const chunk of processStreamRequest(streamRequest)) {
   - 支持多种认证模式的无缝切换
 
 #### 接口定义层 (`src/interfaces/`)
-
 - **`IRequestContext.ts`** - 请求上下文接口，集成rcc-basemodule的PipelineIOEntry
   - 定义请求上下文的标准接口
   - 提供请求生命周期管理方法
@@ -296,18 +325,37 @@ for await (const chunk of processStreamRequest(streamRequest)) {
   - 支持请求和响应格式转换
 
 #### 类型定义层 (`src/types/`)
-
 - **`virtual-model.ts`** - 虚拟模型类型定义
   - 定义虚拟模型配置和相关类型
   - 包括目标配置、能力定义等
   - 支持虚拟模型的完整类型系统
 
-#### 核心处理层 (`src/core/`)
+#### 测试文件 (`src/test/`)
+- **`integration-demo.ts`** - 集成演示文件
+  - 提供完整的集成使用示例
+  - 展示各个组件的协同工作
+  - 包含实际场景的测试用例
 
-- **`PipelineProcessor.ts`** - 流水线处理器
-  - 实现流水线的核心处理逻辑
-  - 提供请求处理和响应管理
-  - 集成各个组件的协调工作
+- **`debug-integration.test.ts`** - 调试集成测试
+  - 测试调试系统的集成功能
+  - 验证调试接口的正确性
+  - 确保调试功能的稳定性
+
+- **`debuggable-pipeline.test.ts`** - 可调试流水线测试
+  - 测试可调试流水线的功能
+  - 验证调试模块的正确性
+  - 确保调试功能的完整性
+
+#### 工具文件 (`src/`)
+- **`new-feature.ts`** - 新功能开发文件
+  - 用于新功能的开发和测试
+  - 提供功能原型和验证
+  - 支持渐进式功能开发
+
+- **`test-sharedmodule-hook.ts`** - 共享模块测试钩子
+  - 提供共享模块的测试支持
+  - 实现测试环境的初始化和清理
+  - 支持跨模块的集成测试
 
 ### 分层架构设计
 
@@ -1338,3 +1386,8 @@ npm run test:integration
 ---
 
 **使用 ❤️ 构建 by RCC开发团队**
+
+## 最后模型读取时间: 2024-09-18 11:20:00
+- 模型已读取该模块的README文件
+- 功能描述已确认完整
+- 文件创建权限已验证

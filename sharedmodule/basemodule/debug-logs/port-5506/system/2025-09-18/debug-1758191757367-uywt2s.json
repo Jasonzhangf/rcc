@@ -1,0 +1,15 @@
+{
+  "type": "debug",
+  "requestId": "system",
+  "provider": "system",
+  "operation": "debug",
+  "timestamp": 1758191757367,
+  "message": "Request started: rcc-port-test.port-mode-operation",
+  "data": {
+    "requestId": "req_1758191757367_zztfwk63e",
+    "metadata": {
+      "testType": "port-mode",
+      "targetDir": "port-5506"
+    }
+  }
+}

@@ -18,8 +18,7 @@ interface ConfigurationSystem {
   getPipelineTable(): any;
   destroy(): Promise<void>;
 }
-// @ts-ignore - Ignore TypeScript checking for BaseModule since npm package lacks types
-import { BaseModule, IOTrackingConfig } from 'rcc-basemodule';
+import { BaseModule, IOTrackingConfig, ModuleInfo } from 'rcc-basemodule';
 // @ts-ignore - Ignore TypeScript checking for ServerModule since npm package may have import issues
 import { ServerModule } from 'rcc-server';
 // SimpleDebugLogManager interface for enhanced request logging
@@ -49,7 +48,7 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
 
   constructor() {
     // Initialize BaseModule with proper module info
-    super({
+    const moduleInfo: ModuleInfo = {
       id: 'bootstrap-service',
       name: 'Bootstrap Service',
       version: '1.0.0',
@@ -57,14 +56,16 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
       type: 'system',
       capabilities: ['service-coordination', 'system-initialization'],
       dependencies: ['rcc-basemodule', 'rcc-config-parser'],
-      config: {
-        autoStart: true,
-        serviceTimeout: 30000
-      },
       metadata: {
+        config: {
+          autoStart: true,
+          serviceTimeout: 30000
+        },
         author: 'RCC Development Team'
       }
-    });
+    };
+
+    super(moduleInfo);
 
     // Initialize the service
     // this.logInfo('BootstrapService constructor initialized');
@@ -78,17 +79,12 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
   enableTwoPhaseDebug(baseDirectory: string = '~/.rcc/debug', ioTracking?: IOTrackingConfig): void {
     try {
       // Use BaseModule's two-phase debug system instead of custom debugSystem
-      super.enableTwoPhaseDebug(true, baseDirectory, ioTracking);
+      this.enableTwoPhaseDebugMode(true, baseDirectory, ioTracking);
 
       // Configure debug logging with enhanced pipeline recording
       if (this.pipelineScheduler) {
-        const twoPhaseDebugSystem = this.getTwoPhaseDebugSystem();
-        if (twoPhaseDebugSystem) {
-          // Enable pipeline IO recording for scheduler operations
-          twoPhaseDebugSystem.setPipelineIOEnabled(true);
-          twoPhaseDebugSystem.setAutoRecordPipeline(true);
-          twoPhaseDebugSystem.setRecordAllOperations(true);
-        }
+        // Note: getTwoPhaseDebugSystem method doesn't exist in BaseModule
+        // This functionality would need to be added to BaseModule or removed
       }
 
       this.logInfo('Two-phase debug system enabled with BaseModule integration', {
@@ -114,11 +110,10 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
   switchDebugToPortMode(port: number): void {
     try {
       // Use BaseModule's port mode switching
-      super.switchDebugToPortMode(port);
+      this.switchToPortMode(port);
 
       this.logInfo('Debug system switched to port mode', {
         port,
-        debugDirectory: this.getDebugConfig(),
         method: 'switchDebugToPortMode'
       }, 'switchDebugToPortMode');
     } catch (error) {
@@ -188,7 +183,7 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
       this.debugSystem = config.debugSystem;
     } else if (config.enableTwoPhaseDebug) {
       // Enable BaseModule's two-phase debug system with enhanced IO tracking
-      this.enableTwoPhaseDebug(config.debugBaseDirectory || '~/.rcc/debug', {
+      this.enableTwoPhaseDebugMode(true, config.debugBaseDirectory || '~/.rcc/debug', {
         enabled: true,
         autoRecord: true,
         saveIndividualFiles: true,
@@ -292,7 +287,7 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
     }
 
     // 记录模块初始化
-    this.moduleLogger?.logModuleInitialization('BootstrapService', {
+    this.logInfo('BootstrapService initialized', {
       servicesCount: this.config.services.length,
       configurationPath: this.config.configurationPath
     });
@@ -475,7 +470,7 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
 
       // Load configuration and generate pipeline table
       try {
-        startIOTracking('bootstrap-load-config', { configPath: this.config?.configurationPath });
+        this.startIOTracking('bootstrap-load-config', { configPath: this.config?.configurationPath });
         console.log('Loading configuration from file');
         // Use the configuration path from the passed config if available, otherwise use default path
         const configPath = this.config?.configurationPath || '/Users/fanzhang/.rcc/rcc-config.json';
@@ -485,7 +480,7 @@ export class BootstrapService extends BaseModule implements IBootstrapService {
         this.endIOTracking('bootstrap-load-config', { providers: Object.keys(currentConfig.providers || {}).length, virtualModels: Object.keys(currentConfig.virtualModels || {}).length });
         console.log(`Loaded configuration with ${Object.keys(currentConfig.providers || {}).length} providers and ${Object.keys(currentConfig.virtualModels || {}).length} virtual models`);
 
-        startIOTracking('bootstrap-generate-pipeline');
+        this.startIOTracking('bootstrap-generate-pipeline');
         console.log('Generating pipeline table from configuration');
         await this.configurationSystem.generatePipelineTable(currentConfig);
         this.endIOTracking('bootstrap-generate-pipeline', { success: true });

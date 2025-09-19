@@ -1,0 +1,289 @@
+{
+  "sessionId": "system-start-1758286233198",
+  "pipelineId": "unknown",
+  "startTime": 1758286233198,
+  "endTime": 1758286290074,
+  "status": "completed",
+  "operations": [
+    {
+      "operationId": "system-initialization",
+      "moduleId": "rcc-system",
+      "position": "start",
+      "startTime": 1758286233198,
+      "status": "running",
+      "input": {
+        "phase": "debug-setup",
+        "debugPath": "/Users/fanzhang/.rcc/debug-logs"
+      }
+    },
+    {
+      "operationId": "server-initialization",
+      "moduleId": "server-module",
+      "position": "middle",
+      "startTime": 1758286233316,
+      "status": "running",
+      "input": {
+        "config": {
+          "port": 5508,
+          "host": "0.0.0.0",
+          "cors": {
+            "origin": "*",
+            "credentials": true
+          },
+          "compression": true,
+          "helmet": true,
+          "rateLimit": {
+            "windowMs": 900000,
+            "max": 1000
+          },
+          "timeout": 60000,
+          "bodyLimit": "50mb",
+          "enableVirtualModels": true,
+          "enablePipeline": true,
+          "debug": {
+            "enabled": true,
+            "level": "debug"
+          },
+          "monitoring": {
+            "enabled": true,
+            "detailedMetrics": true,
+            "requestTracing": true,
+            "performanceMonitoring": true
+          },
+          "parsedConfig": {
+            "providers": {
+              "qwen": {
+                "id": "qwen",
+                "name": "qwen",
+                "type": "openai",
+                "endpoint": "${QWEN_ENDPOINT:-https://portal.qwen.ai/v1}",
+                "models": {
+                  "qwen3-coder-plus": {
+                    "id": "qwen3-coder-plus",
+                    "name": "qwen3-coder-plus"
+                  }
+                },
+                "auth": {
+                  "type": "api-key",
+                  "keys": [
+                    "${QWEN_API_KEY_1:-qwen-auth-1}",
+                    "${QWEN_API_KEY_2:-qwen-auth-2}"
+                  ]
+                }
+              },
+              "iflow": {
+                "id": "iflow",
+                "name": "iflow",
+                "type": "openai",
+                "endpoint": "${IFLOW_ENDPOINT:-https://apis.iflow.cn/v1}",
+                "models": {
+                  "deepseek-r1": {
+                    "id": "deepseek-r1",
+                    "name": "deepseek-r1"
+                  },
+                  "kimi-k2": {
+                    "id": "kimi-k2",
+                    "name": "kimi-k2"
+                  },
+                  "qwen3-coder": {
+                    "id": "qwen3-coder",
+                    "name": "qwen3-coder"
+                  },
+                  "glm-4.5": {
+                    "id": "glm-4.5",
+                    "name": "glm-4.5"
+                  }
+                },
+                "auth": {
+                  "type": "api-key",
+                  "keys": [
+                    "${IFLOW_API_KEY_1:-sk-2a2eaa2d6653a09fcdceed545bb77f02}",
+                    "${IFLOW_API_KEY_2:-sk-1a3d168c80888a90c131fc6538515975}",
+                    "${IFLOW_API_KEY_3:-sk-faec4c4af5c9e791d012c238662ee708}"
+                  ]
+                }
+              }
+            },
+            "virtualModels": {
+              "default": {
+                "id": "default",
+                "targets": [
+                  {
+                    "providerId": "iflow",
+                    "modelId": "glm-4.5",
+                    "keyIndex": 0
+                  },
+                  {
+                    "providerId": "iflow",
+                    "modelId": "deepseek-r1",
+                    "keyIndex": 1
+                  },
+                  {
+                    "providerId": "qwen",
+                    "modelId": "qwen3-coder-plus",
+                    "keyIndex": 0
+                  }
+                ],
+                "enabled": true,
+                "priority": 1
+              },
+              "longcontext": {
+                "id": "longcontext",
+                "targets": [
+                  {
+                    "providerId": "qwen",
+                    "modelId": "qwen3-coder-plus",
+                    "keyIndex": 0
+                  }
+                ],
+                "enabled": true,
+                "priority": 1
+              },
+              "thinking": {
+                "id": "thinking",
+                "targets": [
+                  {
+                    "providerId": "iflow",
+                    "modelId": "qwen3-coder",
+                    "keyIndex": 0
+                  },
+                  {
+                    "providerId": "iflow",
+                    "modelId": "deepseek-r1",
+                    "keyIndex": 1
+                  },
+                  {
+                    "providerId": "qwen",
+                    "modelId": "qwen3-coder-plus",
+                    "keyIndex": 0
+                  }
+                ],
+                "enabled": true,
+                "priority": 1
+              },
+              "background": {
+                "id": "background",
+                "targets": [
+                  {
+                    "providerId": "qwen",
+                    "modelId": "qwen3-coder-plus",
+                    "keyIndex": 0
+                  }
+                ],
+                "enabled": true,
+                "priority": 1
+              },
+              "websearch": {
+                "id": "websearch",
+                "targets": [
+                  {
+                    "providerId": "iflow",
+                    "modelId": "glm-4.5",
+                    "keyIndex": 0
+                  }
+                ],
+                "enabled": true,
+                "priority": 1
+              },
+              "vision": {
+                "id": "vision",
+                "targets": [],
+                "enabled": true,
+                "priority": 1
+              },
+              "coding": {
+                "id": "coding",
+                "targets": [
+                  {
+                    "providerId": "qwen",
+                    "modelId": "qwen3-coder-plus",
+                    "keyIndex": 0
+                  }
+                ],
+                "enabled": true,
+                "priority": 1
+              }
+            },
+            "pipeline": {}
+          },
+          "basePath": "/Users/fanzhang/.rcc/debug-logs",
+          "enableTwoPhaseDebug": true
+        },
+        "debugPath": "/Users/fanzhang/.rcc/debug-logs",
+        "port": 5508
+      }
+    },
+    {
+      "operationId": "io-tracking-enabled",
+      "moduleId": "server-module",
+      "position": "middle",
+      "startTime": 1758286233316,
+      "status": "running",
+      "input": {
+        "serverSessionId": "server-5508-1758286233316",
+        "ioDirectory": "/Users/fanzhang/.rcc/debug-logs",
+        "sessionFileName": "server-session.jsonl"
+      }
+    },
+    {
+      "operationId": "module-registered",
+      "moduleId": "module-registry",
+      "position": "middle",
+      "startTime": 1758286233316,
+      "status": "running",
+      "input": {
+        "moduleId": "basemodule",
+        "moduleName": "BaseModule System",
+        "moduleSessionId": "basemodule-1758286233316"
+      }
+    },
+    {
+      "operationId": "module-registered",
+      "moduleId": "module-registry",
+      "position": "middle",
+      "startTime": 1758286233317,
+      "status": "running",
+      "input": {
+        "moduleId": "bootstrap",
+        "moduleName": "Bootstrap Service",
+        "moduleSessionId": "bootstrap-1758286233316"
+      }
+    },
+    {
+      "operationId": "module-registered",
+      "moduleId": "module-registry",
+      "position": "middle",
+      "startTime": 1758286233317,
+      "status": "running",
+      "input": {
+        "moduleId": "pipeline",
+        "moduleName": "Pipeline System",
+        "moduleSessionId": "pipeline-1758286233317"
+      }
+    },
+    {
+      "operationId": "module-registered",
+      "moduleId": "module-registry",
+      "position": "middle",
+      "startTime": 1758286233317,
+      "status": "running",
+      "input": {
+        "moduleId": "virtual-model-rules",
+        "moduleName": "Virtual Model Rules",
+        "moduleSessionId": "virtual-model-rules-1758286233317"
+      }
+    },
+    {
+      "operationId": "module-registered",
+      "moduleId": "module-registry",
+      "position": "middle",
+      "startTime": 1758286233317,
+      "status": "running",
+      "input": {
+        "moduleId": "error-handling",
+        "moduleName": "Error Handling Center",
+        "moduleSessionId": "error-handling-1758286233317"
+      }
+    }
+  ]
+}

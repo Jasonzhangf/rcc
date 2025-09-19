@@ -1,623 +1,81 @@
-# RCC Server Module
-
-[![npm version](https://badge.fury.io/js/rcc-server.svg)](https://badge.fury.io/js/rcc-server)
-[![Build Status](https://github.com/rcc/rcc-server/actions/workflows/build.yml/badge.svg)](https://github.com/rcc/rcc-server/actions/workflows/build.yml)
-[![Coverage Status](https://coveralls.io/github/rcc/rcc-server/badge.svg)](https://coveralls.io/github/rcc/rcc-server)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-blue.svg)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-**📚 Detailed Architecture Documentation: [ARCHITECTURE.md](./ARCHITECTURE.md)**
-
-## Overview
-
-The RCC Server Module is a powerful HTTP server component designed for the RCC (Router-Controlled Computing) framework. It provides client input proxy response capabilities with intelligent virtual model routing, middleware support, and comprehensive monitoring features.
-
-## Features
-
-### 🚀 Core Capabilities
-- **HTTP Server**: High-performance Express.js-based HTTP server with security middleware
-- **Virtual Model Routing**: Intelligent request routing based on Claude Code Router rules
-- **Middleware Support**: Extensible middleware system for request processing
-- **WebSocket Support**: Real-time bidirectional communication
-- **Load Balancing**: Multiple strategies (round-robin, weighted, least-connections)
-- **Monitoring**: Comprehensive metrics and health checking
-- **Configuration Management**: Flexible configuration system
-
-### 🔧 Advanced Features
-- **Model Capability Detection**: Automatic capability matching for virtual models
-- **Intelligent Routing**: Rule-based routing with priority and condition evaluation
-- **Health Monitoring**: Real-time health checks and system metrics
-- **Error Handling**: Comprehensive error handling and recovery
-- **Performance Metrics**: Request tracking and performance analytics
-- **Pipeline Integration**: Seamless integration with Pipeline Scheduler for request processing
-- **Configuration Management**: Dynamic configuration integration with virtual model mapping
-- **Fallback Processing**: Automatic fallback to direct processing when pipeline fails
-
-## Installation
-
-```bash
-npm install rcc-server
-```
-
-## Peer Dependencies
-
-This module requires the following RCC modules:
-
-```bash
-npm install rcc-basemodule rcc-pipeline rcc-errorhandling rcc-configuration rcc-virtual-model-rules rcc-underconstruction
-```
-
-## Quick Start
-
-### Basic Server Setup
-
-```typescript
-import { ServerModule } from 'rcc-server';
-
-// Create server instance
-const server = new ServerModule();
-
-// Initialize with configuration
-await server.initialize({
-  port: 3000,
-  host: 'localhost',
-  cors: {
-    origin: ['http://localhost:3000'],
-    credentials: true
-  },
-  compression: true,
-  helmet: true,
-  rateLimit: {
-    windowMs: 60000,
-    max: 100
-  },
-  timeout: 30000,
-  bodyLimit: '10mb'
-});
-
-// Start the server
-await server.start();
-
-console.log('Server is running on http://localhost:3000');
-```
-
-### Virtual Model Registration
-
-```typescript
-import { VirtualModelConfig } from 'rcc-server';
-
-const modelConfig: VirtualModelConfig = {
-  id: 'qwen-turbo',
-  name: 'Qwen Turbo',
-  provider: 'qwen',
-  endpoint: 'https://chat.qwen.ai/api/v1/chat/completions',
-  model: 'qwen-turbo',
-  capabilities: ['chat', 'streaming', 'tools'],
-  maxTokens: 4000,
-  temperature: 0.7,
-  topP: 1.0,
-  priority: 8,
-  enabled: true,
-  routingRules: [
-    {
-      id: 'chat-rule',
-      name: 'Chat requests',
-      condition: 'path:/api/chat',
-      weight: 1.0,
-      enabled: true,
-      priority: 5,
-      modelId: 'qwen-turbo'
-    }
-  ]
-};
-
-await server.registerVirtualModel(modelConfig);
-```
-
-### Custom Route Registration
-
-```typescript
-import { RouteConfig } from 'rcc-server';
-
-const routeConfig: RouteConfig = {
-  id: 'chat-endpoint',
-  path: '/api/chat',
-  method: 'POST',
-  handler: 'chatHandler',
-  middleware: ['auth', 'rateLimit'],
-  virtualModel: 'qwen-turbo',
-  authRequired: true
-};
-
-await server.registerRoute(routeConfig);
-```
-
-## Pipeline Integration
-
-The RCC Server Module provides seamless integration with the Pipeline Scheduler for advanced request processing capabilities. This integration enables sophisticated request routing, load balancing, and error handling through a unified pipeline architecture.
-
-### Complete Integration Setup
-
-```typescript
-import { ServerModule } from 'rcc-server';
-import { PipelineScheduler } from 'rcc-pipeline';
-import { PipelineSystemConfig } from 'rcc-pipeline';
-
-// Create server instance
-const server = new ServerModule();
-
-// Configure server
-const serverConfig = {
-  port: 3000,
-  host: 'localhost',
-  // ... other server configuration
-};
-
-server.configure(serverConfig);
-await server.initialize();
-await server.start();
-
-// Create pipeline scheduler configuration
-const pipelineConfig: PipelineSystemConfig = {
-  pipelines: [
-    {
-      id: 'qwen-turbo-pipeline',
-      name: 'Qwen Turbo Pipeline',
-      type: 'ai-model',
-      enabled: true,
-      priority: 1,
-      weight: 3,
-      maxConcurrentRequests: 20,
-      timeout: 45000,
-      config: {
-        model: 'qwen-turbo',
-        provider: 'qwen',
-        maxTokens: 2000,
-        temperature: 0.7,
-        topP: 0.9
-      }
-    }
-  ],
-  loadBalancer: {
-    strategy: 'weighted',
-    healthCheckInterval: 15000
-  },
-  scheduler: {
-    defaultTimeout: 45000,
-    maxRetries: 5,
-    retryDelay: 2000
-  }
-};
-
-// Create and integrate pipeline scheduler
-const pipelineScheduler = new PipelineScheduler(pipelineConfig);
-await server.setPipelineScheduler(pipelineScheduler);
-
-// Register virtual models
-await server.registerVirtualModel({
-  id: 'qwen-turbo-virtual',
-  name: 'Qwen Turbo Virtual Model',
-  provider: 'qwen',
-  model: 'qwen-turbo',
-  capabilities: ['text-generation', 'chat'],
-  maxTokens: 2000,
-  temperature: 0.7,
-  enabled: true
-});
-```
-
-### Configuration-to-Pipeline Integration
-
-The server automatically integrates with the Configuration module to provide dynamic virtual model mapping and pipeline generation:
-
-```typescript
-// The server automatically initializes ConfigurationToPipelineModule
-// which provides:
-// - Virtual model mapping from configuration
-// - Pipeline table generation
-// - Dynamic pipeline assembly
-// - Configuration validation
-
-// Check integration status
-const status = server.getStatus();
-console.log('Pipeline Integration:', {
-  enabled: status.pipelineIntegration.enabled,
-  schedulerAvailable: status.pipelineIntegration.schedulerAvailable,
-  processingMethod: status.pipelineIntegration.processingMethod,
-  fallbackEnabled: status.pipelineIntegration.fallbackEnabled
-});
-```
-
-### Request Processing Flow
-
-1. **Request Reception**: Server receives HTTP request
-2. **Virtual Model Routing**: Request is routed to appropriate virtual model
-3. **Pipeline Execution**: Request is processed through Pipeline Scheduler
-4. **Fallback Handling**: If pipeline fails, falls back to direct processing
-5. **Response Generation**: Response is formatted and returned to client
-
-```typescript
-// Example request processing
-const request = {
-  id: 'test-request',
-  method: 'POST',
-  path: '/api/chat',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: {
-    messages: [
-      { role: 'user', content: 'Hello!' }
-    ]
-  },
-  timestamp: Date.now(),
-  virtualModel: 'qwen-turbo-virtual'
-};
-
-// Process request (automatically uses pipeline if available)
-const response = await server.handleRequest(request);
-
-// Response includes processing metadata
-console.log('Response:', {
-  status: response.status,
-  processingMethod: response.headers['X-Processing-Method'],
-  virtualModel: response.headers['X-Virtual-Model'],
-  pipelineId: response.headers['X-Pipeline-Id'],
-  executionId: response.headers['X-Execution-Id'],
-  processingTime: response.processingTime
-});
-```
-
-### Error Handling and Fallback
-
-The system provides comprehensive error handling with automatic fallback:
-
-```typescript
-// Pipeline execution errors are automatically handled
-try {
-  const response = await server.handleRequest(request);
-  
-  if (response.headers['X-Processing-Method'] === 'direct') {
-    // Request was processed via fallback
-    console.log('Fallback reason:', response.headers['X-Fallback-Reason']);
-  }
-} catch (error) {
-  // Handle critical errors
-  console.error('Request failed:', error);
-}
-```
-
-### Monitoring and Metrics
-
-Monitor pipeline integration performance:
-
-```typescript
-// Get detailed integration status
-const integrationConfig = server.getPipelineIntegrationConfig();
-console.log('Pipeline Integration Config:', {
-  enabled: integrationConfig.enabled,
-  defaultTimeout: integrationConfig.defaultTimeout,
-  maxRetries: integrationConfig.maxRetries,
-  fallbackToDirect: integrationConfig.fallbackToDirect
-});
-
-// Monitor overall system health
-const health = await server.getHealth();
-console.log('System Health:', {
-  status: health.status,
-  pipelineIntegration: health.checks.pipeline_integration,
-  schedulerHealth: health.checks.pipeline_scheduler
-});
-```
-
-## API Documentation
-
-### ServerModule
-
-The main class that provides all server functionality.
-
-#### Methods
-
-##### `initialize(config: ServerConfig): Promise<void>`
-Initialize the server with configuration.
-
-##### `start(): Promise<void>`
-Start the HTTP server.
-
-##### `stop(): Promise<void>`
-Stop the HTTP server.
-
-##### `handleRequest(request: ClientRequest): Promise<ClientResponse>`
-Handle a client request and return a response.
-
-##### `registerVirtualModel(model: VirtualModelConfig): Promise<void>`
-Register a virtual model for request routing.
-
-##### `registerRoute(route: RouteConfig): Promise<void>`
-Register a custom route.
-
-##### `getStatus(): ServerStatus`
-Get current server status.
-
-##### `getHealth(): Promise<HealthStatus>`
-Get detailed health information.
-
-### VirtualModelConfig
-
-Configuration for virtual models:
-
-```typescript
-interface VirtualModelConfig {
-  id: string;                    // Unique identifier
-  name: string;                  // Human-readable name
-  provider: string;              // Provider name (e.g., 'qwen', 'openai')
-  endpoint: string;              // API endpoint URL
-  apiKey?: string;               // Optional API key
-  model: string;                 // Model name
-  capabilities: string[];        // Supported capabilities
-  maxTokens: number;             // Maximum token limit
-  temperature: number;           // Temperature parameter
-  topP: number;                  // Top-p parameter
-  priority: number;              // Load balancing priority (1-10)
-  enabled: boolean;              // Whether model is enabled
-  routingRules: RoutingRule[];   // Routing rules
-}
-```
-
-### ClientRequest
-
-Request object format:
-
-```typescript
-interface ClientRequest {
-  id: string;                    // Unique request ID
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  path: string;                  // Request path
-  headers: Record<string, string>; // Request headers
-  body?: any;                    // Request body
-  query?: Record<string, string>; // Query parameters
-  timestamp: number;             // Request timestamp
-  clientId?: string;             // Optional client ID
-  virtualModel?: string;         // Optional virtual model override
-}
-```
-
-## Configuration
-
-### ServerConfig
-
-Complete server configuration:
-
-```typescript
-interface ServerConfig {
-  port: number;                  // Server port
-  host: string;                  // Server host
-  cors: {                        // CORS configuration
-    origin: string | string[];
-    credentials: boolean;
-  };
-  compression: boolean;           // Enable compression
-  helmet: boolean;               // Enable security headers
-  rateLimit: {                   // Rate limiting
-    windowMs: number;
-    max: number;
-  };
-  timeout: number;               // Request timeout (ms)
-  bodyLimit: string;             // Request body size limit
-}
-```
-
-## Routing Rules and Virtual Model Mapping
-
-The server uses routing rules to determine which virtual model should handle each request. When no specific model is requested, the system evaluates all enabled models against their routing rules and selects the first matching candidate.
-
-### Virtual Model Registration
-```typescript
-const model = {
-  id: 'chat-model',
-  name: 'Chat Model',
-  provider: 'openai',
-  endpoint: 'https://api.openai.com/v1/chat',
-  capabilities: ['chat', 'streaming'],
-  // ... other config
-};
-
-await server.registerVirtualModel(model);
-```
-
-### Routing Rules
-Virtual models can define routing rules to filter which requests they should handle:
-
-```typescript
-const model = {
-  // ... other config
-  routingRules: [
-    {
-      id: 'chat-only',
-      name: 'Chat Requests Only',
-      condition: 'path:/api/chat',
-      weight: 1.0,
-      enabled: true,
-      priority: 1
-    }
-  ]
-};
-```
-
-## Monitoring and Metrics
-
-### Health Check
-
-```typescript
-const health = await server.getHealth();
-console.log('Server health:', health.status);
-console.log('Health checks:', health.checks);
-```
-
-### Request Metrics
-
-```typescript
-const metrics = server.getMetrics();
-console.log('Total requests:', metrics.length);
-console.log('Average response time:', 
-  metrics.reduce((sum, m) => sum + m.processingTime, 0) / metrics.length);
-```
-
-### Server Status
-
-```typescript
-const status = server.getStatus();
-console.log('Server status:', status.status);
-console.log('Active connections:', status.connections);
-console.log('Virtual models:', status.virtualModels);
-```
-
-## Middleware System
-
-### Registering Middleware
-
-```typescript
-import { MiddlewareConfig } from 'rcc-server';
-
-const middleware: MiddlewareConfig = {
-  name: 'auth',
-  type: 'pre',
-  priority: 10,
-  enabled: true,
-  config: {
-    secretKey: 'your-secret-key'
-  }
-};
-
-await server.registerMiddleware(middleware);
-```
-
-### Built-in Middleware
-
-The server includes several built-in middleware:
-
-- **Security**: Helmet.js for security headers
-- **CORS**: Cross-origin resource sharing
-- **Compression**: Response compression
-- **Body Parsing**: Request body parsing
-- **Rate Limiting**: Request rate limiting
-- **Request Logging**: Detailed request logging
-
-## Error Handling
-
-The server provides comprehensive error handling:
-
-```typescript
-try {
-  const response = await server.handleRequest(request);
-  console.log('Request successful:', response);
-} catch (error) {
-  console.error('Request failed:', error);
-  
-  // Error response includes:
-  // - Error details
-  // - Request ID for tracking
-  // - Processing time
-  // - HTTP status code
-}
-```
-
-## Development
-
-### Building
-
-```bash
-# Install dependencies
-npm install
-
-# Build the module
-npm run build
-
-# Run type checking
-npm run typecheck
-
-# Run linting
-npm run lint
-
-# Run tests
-npm test
-```
-
-### Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
-```
-
-### Examples
-
-Check the `examples/` directory for complete usage examples:
-
-- [Basic Server](examples/basic-server.ts) - Basic server setup and configuration
-- [Virtual Model Setup](examples/virtual-model.ts) - Virtual model registration and routing
-- [Custom Routes](examples/custom-routes.ts) - Custom route registration and handling
-- [Middleware](examples/middleware.ts) - Middleware system and custom middleware
-- [Pipeline Integration](examples/pipeline-integration-example.ts) - Pipeline scheduler integration examples
-- [Complete Integration](examples/complete-integration-example.ts) - Complete end-to-end integration example
-
-## Performance
-
-The server module is optimized for performance:
-
-- **Non-blocking I/O**: Built on Node.js and Express.js
-- **Connection Pooling**: Efficient connection management
-- **Memory Management**: Automatic garbage collection and cleanup
-- **Load Balancing**: Intelligent request distribution
-- **Caching**: Response caching where appropriate
-- **Compression**: Automatic response compression
-
-## Security
-
-The server includes several security features:
-
-- **Security Headers**: Helmet.js for secure headers
-- **CORS**: Configurable cross-origin resource sharing
-- **Rate Limiting**: Prevent abuse and DoS attacks
-- **Input Validation**: Request validation and sanitization
-- **Authentication**: Optional authentication middleware
-- **HTTPS**: SSL/TLS support (requires certificate)
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, please open an issue on the [GitHub Issues](https://github.com/rcc/rcc-server/issues) page.
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
-
-## Related Projects
-
-- [RCC Base Module](https://github.com/rcc/rcc-basemodule) - Core framework for modular development
-- [RCC Pipeline](https://github.com/rcc/rcc-pipeline) - Pipeline and workflow management
-- [RCC Configuration](https://github.com/rcc/rcc-configuration) - Configuration management and validation
-- [RCC Virtual Model Rules](https://github.com/rcc/rcc-virtual-model-rules) - Virtual model routing and rule management
-- [RCC Error Handling](https://github.com/rcc/rcc-errorhandling) - Error handling and recovery
-- [RCC Under Construction](https://github.com/rcc/rcc-underconstruction) - Feature development tracking
-
----
-
-**Built with ❤️ by the RCC Development Team**
+# RCC Server 模块（sharedmodule/server）
+
+## 概述
+RCC 服务端核心模块，专注于 HTTP 服务接入和虚拟模型路由。严格遵循"只路由不调度"架构原则，提供高性能的 API 网关功能。
+
+## 架构原则
+- **职责分离**: Server 只负责 HTTP 服务和路由，不处理调度或 Provider 实例化
+- **流水线优先**: 流水线系统必须先于 Server 初始化，确保调度器就绪
+- **无状态路由**: VirtualModelRouter 专注于路由决策，不管理 Provider 生命周期
+
+## 快速开始
+1. 安装依赖：`npm install`
+2. 构建：`npm run build`  
+3. 运行测试：`npm test`
+
+## 文件结构与详细职责
+
+### 核心入口 (src/)
+- **index.ts** - 模块导出入口，统一暴露公共接口和类型
+- **ServerModule.ts** - 服务器主模块，负责整体配置、依赖注入和生命周期管理
+
+### 组件层 (src/components/)
+- **HttpServer.ts** - HTTP 服务器组件，处理端口监听、请求接收、响应返回和连接管理
+- **VirtualModelRouter.ts** - 虚拟模型路由组件，实现纯路由功能，将请求转发到对应虚拟模型
+
+### 核心服务层 (src/core/)
+- **ServerCore.ts** - 服务器核心逻辑，包含配置管理、状态监控、中间件管理和性能指标收集
+- **VirtualModelManager.ts** - 虚拟模型生命周期管理器，负责模型的注册、注销、状态管理和调度器集成
+
+### 业务服务层 (src/services/)
+- **RequestHandlerService.ts** - 请求处理服务，封装完整的请求处理流水线：中间件执行、请求路由、错误处理和指标记录
+
+### 接口定义层 (src/interfaces/)
+- **IServerModule.ts** - 服务器模块接口契约，定义公共 API 和扩展点
+
+### 类型系统层 (src/types/)
+- 请求/响应数据结构、虚拟模型配置、服务器配置、监控指标等类型定义
+
+### 工具函数层 (src/utils/)
+- 配置验证、日志工具、性能监控、错误格式化等通用工具函数
+
+### 架构特性
+- ✅ 调度器集成通过 `setVirtualModelSchedulerManager()` 方法注入
+- ✅ 无 Provider 实例化逻辑，遵循"路由不调度"原则  
+- ✅ 清理所有 mock provider 回退逻辑
+- ✅ 简化的错误处理，专注于路由职责
+
+## 初始化流程
+1. **流水线系统初始化** - 创建 `VirtualModelSchedulerManager`
+2. **服务器实例化** - 配置 HTTP 服务和路由组件
+3. **调度器绑定** - 通过 `setVirtualModelSchedulerManager()` 注入
+4. **服务器启动** - 调用 `initialize()` 开始服务
+
+## 接口与能力
+模块暴露以下核心接口：
+- `IVirtualModelRouter` - 虚拟模型路由接口
+- `IServerModule` - 服务器模块配置接口
+- 支持 OpenAPI 标准请求/响应格式
+
+## 错误处理
+- 调度器不可用返回明确错误: `Scheduler not available for virtual model execution`
+- 遵循标准 HTTP 状态码和错误格式
+- 提供详细的诊断日志和监控指标
+
+## 性能特性
+- 轻量级路由决策，无运行时 Provider 实例化开销
+- 异步请求处理，支持高并发场景
+- 内置健康检查和监控端点
+
+## 测试覆盖
+- 单元测试验证路由逻辑正确性
+- 集成测试确保调度器绑定正常工作
+- 端到端测试模拟真实请求流程
+
+## 部署要求
+- Node.js 16+ 运行环境
+- 必须先初始化流水线系统和调度器
+- 支持容器化部署和水平扩展
+
+## 技术支持
+如需帮助或报告问题，请在项目仓库创建 Issue。

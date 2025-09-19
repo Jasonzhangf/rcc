@@ -38,11 +38,12 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "rcc-basemodule": "^0.1.4",
+    "rcc-basemodule": "^0.2.2",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.0.0",
     "@types/uuid": "^9.0.8",
@@ -60,9 +61,8 @@
     "typescript": "^5.9.2"
   },
   "scripts": {
-    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm",
+    "build": "npm run clean && npm run build:types && npm run build:esm",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-    "build:cjs": "rollup -c rollup.config.cjs.js",
     "build:esm": "rollup -c rollup.config.js",
     "clean": "rimraf dist",
     "dev": "tsc --watch",

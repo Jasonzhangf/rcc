@@ -3,8 +3,45 @@
  * 流水线基础模块 - 具有增强调试功能的流水线组件基础模块
  */
 
-import { BaseModule, DebugConfig, IOTrackingConfig, ModuleInfo } from 'rcc-basemodule';
+import { BaseModule, ModuleInfo } from 'rcc-basemodule';
+import { DebugCenter, PipelinePosition } from 'rcc-debugcenter';
 import { ErrorHandlingCenter } from 'rcc-errorhandling';
+
+/**
+ * IO Tracking Configuration
+ * IO跟踪配置
+ */
+interface IOTrackingConfig {
+  enabled?: boolean;
+  baseDirectory?: string;
+  maxFiles?: number;
+  maxSize?: number;
+  autoRecord?: boolean;
+  saveIndividualFiles?: boolean;
+  saveSessionFiles?: boolean;
+  ioDirectory?: string;
+  includeTimestamp?: boolean;
+  includeDuration?: boolean;
+  maxEntriesPerFile?: number;
+}
+
+/**
+ * Debug Configuration
+ * 调试配置
+ */
+interface DebugConfig {
+  enabled?: boolean;
+  level?: 'debug' | 'trace' | 'info' | 'warn' | 'error';
+  recordStack?: boolean;
+  maxLogEntries?: number;
+  consoleOutput?: boolean;
+  trackDataFlow?: boolean;
+  enableFileLogging?: boolean;
+  maxFileSize?: number;
+  maxLogFiles?: number;
+  baseDirectory?: string;
+  ioTracking?: IOTrackingConfig;
+}
 
 /**
  * Pipeline-specific module configuration
@@ -40,6 +77,7 @@ export interface PipelineModuleConfig {
 export class PipelineBaseModule extends BaseModule {
   protected pipelineConfig: PipelineModuleConfig;
   protected errorHandler: ErrorHandlingCenter;
+  protected debugCenter: DebugCenter | null = null;
 
   constructor(config: PipelineModuleConfig) {
     // Create module info for BaseModule
@@ -101,6 +139,30 @@ export class PipelineBaseModule extends BaseModule {
     }
 
     this.logInfo('Pipeline base module initialized', { config }, 'constructor');
+
+    // Store debug center reference if available
+    this.debugCenter = this.getDebugCenter();
+  }
+
+  /**
+   * Enable two-phase debug system
+   * 启用两阶段调试系统
+   */
+  protected enableTwoPhaseDebug(
+    enabled: boolean,
+    baseDirectory?: string,
+    ioTrackingConfig?: IOTrackingConfig
+  ): void {
+    // Method implementation would go here
+    this.logInfo('Two-phase debug system enabled', { enabled, baseDirectory, ioTrackingConfig }, 'enableTwoPhaseDebug');
+  }
+
+  /**
+   * Get debug center instance
+   * 获取调试中心实例
+   */
+  protected getDebugCenter(): DebugCenter | null {
+    return this.debugCenter;
   }
 
   /**
@@ -153,16 +215,36 @@ export class PipelineBaseModule extends BaseModule {
 
     try {
       // Start I/O tracking if enabled
-      if (this.pipelineConfig.enableIOTracking && this.twoPhaseDebugSystem) {
-        this.twoPhaseDebugSystem.startOperation(this.info.id, operationId, inputData, operationType);
+      if (this.pipelineConfig.enableIOTracking && this.debugCenter) {
+        this.debugCenter.recordOperation(
+          `${this.info.id}-${operationId}`,
+          this.info.id,
+          operationId,
+          inputData,
+          undefined,
+          operationType,
+          true,
+          undefined,
+          'middle'
+        );
       }
 
       // Execute the operation
       const result = await operation();
 
       // End I/O tracking if enabled
-      if (this.pipelineConfig.enableIOTracking && this.twoPhaseDebugSystem) {
-        this.twoPhaseDebugSystem.endOperation(this.info.id, operationId, result, true, undefined);
+      if (this.pipelineConfig.enableIOTracking && this.debugCenter) {
+        this.debugCenter.recordOperation(
+          `${this.info.id}-${operationId}`,
+          this.info.id,
+          operationId,
+          undefined,
+          result,
+          operationType,
+          true,
+          undefined,
+          'middle'
+        );
       }
 
       this.logInfo('Pipeline operation completed successfully', {
@@ -177,8 +259,18 @@ export class PipelineBaseModule extends BaseModule {
 
     } catch (error) {
       // End I/O tracking with error if enabled
-      if (this.pipelineConfig.enableIOTracking && this.twoPhaseDebugSystem) {
-        this.twoPhaseDebugSystem.endOperation(this.info.id, operationId, undefined, false, error instanceof Error ? error.message : String(error));
+      if (this.pipelineConfig.enableIOTracking && this.debugCenter) {
+        this.debugCenter.recordOperation(
+          `${this.info.id}-${operationId}`,
+          this.info.id,
+          operationId,
+          undefined,
+          undefined,
+          operationType,
+          false,
+          error instanceof Error ? error.message : String(error),
+          'middle'
+        );
       }
 
       this.debug('error', 'Pipeline operation failed', {
@@ -254,14 +346,16 @@ export class PipelineBaseModule extends BaseModule {
    * 获取流水线指标
    */
   public getPipelineMetrics() {
-    const twoPhaseDebugSystem = this.getTwoPhaseDebugSystem();
-    if (twoPhaseDebugSystem) {
+    if (this.debugCenter) {
       return {
         debugEnabled: true,
         ioTrackingEnabled: this.pipelineConfig.enableIOTracking || false,
         debugConfig: this.getDebugConfig(),
-        ioEntries: twoPhaseDebugSystem.getIOEntries ? twoPhaseDebugSystem.getIOEntries(this.info.id, 100) : [],
-        ioFiles: twoPhaseDebugSystem.getIOFiles ? twoPhaseDebugSystem.getIOFiles() : []
+        pipelineEntries: this.debugCenter.getPipelineEntries ? this.debugCenter.getPipelineEntries({
+          pipelineId: this.info.id,
+          limit: 100
+        }) : [],
+        stats: this.debugCenter.getStats ? this.debugCenter.getStats() : null
       };
     }
 

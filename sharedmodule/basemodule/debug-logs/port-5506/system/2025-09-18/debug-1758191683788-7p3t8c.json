@@ -1,0 +1,29 @@
+{
+  "type": "success",
+  "requestId": "req_1758191683787_9yosuk30c",
+  "provider": "correct-path-test",
+  "operation": "pipeline-operation",
+  "timestamp": 1758191683788,
+  "request": {
+    "model": "correct-model",
+    "messages": [
+      {
+        "role": "user",
+        "content": "correct path test"
+      }
+    ],
+    "apiKey": "[REDACTED]"
+  },
+  "response": {
+    "id": "correct-path-response-56789",
+    "result": "success",
+    "choices": [
+      {
+        "message": {
+          "content": "correct path response"
+        }
+      }
+    ]
+  },
+  "duration": 1
+}

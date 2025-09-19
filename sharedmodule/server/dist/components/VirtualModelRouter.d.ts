@@ -24,9 +24,8 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
     private routingRules;
     private modelMetrics;
     private schedulerManager;
-    private pipelineTracker;
-    private providers;
     private isSchedulerEnabled;
+    private providers;
     constructor();
     /**
      * Route a request to the appropriate virtual model
@@ -194,6 +193,10 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
      * Get all virtual model mappings
      */
     getVirtualModelMappings(): any[];
+    /**
+     * Set the scheduler manager
+     */
+    setSchedulerManager(schedulerManager: any): void;
 }
 export {};
 //# sourceMappingURL=VirtualModelRouter.d.ts.map

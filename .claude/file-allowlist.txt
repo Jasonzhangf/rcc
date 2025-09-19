@@ -1,37 +1,41 @@
-# File Creation Allowlist
-# Each line represents a file path pattern that is allowed to be created
-# Patterns can be:
-#   - Exact file paths: src/index.ts
-#   - Directory patterns: src/modules/
-#   - File extensions: *.ts, *.js, *.json
-#   - Temp directory: tmp/
+# 文件创建允许列表 - 严格控制根目录文件创建
+#
+# ＝＝＝ROOT DIRECTORY - 零新目录/文件原则＝＝＝
+# ⚠️ 根目录❌绝对禁止❌创建任何新文件或文件夹
+#
+# 允许的 ONLY 情况：
+# 1. 严格限定的具体文件列表（见下方）
+# 2. 已存在目录中的新文件（sharedmodule/*/, src/, etc.）
+# 3. .claude/ 目录内的配置（系统配置，not用户文件）
+#
+# ❌ 明确禁止：
+# - 任何新目录创建（test/, temp/, reports/ 等）
+# - 任何根级别的*.md文件（包括README、报告、文档）
+# - 任何 test-*, *test*, *debug*, *report* 根文件
+# - 任何ρχ文件格式执行文件（*.exe, *.sh, *.bat, etc.）
 
-# Core project files
-src/
-dist/
-tests/
-docs/
-tools/
-config/
-.claude/
-.github/
-docker/
-examples/
-coverage/
-logs/
+# ===== 现有 PROJECT 目录结构下的文件授权 =====
+# 只在这些已有目录中允许新文件：(禁止新目录创建)
+sharedmodule/*/    # 共享模块完整结构
+src/               # 源代码目录
+tools/             # 工具目录
+dist/              # 构建输出
+docs/              # 文档目录
+.cc-project/       # Claude Coder项目配置
+tmp/               # 临时文件专用目录
+.github/workflows/ # CI/CD流水线
 
-# File types
-*.ts
-*.js
-*.json
-*.md
-*.yml
-*.yaml
-*.env
-*.config.js
-*.test.ts
-*.spec.ts
-
-# Temporary files (only in tmp directory)
-tmp/
+# ===== 根目录允许的文件列表（具体文件名）=====
+# ＝＝＝不允许新增文件名，只能修改这些已有文件＝＝＝
+package.json
+package-lock.json
+tsconfig.json
+rome.json
+.eslintrc.js
+.prettierrc
+.gitignore
+CHANGELOG.md
+LICENSE
+docker-compose.yml
+Dockerfile
 

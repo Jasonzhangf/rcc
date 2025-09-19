@@ -38,11 +38,7 @@
     }
   },
   "include": [
-    "src/index.ts",
-    "src/BaseModule.ts",
-    "src/MessageCenter.ts",
-    "src/DebugModule.ts",
-    "src/interfaces/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

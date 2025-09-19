@@ -4,9 +4,11 @@
  */
 
 import { PipelineBaseModule } from '../modules/PipelineBaseModule';
+import { DebugCenter, PipelinePosition, PipelineOperationType } from 'rcc-debugcenter';
 import { PipelineRequestContext, IRequestContext } from '../interfaces/IRequestContext';
 import { IPipelineStage, IPipelineStageFactory, IPipelineStageManager } from '../interfaces/IPipelineStage';
 import { PipelineIOEntry } from '../interfaces/IRequestContext';
+import { ErrorCategory, ErrorSeverity } from '../types/ErrorTypes';
 
 /**
  * Request Context Implementation
@@ -376,6 +378,41 @@ class PipelineStageManagerImpl implements IPipelineStageManager {
  * 流水线跟踪器主类
  */
 export class PipelineTracker extends PipelineBaseModule {
+  protected debugCenter: DebugCenter | null = null;
+
+  /**
+   * Set debug center for integration
+   * 设置调试中心用于集成
+   */
+  public setDebugCenter(debugCenter: DebugCenter): void {
+    this.debugCenter = debugCenter;
+  }
+
+  /**
+   * Get debug center instance
+   * 获取调试中心实例
+   */
+  public getDebugCenter(): DebugCenter | null {
+    return this.debugCenter;
+  }
+
+  /**
+   * Event listener for tracking events
+   * 跟踪事件的事件监听器
+   */
+  public subscribe(event: string, callback: (data: any) => void): void {
+    // Simple event listener implementation
+    // In a real implementation, this would use an event emitter
+    this.logInfo(`Event listener registered for: ${event}`, { event }, 'subscribe');
+  }
+
+  /**
+   * Legacy on method for backward compatibility
+   * @deprecated Use subscribe instead
+   */
+  public on(event: string, callback: (data: any) => void): void {
+    this.subscribe(event, callback);
+  }
   private activeRequests: Map<string, IRequestContext> = new Map();
   private stageFactory: IPipelineStageFactory;
   private stageManager: IPipelineStageManager;
@@ -423,50 +460,14 @@ export class PipelineTracker extends PipelineBaseModule {
     this.activeRequests.set(context.getRequestId(), context);
 
     // Start I/O tracking if enabled
-    if (this.twoPhaseDebugSystem) {
-      const ioEntry: PipelineIOEntry = {
-        timestamp: Date.now(),
-        pipelineId: contextData.pipelineId,
-        moduleId: this.info.id,
-        operationId: contextData.requestId,
-        operationType: 'pipeline_start',
-        input: { provider, operation, metadata },
-        success: true,
-        method: 'createRequestContext'
-      };
-
-      // Use appropriate method based on operation type
-      if (ioEntry.operationType === 'pipeline_start') {
-        this.twoPhaseDebugSystem.recordPipelineStart(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.input,
-          ioEntry.context
-        );
-      } else if (ioEntry.operationType === 'pipeline_end') {
-        this.twoPhaseDebugSystem.recordPipelineEnd(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.output,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      } else {
-        this.twoPhaseDebugSystem.recordPipelineOperation(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.moduleId,
-          ioEntry.operationId,
-          ioEntry.input,
-          ioEntry.output,
-          ioEntry.method,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      }
-      contextData.ioEntry = ioEntry;
+    if (this.debugCenter) {
+      this.debugCenter.recordPipelineStart(
+        contextData.requestId,
+        contextData.pipelineId,
+        `Pipeline: ${provider} ${operation}`,
+        { provider, operation, metadata },
+        { method: 'createRequestContext' }
+      );
     }
 
     this.logInfo('Request context created', {
@@ -499,49 +500,18 @@ export class PipelineTracker extends PipelineBaseModule {
       this.stageManager.addStage(stage);
 
       // Record stage operation in I/O tracking
-      if (this.twoPhaseDebugSystem) {
-        const ioEntry: PipelineIOEntry = {
-          timestamp: Date.now(),
-          pipelineId: context.getPipelineId(),
-          moduleId: this.info.id,
-          operationId: `${requestId}-${stageName}`,
-          operationType: 'module_operation',
-          input: { stageName, action: 'start' },
-          success: true,
-          method: 'addStage'
-        };
-
-        // Use appropriate method based on operation type
-      if (ioEntry.operationType === 'pipeline_start') {
-        this.twoPhaseDebugSystem.recordPipelineStart(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.input,
-          ioEntry.context
+      if (this.debugCenter) {
+        this.debugCenter.recordOperation(
+          context.getPipelineId(),
+          this.info.id,
+          `${requestId}-${stageName}`,
+          { stageName, action: 'start' },
+          undefined,
+          'addStage',
+          true,
+          undefined,
+          'middle'
         );
-      } else if (ioEntry.operationType === 'pipeline_end') {
-        this.twoPhaseDebugSystem.recordPipelineEnd(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.output,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      } else {
-        this.twoPhaseDebugSystem.recordPipelineOperation(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.moduleId,
-          ioEntry.operationId,
-          ioEntry.input,
-          ioEntry.output,
-          ioEntry.method,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      }
       }
 
       this.logInfo('Pipeline stage added', {
@@ -565,50 +535,18 @@ export class PipelineTracker extends PipelineBaseModule {
         context.updateStage(stageName, stage.toObject());
 
         // Record stage completion in I/O tracking
-        if (this.twoPhaseDebugSystem) {
-          const ioEntry: PipelineIOEntry = {
-            timestamp: Date.now(),
-            pipelineId: context.getPipelineId(),
-            moduleId: this.info.id,
-            operationId: `${requestId}-${stageName}`,
-            operationType: 'module_operation',
-            input: { stageName, action: 'complete' },
-            output: { data },
-            success: true,
-            method: 'completeStage'
-          };
-
-          // Use appropriate method based on operation type
-      if (ioEntry.operationType === 'pipeline_start') {
-        this.twoPhaseDebugSystem.recordPipelineStart(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.input,
-          ioEntry.context
-        );
-      } else if (ioEntry.operationType === 'pipeline_end') {
-        this.twoPhaseDebugSystem.recordPipelineEnd(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.output,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      } else {
-        this.twoPhaseDebugSystem.recordPipelineOperation(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.moduleId,
-          ioEntry.operationId,
-          ioEntry.input,
-          ioEntry.output,
-          ioEntry.method,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      }
+        if (this.debugCenter) {
+          this.debugCenter.recordOperation(
+            context.getPipelineId(),
+            this.info.id,
+            `${requestId}-${stageName}`,
+            { stageName, action: 'complete' },
+            { data },
+            'completeStage',
+            true,
+            undefined,
+            'middle'
+          );
         }
 
         this.logInfo('Pipeline stage completed', {
@@ -633,53 +571,21 @@ export class PipelineTracker extends PipelineBaseModule {
         context.updateStage(stageName, stage.toObject());
 
         // Record stage failure in I/O tracking
-        if (this.twoPhaseDebugSystem) {
-          const ioEntry: PipelineIOEntry = {
-            timestamp: Date.now(),
-            pipelineId: context.getPipelineId(),
-            moduleId: this.info.id,
-            operationId: `${requestId}-${stageName}`,
-            operationType: 'module_operation',
-            input: { stageName, action: 'fail' },
-            success: false,
+        if (this.debugCenter) {
+          this.debugCenter.recordOperation(
+            context.getPipelineId(),
+            this.info.id,
+            `${requestId}-${stageName}`,
+            { stageName, action: 'fail' },
+            undefined,
+            'failStage',
+            false,
             error,
-            method: 'failStage'
-          };
-
-          // Use appropriate method based on operation type
-      if (ioEntry.operationType === 'pipeline_start') {
-        this.twoPhaseDebugSystem.recordPipelineStart(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.input,
-          ioEntry.context
-        );
-      } else if (ioEntry.operationType === 'pipeline_end') {
-        this.twoPhaseDebugSystem.recordPipelineEnd(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.output,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      } else {
-        this.twoPhaseDebugSystem.recordPipelineOperation(
-          ioEntry.pipelineId,
-          ioEntry.pipelineName || ioEntry.pipelineId,
-          ioEntry.moduleId,
-          ioEntry.operationId,
-          ioEntry.input,
-          ioEntry.output,
-          ioEntry.method,
-          ioEntry.success,
-          ioEntry.error,
-          ioEntry.context
-        );
-      }
+            'middle'
+          );
         }
 
-        this.twoPhaseDebugSystem?.error('Pipeline stage failed', {
+        this.logInfo('Pipeline stage failed', {
           requestId,
           stageName,
           error
@@ -698,26 +604,15 @@ export class PipelineTracker extends PipelineBaseModule {
       context.setEndTime(Date.now());
 
       // Record pipeline completion in I/O tracking
-      if (this.twoPhaseDebugSystem && context.toObject().ioEntry) {
-        const completionEntry: PipelineIOEntry = {
-          timestamp: Date.now(),
-          pipelineId: context.getPipelineId(),
-          moduleId: this.info.id,
-          operationId: requestId,
-          operationType: 'pipeline_end',
-          input: { action: 'complete' },
-          output: { duration: context.getDuration(), stages: context.getStages() },
-          success: !context.isFailed(),
-          method: 'completeRequest'
-        };
-
-        this.twoPhaseDebugSystem.recordPipelineEnd(
-          completionEntry.pipelineId,
-          completionEntry.pipelineName || completionEntry.pipelineId,
-          completionEntry.output,
-          completionEntry.success,
-          completionEntry.error,
-          completionEntry.context
+      if (this.debugCenter) {
+        this.debugCenter.recordPipelineEnd(
+          context.getRequestId(),
+          context.getPipelineId(),
+          `Pipeline: ${context.getPipelineId()}`,
+          { duration: context.getDuration(), stages: context.getStages() },
+          !context.isFailed(),
+          context.isFailed() ? 'Pipeline failed' : undefined,
+          { method: 'completeRequest' }
         );
       }
 
@@ -797,5 +692,163 @@ export class PipelineTracker extends PipelineBaseModule {
    */
   getStageManager(): IPipelineStageManager {
     return this.stageManager;
+  }
+
+  /**
+   * Create context for pipeline execution (compatibility method)
+   * 创建流水线执行上下文（兼容性方法）
+   */
+  createContext(
+    moduleInfo: any,
+    stage: string,
+    request?: any,
+    options?: any
+  ): any {
+    const requestId = this.generateRequestId();
+    const context = this.createRequestContext(
+      moduleInfo.providerName || 'unknown',
+      'chat' as any,
+      { moduleInfo, stage, request, options }
+    );
+
+    // Add stage information
+    this.addStage(requestId, stage);
+
+    return {
+      executionId: requestId,
+      requestId: requestId,
+      traceId: context.getPipelineId(),
+      stage: stage,
+      module: moduleInfo,
+      timing: {
+        startTime: Date.now(),
+        stageTimings: new Map()
+      },
+      request: request,
+      metadata: options?.metadata || {},
+      parent: options?.parentContext
+    };
+  }
+
+  /**
+   * Record request (compatibility method)
+   * 记录请求（兼容性方法）
+   */
+  async recordRequest(context: any, request: any, stage: string): Promise<void> {
+    if (this.debugCenter) {
+      this.debugCenter.recordOperation(
+        context.traceId,
+        context.module?.moduleId || 'unknown',
+        `${context.executionId}-request`,
+        { stage, request },
+        undefined,
+        'recordRequest',
+        true,
+        undefined,
+        'middle'
+      );
+    }
+  }
+
+  /**
+   * Record response (compatibility method)
+   * 记录响应（兼容性方法）
+   */
+  async recordResponse(context: any, response: any, stage: string): Promise<void> {
+    if (this.debugCenter) {
+      this.debugCenter.recordOperation(
+        context.traceId,
+        context.module?.moduleId || 'unknown',
+        `${context.executionId}-response`,
+        { stage, response },
+        undefined,
+        'recordResponse',
+        true,
+        undefined,
+        'middle'
+      );
+    }
+  }
+
+  /**
+   * Complete context (compatibility method)
+   * 完成上下文（兼容性方法）
+   */
+  completeContext(context: any, response?: any, error?: any): void {
+    const requestId = context.executionId || context.requestId;
+    this.completeRequest(requestId);
+  }
+
+  /**
+   * Get execution statistics (compatibility method)
+   * 获取执行统计（兼容性方法）
+   */
+  getStatistics(): any {
+    return this.getRequestStatistics();
+  }
+
+  /**
+   * Get active contexts (compatibility method)
+   * 获取活动上下文（兼容性方法）
+   */
+  getActiveContexts(): any[] {
+    return this.getActiveRequests();
+  }
+
+  /**
+   * Get active trace chains (compatibility method)
+   * 获取活动跟踪链（兼容性方法）
+   */
+  getActiveTraceChains(): any[] {
+    return this.getActiveRequests().map(req => ({
+      traceId: req.getPipelineId(),
+      requests: [req]
+    }));
+  }
+
+  /**
+   * Sanitize data for logging (compatibility method)
+   * 清理数据用于日志记录（兼容性方法）
+   */
+  sanitizeData(data: any): any {
+    if (!data) return data;
+
+    const sanitized = { ...data };
+    const sensitiveKeys = ['password', 'token', 'apiKey', 'secret', 'auth'];
+
+    for (const key of sensitiveKeys) {
+      if (sanitized[key]) {
+        sanitized[key] = '[REDACTED]';
+      }
+    }
+
+    return sanitized;
+  }
+
+  /**
+   * Get configuration (compatibility method)
+   * 获取配置（兼容性方法）
+   */
+  getConfig(): any {
+    return {
+      enabled: this.pipelineConfig.enableIOTracking || false,
+      maxActiveTraces: 1000,
+      traceRetentionTime: 300000,
+      enableChainTracking: true,
+      enableMetrics: this.pipelineConfig.enableIOTracking || false,
+      maxContextDepth: 10,
+      samplingRate: 1.0,
+      enableRealTimeMonitoring: true
+    };
+  }
+
+  /**
+   * Update configuration (compatibility method)
+   * 更新配置（兼容性方法）
+   */
+  updateConfig(newConfig: any): void {
+    this.updatePipelineConfig({
+      enableIOTracking: newConfig.enabled
+    });
   }
 }

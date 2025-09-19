@@ -1,7 +1,6 @@
 const typescript = require('rollup-plugin-typescript2');
 const dts = require('rollup-plugin-dts');
 const { nodeResolve } = require('@rollup/plugin-node-resolve');
-const commonjs = require('@rollup/plugin-commonjs');
 
 const packageJson = require('./package.json');
 
@@ -10,7 +9,7 @@ module.exports = {
   output: [
     {
       file: packageJson.main,
-      format: 'cjs',
+      format: 'esm',
       sourcemap: true,
     },
     {
@@ -21,19 +20,16 @@ module.exports = {
   ],
   plugins: [
     nodeResolve({
-      preferBuiltins: true,
+      preferBuiltins: false,
     }),
-    commonjs(),
     typescript({
       tsconfig: './tsconfig.json',
       useTsconfigDeclarationDir: true,
+      declaration: true,
+      declarationDir: 'dist',
     }),
   ],
   external: [
     'uuid',
-    'axios',
-    'commander',
-    'rcc-errorhandling',
-    'rcc-pipeline',
   ],
 };

@@ -11,6 +11,7 @@ import { ClientRequest, ClientResponse } from '../types/ServerTypes';
  */
 export class RequestForwarder extends BaseModule {
   private schedulerManager: any | null = null;
+  private virtualModelSchedulerManager: any | null = null;
 
   constructor() {
     const moduleInfo: ModuleInfo = {
@@ -27,6 +28,7 @@ export class RequestForwarder extends BaseModule {
 
     super(moduleInfo);
     this.schedulerManager = null;
+    this.virtualModelSchedulerManager = null;
   }
 
   /**
@@ -42,19 +44,37 @@ export class RequestForwarder extends BaseModule {
       path: request.path
     });
 
-    // **极简逻辑**: 有调度器就转发，没有就失败
-    if (!this.schedulerManager) {
-      throw new Error('Scheduler not available for request forwarding');
+    // **优先级逻辑**: 优先使用虚拟模型调度器，回退到普通调度器
+    let targetScheduler = this.virtualModelSchedulerManager || this.schedulerManager;
+
+    if (!targetScheduler) {
+      throw new Error('No scheduler available for request forwarding');
     }
 
     try {
-      // **纯转发给调度器** - 调度器做所有智能决策
-      const response = await this.schedulerManager.executeRequest(request);
+      let response;
+
+      if (this.virtualModelSchedulerManager) {
+        // 使用虚拟模型调度器
+        this.log('Using virtual model scheduler', {
+          method: 'forwardRequest',
+          requestId
+        });
+        response = await this.virtualModelSchedulerManager.handleRequest(request);
+      } else {
+        // 回退到普通调度器
+        this.log('Using fallback scheduler', {
+          method: 'forwardRequest',
+          requestId
+        });
+        response = await targetScheduler.executeRequest(request);
+      }
 
       this.log('Request forwarded successfully', {
         method: 'forwardRequest',
         requestId,
-        statusCode: response.status
+        statusCode: response.status,
+        schedulerType: this.virtualModelSchedulerManager ? 'virtual-model' : 'fallback'
       });
 
       return response;
@@ -65,7 +85,8 @@ export class RequestForwarder extends BaseModule {
       this.error('Request forwarding failed', {
         method: 'forwardRequest',
         requestId,
-        error: errorMessage
+        error: errorMessage,
+        schedulerType: this.virtualModelSchedulerManager ? 'virtual-model' : 'fallback'
       });
 
       throw new Error(`Scheduler execution failed: ${errorMessage}`);
@@ -80,10 +101,19 @@ export class RequestForwarder extends BaseModule {
   }
 
   /**
+   * 设置虚拟模型调度器管理器 - 连接pipeline虚拟模型路由系统
+   */
+  public setVirtualModelSchedulerManager(schedulerManager: any): void {
+    this.virtualModelSchedulerManager = schedulerManager;
+    this.log('Virtual model scheduler manager connected to forwarder');
+  }
+
+  /**
    * 清理调度器连接
    */
   public override async destroy(): Promise<void> {
     this.schedulerManager = null;
+    this.virtualModelSchedulerManager = null;
     await super.destroy();
   }
 }

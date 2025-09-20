@@ -14,6 +14,10 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
     configure(config: ServerConfig): void;
     initialize(): Promise<void>;
     /**
+     * Start the HTTP server (alias for listen)
+     */
+    start(): Promise<void>;
+    /**
      * Start the HTTP server
      */
     listen(port: number, host?: string): Promise<void>;
@@ -37,6 +41,10 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
      * Get the Express application instance
      */
     getApp(): ExpressApplication;
+    /**
+     * Get the Express application instance (alias for getApp)
+     */
+    getExpressApp(): ExpressApplication;
     /**
      * Check if server is running
      */

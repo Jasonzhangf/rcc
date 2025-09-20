@@ -4,7 +4,7 @@
  * 负责将原始配置数据解析为标准化的ConfigData结构
  */
 
-import { ConfigData, ProviderConfig, ModelConfig, VirtualModelConfig } from './ConfigData';
+import { ConfigData, ProviderConfig, ModelConfig, VirtualModelConfig, ServerWrapper, PipelineWrapper, ModuleConfig, RoutingConfig } from './ConfigData';
 import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import * as fs from 'fs/promises';
 import path from 'path';
@@ -57,6 +57,9 @@ export class ConfigParser extends BaseModule {
    * 解析配置数据
    */
   public async parseConfig(rawData: any): Promise<ConfigData> {
+    const operationId = `parse-config-${Date.now()}`;
+    this.startIOTracking(operationId, { dataSize: JSON.stringify(rawData).length }, 'parseConfig');
+
     try {
       this.logInfo(`Starting configuration parsing - dataSize: ${JSON.stringify(rawData).length}, hasProviders: ${!!rawData.providers}, hasVirtualModels: ${!!rawData.virtualModels}`);
 
@@ -84,10 +87,16 @@ export class ConfigParser extends BaseModule {
       // 更新时间戳
       config.updatedAt = new Date().toISOString();
 
-    this.logInfo('Configuration parsed successfully');
+      this.logInfo('Configuration parsed successfully');
+      const result = {
+        providerCount: Object.keys(config.providers).length,
+        virtualModelCount: Object.keys(config.virtualModels).length
+      };
+      this.endIOTracking(operationId, result);
       return config;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
       this.warn(`Failed to parse configuration - error: ${errorMessage}`);
       throw error;
     }
@@ -233,6 +242,9 @@ export class ConfigParser extends BaseModule {
    * @returns 解析后的配置数据
    */
   public async parseConfigFromFile(configPath: string, options?: PreprocessingOptions): Promise<ConfigData> {
+    const operationId = `parse-config-file-${Date.now()}`;
+    this.startIOTracking(operationId, { configPath, options }, 'parseConfigFromFile');
+
     try {
       this.logInfo(`Starting configuration file parsing - configPath: ${configPath}, options: ${JSON.stringify(options || {})}`);
 
@@ -255,10 +267,18 @@ export class ConfigParser extends BaseModule {
       // 步骤3: 解析配置（使用现有逻辑）
       const config = await this.parseConfig(rawData);
 
-    this.logInfo(`Configuration parsed successfully from ${configPath}`);
+      this.logInfo(`Configuration parsed successfully from ${configPath}`);
+      const result = {
+        configPath,
+        providerCount: Object.keys(config.providers).length,
+        virtualModelCount: Object.keys(config.virtualModels).length,
+        options: opts
+      };
+      this.endIOTracking(operationId, result);
       return config;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
       this.warn(`Failed to parse configuration from ${configPath} - error: ${errorMessage}`);
       throw error;
     }
@@ -272,36 +292,55 @@ export class ConfigParser extends BaseModule {
    * @returns 预处理后的数据
    */
   public async preprocessConfig(rawData: any, options?: PreprocessingOptions): Promise<any> {
-    const opts: PreprocessingOptions = {
-      substituteEnvVars: true,
-      processTemplates: true,
-      validateData: true,
-      ...options
-    };
+    const operationId = `preprocess-config-${Date.now()}`;
+    this.startIOTracking(operationId, { rawData, options }, 'preprocessConfig');
 
-    let processedData = rawData;
+    try {
+      const opts: PreprocessingOptions = {
+        substituteEnvVars: true,
+        processTemplates: true,
+        validateData: true,
+        ...options
+      };
 
-    // 步骤1: 环境变量替换
-    if (opts.substituteEnvVars) {
-      processedData = this.substituteEnvVars(processedData);
+      let processedData = rawData;
+
+      // 步骤1: 环境变量替换
+      if (opts.substituteEnvVars) {
+        processedData = this.substituteEnvVars(processedData);
+      }
+
+      // 步骤2: 模板处理
+      if (opts.processTemplates) {
+        processedData = this.processTemplates(processedData);
+      }
+
+      // 步骤3: 自定义处理器
+      if (opts.customProcessors && opts.customProcessors.length > 0) {
+        processedData = this.applyCustomProcessors(processedData, opts.customProcessors);
+      }
+
+      // 步骤4: 验证
+      if (opts.validateData) {
+        this.validatePreprocessedData(processedData);
+      }
+
+      const result = {
+        options: opts,
+        stepsApplied: [
+          opts.substituteEnvVars && 'envVarSubstitution',
+          opts.processTemplates && 'templateProcessing',
+          opts.customProcessors && opts.customProcessors.length > 0 && 'customProcessors',
+          opts.validateData && 'validation'
+        ].filter(Boolean)
+      };
+      this.endIOTracking(operationId, result);
+      return processedData;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
+      throw error;
     }
-
-    // 步骤2: 模板处理
-    if (opts.processTemplates) {
-      processedData = this.processTemplates(processedData);
-    }
-
-    // 步骤3: 自定义处理器
-    if (opts.customProcessors && opts.customProcessors.length > 0) {
-      processedData = this.applyCustomProcessors(processedData, opts.customProcessors);
-    }
-
-    // 步骤4: 验证
-    if (opts.validateData) {
-      this.validatePreprocessedData(processedData);
-    }
-
-    return processedData;
   }
 
   /**
@@ -312,14 +351,30 @@ export class ConfigParser extends BaseModule {
    * @returns 翻译后的配置数据
    */
   public async translateConfig(config: ConfigData, locale?: string): Promise<ConfigData> {
-    // 基本翻译支持
-    if (locale) {
-      this.warn(`Translation to locale ${locale} requested but not implemented`);
-      // 在实际实现中，这里会进行键值翻译
-      // 例如：将配置中的英文键翻译为其他语言
-      // 这可以基于翻译资源文件或外部翻译服务
+    const operationId = `translate-config-${Date.now()}`;
+    this.startIOTracking(operationId, { locale, providerCount: Object.keys(config.providers).length }, 'translateConfig');
+
+    try {
+      // 基本翻译支持
+      if (locale) {
+        this.warn(`Translation to locale ${locale} requested but not implemented`);
+        // 在实际实现中，这里会进行键值翻译
+        // 例如：将配置中的英文键翻译为其他语言
+        // 这可以基于翻译资源文件或外部翻译服务
+      }
+
+      const result = {
+        locale,
+        translated: !!locale,
+        providerCount: Object.keys(config.providers).length
+      };
+      this.endIOTracking(operationId, result);
+      return config;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
+      throw error;
     }
-    return config;
   }
 
   /**
@@ -329,8 +384,13 @@ export class ConfigParser extends BaseModule {
    * @returns 解析后的文件内容
    */
   private async readFile(configPath: string): Promise<any> {
+    const operationId = `read-config-file-${Date.now()}`;
+
     try {
-      this.logInfo(`Reading configuration file - configPath: ${configPath}, fileSize: ${(await fs.stat(configPath)).size}`);
+      const stats = await fs.stat(configPath);
+      this.startIOTracking(operationId, { configPath, fileSize: stats.size }, 'readFile');
+
+      this.logInfo(`Reading configuration file - configPath: ${configPath}, fileSize: ${stats.size}`);
 
       // 检查文件是否存在
       await fs.access(configPath);
@@ -352,9 +412,17 @@ export class ConfigParser extends BaseModule {
 
       this.logInfo(`File read successfully - configPath: ${configPath}, dataType: ${typeof parsedData}`);
 
+      const result = {
+        configPath,
+        fileSize: stats.size,
+        fileType: configPath.split('.').pop() || 'unknown',
+        dataType: typeof parsedData
+      };
+      this.endIOTracking(operationId, result);
       return parsedData;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
       this.warn(`Failed to read configuration file - configPath: ${configPath}, error: ${errorMessage}`);
 
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -420,87 +488,110 @@ export class ConfigParser extends BaseModule {
    * @returns 验证是否通过
    */
   private validatePreprocessedData(data: any): boolean {
-    // 基本验证检查
-    if (!data || typeof data !== 'object') {
-      throw new Error('Configuration data must be an object');
-    }
-    
-    // 检查必需字段
-    if (data.providers !== undefined && typeof data.providers !== 'object') {
-      throw new Error('Configuration providers must be an object');
-    }
-    
-    if (data.virtualModels !== undefined && typeof data.virtualModels !== 'object') {
-      throw new Error('Configuration virtualModels must be an object');
-    }
-    
-    // 验证供应商配置结构
-    if (data.providers) {
-      for (const [providerId, provider] of Object.entries(data.providers as Record<string, any>)) {
-        if (typeof provider !== 'object' || provider === null) {
-          throw new Error(`Provider ${providerId} must be an object`);
-        }
-        
-        // 检查必需字段
-        if (!provider.name) {
-          this.warn(`Provider ${providerId} missing name field`);
-        }
-        
-        if (!provider.type) {
-          this.warn(`Provider ${providerId} missing type field`);
-        }
-        
-        // 验证模型结构
-        if (provider.models !== undefined && typeof provider.models !== 'object') {
-          throw new Error(`Provider ${providerId} models must be an object`);
-        }
-        
-        if (provider.models) {
-          for (const [modelId, model] of Object.entries(provider.models as Record<string, any>)) {
-            if (typeof model !== 'object' || model === null) {
-              throw new Error(`Model ${modelId} in provider ${providerId} must be an object`);
-            }
-            
-            if (!model.name) {
-              this.warn(`Model ${modelId} in provider ${providerId} missing name field`);
+    const operationId = `validate-config-data-${Date.now()}`;
+    this.startIOTracking(operationId, { dataSize: JSON.stringify(data).length }, 'validatePreprocessedData');
+
+    try {
+      // 基本验证检查
+      if (!data || typeof data !== 'object') {
+        throw new Error('Configuration data must be an object');
+      }
+
+      // 检查必需字段
+      if (data.providers !== undefined && typeof data.providers !== 'object') {
+        throw new Error('Configuration providers must be an object');
+      }
+
+      if (data.virtualModels !== undefined && typeof data.virtualModels !== 'object') {
+        throw new Error('Configuration virtualModels must be an object');
+      }
+
+      let validationErrors: string[] = [];
+
+      // 验证供应商配置结构
+      if (data.providers) {
+        for (const [providerId, provider] of Object.entries(data.providers as Record<string, any>)) {
+          if (typeof provider !== 'object' || provider === null) {
+            throw new Error(`Provider ${providerId} must be an object`);
+          }
+
+          // 检查必需字段
+          if (!provider.name) {
+            validationErrors.push(`Provider ${providerId} missing name field`);
+            this.warn(`Provider ${providerId} missing name field`);
+          }
+
+          if (!provider.type) {
+            validationErrors.push(`Provider ${providerId} missing type field`);
+            this.warn(`Provider ${providerId} missing type field`);
+          }
+
+          // 验证模型结构
+          if (provider.models !== undefined && typeof provider.models !== 'object') {
+            throw new Error(`Provider ${providerId} models must be an object`);
+          }
+
+          if (provider.models) {
+            for (const [modelId, model] of Object.entries(provider.models as Record<string, any>)) {
+              if (typeof model !== 'object' || model === null) {
+                throw new Error(`Model ${modelId} in provider ${providerId} must be an object`);
+              }
+
+              if (!model.name) {
+                validationErrors.push(`Model ${modelId} in provider ${providerId} missing name field`);
+                this.warn(`Model ${modelId} in provider ${providerId} missing name field`);
+              }
             }
           }
         }
       }
-    }
-    
-    // 验证虚拟模型配置结构
-    if (data.virtualModels) {
-      for (const [vmId, vm] of Object.entries(data.virtualModels as Record<string, any>)) {
-        if (typeof vm !== 'object' || vm === null) {
-          throw new Error(`Virtual model ${vmId} must be an object`);
-        }
-        
-        // 检查targets数组
-        if (vm.targets !== undefined && !Array.isArray(vm.targets)) {
-          throw new Error(`Virtual model ${vmId} targets must be an array`);
-        }
-        
-        if (vm.targets) {
-          for (let i = 0; i < vm.targets.length; i++) {
-            const target = vm.targets[i];
-            if (typeof target !== 'object' || target === null) {
-              throw new Error(`Virtual model ${vmId} target ${i} must be an object`);
-            }
-            
-            if (!target.providerId) {
-              this.warn(`Virtual model ${vmId} target ${i} missing providerId`);
-            }
-            
-            if (!target.modelId) {
-              this.warn(`Virtual model ${vmId} target ${i} missing modelId`);
+
+      // 验证虚拟模型配置结构
+      if (data.virtualModels) {
+        for (const [vmId, vm] of Object.entries(data.virtualModels as Record<string, any>)) {
+          if (typeof vm !== 'object' || vm === null) {
+            throw new Error(`Virtual model ${vmId} must be an object`);
+          }
+
+          // 检查targets数组
+          if (vm.targets !== undefined && !Array.isArray(vm.targets)) {
+            throw new Error(`Virtual model ${vmId} targets must be an array`);
+          }
+
+          if (vm.targets) {
+            for (let i = 0; i < vm.targets.length; i++) {
+              const target = vm.targets[i];
+              if (typeof target !== 'object' || target === null) {
+                throw new Error(`Virtual model ${vmId} target ${i} must be an object`);
+              }
+
+              if (!target.providerId) {
+                validationErrors.push(`Virtual model ${vmId} target ${i} missing providerId`);
+                this.warn(`Virtual model ${vmId} target ${i} missing providerId`);
+              }
+
+              if (!target.modelId) {
+                validationErrors.push(`Virtual model ${vmId} target ${i} missing modelId`);
+                this.warn(`Virtual model ${vmId} target ${i} missing modelId`);
+              }
             }
           }
         }
       }
+
+      const result = {
+        valid: validationErrors.length === 0,
+        validationErrors,
+        providerCount: data.providers ? Object.keys(data.providers).length : 0,
+        virtualModelCount: data.virtualModels ? Object.keys(data.virtualModels).length : 0
+      };
+      this.endIOTracking(operationId, result);
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
+      throw error;
     }
-    
-    return true;
   }
 
   /**
@@ -524,8 +615,314 @@ export class ConfigParser extends BaseModule {
    * 销毁解析器
    */
   public async destroy(): Promise<void> {
-    this.logInfo('Destroying ConfigParser');
-    // Clean up resources
-    this.logInfo('ConfigParser destroyed successfully');
+    const operationId = `destroy-config-parser-${Date.now()}`;
+    this.startIOTracking(operationId, null, 'destroy');
+
+    try {
+      this.logInfo('Destroying ConfigParser');
+      // Clean up resources
+      this.logInfo('ConfigParser destroyed successfully');
+      this.endIOTracking(operationId, { destroyed: true });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate ServerModule wrapper from ConfigData
+   *
+   * Transforms ConfigData into ServerModule-compatible format
+   * Contains only HTTP server configuration, no virtual model information
+   *
+   * @param config Parsed configuration data
+   * @returns ServerWrapper configuration
+   */
+  public generateServerWrapper(config: ConfigData): ServerWrapper {
+    const operationId = `generate-server-wrapper-${Date.now()}`;
+    this.startIOTracking(operationId, { configVersion: config.version }, 'generateServerWrapper');
+
+    try {
+      this.logInfo('Generating ServerModule wrapper configuration');
+
+      // Extract server configuration from config or use defaults
+      const serverConfig = this.extractServerConfig(config);
+
+      const serverWrapper: ServerWrapper = {
+        port: serverConfig.port || 5506,
+        host: serverConfig.host || 'localhost',
+        cors: {
+          origin: serverConfig.cors?.origin || ['*'],
+          credentials: serverConfig.cors?.credentials !== false
+        },
+        compression: serverConfig.compression !== false,
+        helmet: serverConfig.helmet !== false,
+        rateLimit: {
+          windowMs: serverConfig.rateLimit?.windowMs || 15 * 60 * 1000, // 15 minutes
+          max: serverConfig.rateLimit?.max || 100
+        },
+        timeout: serverConfig.timeout || 30000,
+        bodyLimit: serverConfig.bodyLimit || '10mb',
+        pipeline: {
+          enabled: true,
+          unifiedErrorHandling: true,
+          unifiedMonitoring: true,
+          errorMapping: {
+            'ECONNREFUSED': 'SERVICE_UNAVAILABLE',
+            'ETIMEDOUT': 'TIMEOUT_ERROR',
+            'EAI_AGAIN': 'DNS_RESOLUTION_FAILED'
+          }
+        }
+      };
+
+      this.logInfo('ServerModule wrapper generated successfully');
+      this.endIOTracking(operationId, {
+        port: serverWrapper.port,
+        host: serverWrapper.host,
+        corsEnabled: true,
+        compressionEnabled: serverWrapper.compression
+      });
+
+      return serverWrapper;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
+      this.warn(`Failed to generate ServerModule wrapper - error: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate PipelineAssembler wrapper from ConfigData
+   *
+   * Transforms ConfigData into PipelineAssembler-compatible format
+   * Contains virtual model routing tables and module configurations
+   *
+   * @param config Parsed configuration data
+   * @returns PipelineWrapper configuration
+   */
+  public generatePipelineWrapper(config: ConfigData): PipelineWrapper {
+    const operationId = `generate-pipeline-wrapper-${Date.now()}`;
+    this.startIOTracking(operationId, {
+      configVersion: config.version,
+      providerCount: Object.keys(config.providers).length,
+      virtualModelCount: Object.keys(config.virtualModels).length
+    }, 'generatePipelineWrapper');
+
+    try {
+      this.logInfo('Generating PipelineAssembler wrapper configuration');
+
+      // Transform virtual models
+      const virtualModels = this.transformVirtualModels(config.virtualModels);
+
+      // Generate module configurations
+      const modules = this.generateModuleConfigs(config);
+
+      // Generate routing configuration
+      const routing = this.generateRoutingConfig(config);
+
+      const pipelineWrapper: PipelineWrapper = {
+        virtualModels,
+        modules,
+        routing,
+        metadata: {
+          version: config.version,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
+          providerCount: Object.keys(config.providers).length,
+          virtualModelCount: Object.keys(config.virtualModels).length
+        }
+      };
+
+      this.logInfo('PipelineAssembler wrapper generated successfully');
+      this.endIOTracking(operationId, {
+        virtualModelCount: pipelineWrapper.virtualModels.length,
+        moduleCount: pipelineWrapper.modules.length,
+        routingStrategy: pipelineWrapper.routing.strategy
+      });
+
+      return pipelineWrapper;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
+      this.warn(`Failed to generate PipelineAssembler wrapper - error: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract server configuration from ConfigData
+   */
+  private extractServerConfig(config: ConfigData): any {
+    // Look for server configuration in different possible locations
+    const serverConfig = (config as any).server || {};
+    const rccConfig = (config as any).rcc || {};
+
+    return {
+      ...serverConfig,
+      ...rccConfig.server,
+      // Use port from rcc config if available
+      port: serverConfig.port || rccConfig.port || 5506,
+      host: serverConfig.host || rccConfig.host || 'localhost'
+    };
+  }
+
+  /**
+   * Transform virtual models for PipelineAssembler format
+   */
+  private transformVirtualModels(virtualModels: Record<string, VirtualModelConfig>): VirtualModelConfig[] {
+    const transformed: VirtualModelConfig[] = [];
+
+    for (const [vmId, vmConfig] of Object.entries(virtualModels)) {
+      if (!vmConfig.enabled) {
+        continue; // Skip disabled virtual models
+      }
+
+      // Transform to PipelineAssembler VirtualModelConfig format
+      const transformedVm: VirtualModelConfig = {
+        id: vmId,
+        name: vmConfig.id, // Use ID as name for now
+        modelId: vmConfig.targets[0]?.modelId || '', // Use first target as primary
+        provider: vmConfig.targets[0]?.providerId || '', // Use first target as primary
+        enabled: vmConfig.enabled,
+        targets: vmConfig.targets.map(target => ({
+          providerId: target.providerId,
+          modelId: target.modelId,
+          weight: vmConfig.weight || 1.0,
+          enabled: true,
+          keyIndex: target.keyIndex || 0
+        })),
+        capabilities: ['chat', 'function-calling'], // Default capabilities
+        metadata: {
+          priority: vmConfig.priority,
+          weight: vmConfig.weight,
+          targetCount: vmConfig.targets.length
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      transformed.push(transformedVm);
+    }
+
+    return transformed;
+  }
+
+  /**
+   * Generate module configurations for PipelineAssembler
+   */
+  private generateModuleConfigs(config: ConfigData): ModuleConfig[] {
+    const modules: ModuleConfig[] = [];
+
+    // Add core pipeline modules
+    modules.push({
+      id: 'llmswitch',
+      type: 'switch',
+      config: {
+        strategy: 'weighted',
+        healthCheck: {
+          enabled: true,
+          interval: 30000
+        }
+      },
+      enabled: true,
+      priority: 1
+    });
+
+    modules.push({
+      id: 'workflow',
+      type: 'processor',
+      config: {
+        maxSteps: 100,
+        timeout: 300000
+      },
+      enabled: true,
+      priority: 2
+    });
+
+    modules.push({
+      id: 'compatibility',
+      type: 'transformer',
+      config: {
+        targetFormat: 'openai',
+        enableBackwardCompatibility: true
+      },
+      enabled: true,
+      priority: 3
+    });
+
+    // Add provider modules based on config
+    for (const [providerId, providerConfig] of Object.entries(config.providers)) {
+      modules.push({
+        id: `provider-${providerId}`,
+        type: 'provider',
+        config: {
+          providerId,
+          endpoint: providerConfig.endpoint,
+          auth: providerConfig.auth,
+          models: Object.keys(providerConfig.models)
+        },
+        enabled: true,
+        priority: 10
+      });
+    }
+
+    return modules;
+  }
+
+  /**
+   * Generate routing configuration for PipelineAssembler
+   */
+  private generateRoutingConfig(config: ConfigData): RoutingConfig {
+    return {
+      strategy: 'weighted',
+      fallbackStrategy: 'round-robin',
+      rules: [
+        {
+          condition: 'default',
+          action: 'allow',
+          target: 'primary'
+        }
+      ]
+    };
+  }
+
+  /**
+   * Generate both wrappers from ConfigData
+   *
+   * Convenience method to generate both ServerModule and PipelineAssembler wrappers
+   *
+   * @param config Parsed configuration data
+   * @returns Object containing both wrappers
+   */
+  public generateAllWrappers(config: ConfigData): {
+    server: ServerWrapper;
+    pipeline: PipelineWrapper;
+  } {
+    const operationId = `generate-all-wrappers-${Date.now()}`;
+    this.startIOTracking(operationId, { configVersion: config.version }, 'generateAllWrappers');
+
+    try {
+      this.logInfo('Generating all configuration wrappers');
+
+      const server = this.generateServerWrapper(config);
+      const pipeline = this.generatePipelineWrapper(config);
+
+      this.logInfo('All configuration wrappers generated successfully');
+      this.endIOTracking(operationId, {
+        serverGenerated: true,
+        pipelineGenerated: true,
+        serverPort: server.port,
+        pipelineVmCount: pipeline.virtualModels.length
+      });
+
+      return { server, pipeline };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endIOTracking(operationId, null, false, errorMessage);
+      this.warn(`Failed to generate all wrappers - error: ${errorMessage}`);
+      throw error;
+    }
   }
 }

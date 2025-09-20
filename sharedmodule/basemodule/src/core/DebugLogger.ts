@@ -1,4 +1,5 @@
-import { DebugEventBus, DebugEvent } from '../debug/DebugEventBus';
+// DebugEventBus has been moved to rcc-debugcenter package
+// This is a simplified compatibility layer that will be removed in future versions
 
 /**
  * Debug log levels
@@ -62,6 +63,19 @@ export interface DebugConfig {
 }
 
 /**
+ * Simplified debug event for backward compatibility
+ */
+interface DebugEvent {
+  sessionId?: string;
+  moduleId: string;
+  operationId: string;
+  timestamp: number;
+  type: 'start' | 'end' | 'error';
+  position: 'start' | 'middle' | 'end';
+  data: any;
+}
+
+/**
  * Handles all debug logging and I/O tracking operations
  */
 export class DebugLogger {
@@ -70,9 +84,9 @@ export class DebugLogger {
   private moduleId: string;
   private moduleName: string;
   private moduleVersion: string;
-  private eventBus: DebugEventBus;
   private currentSessionId?: string;
   private pipelinePosition?: 'start' | 'middle' | 'end';
+  private externalDebugHandler?: (event: DebugEvent) => void;
 
   constructor(moduleId: string, moduleName: string, moduleVersion: string) {
     this.moduleId = moduleId;
@@ -91,9 +105,13 @@ export class DebugLogger {
       maxFileSize: 10485760, // 10MB
       maxLogFiles: 5
     };
+  }
 
-    // Initialize debug event bus
-    this.eventBus = DebugEventBus.getInstance();
+  /**
+   * Set external debug handler for integration with DebugCenter
+   */
+  public setExternalDebugHandler(handler: (event: DebugEvent) => void): void {
+    this.externalDebugHandler = handler;
   }
 
   /**
@@ -276,7 +294,10 @@ export class DebugLogger {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
 
     // Log locally for backward compatibility
     this.logInfo('Pipeline session started', {
@@ -306,7 +327,10 @@ export class DebugLogger {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
     this.currentSessionId = undefined;
 
     // Log locally for backward compatibility
@@ -342,7 +366,10 @@ export class DebugLogger {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
 
     // Log locally for backward compatibility
     this.debug('debug', `I/O tracking started: ${operationId}`, {
@@ -378,7 +405,10 @@ export class DebugLogger {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
 
     // Log locally for backward compatibility
     this.debug('debug', `I/O tracking ended: ${operationId}`, {

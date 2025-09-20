@@ -561,34 +561,127 @@ export interface ConfigChangeEvent {
    * Type of change
    */
   type: 'created' | 'updated' | 'deleted' | 'renamed';
-  
+
   /**
    * Configuration path that changed
    */
   path: string;
-  
+
   /**
    * Old value (for updates and deletes)
    */
   oldValue?: any;
-  
+
   /**
    * New value (for creates and updates)
    */
   newValue?: any;
-  
+
   /**
    * Timestamp of the change
    */
   timestamp: string;
-  
+
   /**
    * Source of the change
    */
   source?: string;
-  
+
   /**
    * Additional change metadata
    */
   metadata?: Record<string, any>;
+}
+
+/**
+ * Server Module Wrapper - HTTP server configuration only
+ *
+ * Transforms ConfigData into ServerModule-compatible format
+ * Contains only HTTP server configuration, no virtual model information
+ */
+export interface ServerWrapper {
+  /** Server port */
+  port: number;
+  /** Server host */
+  host: string;
+  /** CORS configuration */
+  cors: {
+    origin: string | string[];
+    credentials: boolean;
+  };
+  /** Compression enabled */
+  compression: boolean;
+  /** Helmet security enabled */
+  helmet: boolean;
+  /** Rate limiting configuration */
+  rateLimit: {
+    windowMs: number;
+    max: number;
+  };
+  /** Request timeout */
+  timeout: number;
+  /** Body size limit */
+  bodyLimit: string;
+  /** Pipeline integration configuration */
+  pipeline?: {
+    enabled: boolean;
+    unifiedErrorHandling: boolean;
+    unifiedMonitoring: boolean;
+    errorMapping: Record<string, string>;
+  };
+}
+
+/**
+ * Module Configuration for Pipeline Wrapper
+ */
+export interface ModuleConfig {
+  /** Module ID */
+  id: string;
+  /** Module type */
+  type: string;
+  /** Module-specific configuration */
+  config?: Record<string, any>;
+  /** Whether module is enabled */
+  enabled?: boolean;
+  /** Module priority */
+  priority?: number;
+}
+
+/**
+ * Routing Configuration for Pipeline Wrapper
+ */
+export interface RoutingConfig {
+  /** Routing strategy */
+  strategy: 'round-robin' | 'least-connections' | 'weighted' | 'custom';
+  /** Routing rules */
+  rules?: Array<{
+    condition: string;
+    action: 'allow' | 'deny' | 'rewrite' | 'redirect';
+    target?: string;
+  }>;
+  /** Fallback strategy */
+  fallbackStrategy: 'first-available' | 'round-robin' | 'weighted';
+}
+
+/**
+ * Pipeline Module Wrapper - Virtual model routing and execution configuration
+ *
+ * Transforms ConfigData into PipelineAssembler-compatible format
+ * Contains virtual model routing tables and module configurations
+ */
+export interface PipelineWrapper {
+  /** Virtual model configurations */
+  virtualModels: VirtualModelConfig[];
+  /** Module configurations */
+  modules: ModuleConfig[];
+  /** Routing configuration */
+  routing: RoutingConfig;
+  /** Pipeline metadata */
+  metadata: {
+    version: string;
+    createdAt: string;
+    updatedAt: string;
+    providerCount: number;
+    virtualModelCount: number;
+  };
 }

@@ -100,6 +100,12 @@ export class DebugCenter {
       return;
     }
 
+    // Skip processing if no sessionId is provided
+    if (!event.sessionId) {
+      this.logDebug(`Received start event without sessionId: ${event.operationId}`);
+      return;
+    }
+
     let session = this.activeSessions.get(event.sessionId);
 
     // If no session exists, create one
@@ -130,6 +136,12 @@ export class DebugCenter {
       return;
     }
 
+    // Skip processing if no sessionId is provided
+    if (!event.sessionId) {
+      this.logDebug(`Received end event without sessionId: ${event.operationId}`);
+      return;
+    }
+
     const session = this.activeSessions.get(event.sessionId);
     if (!session) {
       this.logDebug(`Received end event for unknown session: ${event.sessionId}`);
@@ -149,6 +161,12 @@ export class DebugCenter {
   }
 
   private handleOperationError(event: DebugEvent): void {
+    // Skip processing if no sessionId is provided
+    if (!event.sessionId) {
+      this.logDebug(`Received error event without sessionId: ${event.operationId}`);
+      return;
+    }
+
     const session = this.activeSessions.get(event.sessionId);
     if (!session) {
       this.logDebug(`Received error event for unknown session: ${event.sessionId}`);
@@ -172,6 +190,12 @@ export class DebugCenter {
   }
 
   private handleSessionStart(event: DebugEvent): void {
+    // Skip processing if no sessionId is provided
+    if (!event.sessionId) {
+      this.logDebug(`Received session start event without sessionId`);
+      return;
+    }
+
     const session = this.createSessionFromEvent(event);
     this.activeSessions.set(event.sessionId, session);
     this.createSessionFile(session);
@@ -179,6 +203,12 @@ export class DebugCenter {
   }
 
   private handleSessionEnd(event: DebugEvent): void {
+    // Skip processing if no sessionId is provided
+    if (!event.sessionId) {
+      this.logDebug(`Received session end event without sessionId`);
+      return;
+    }
+
     const session = this.activeSessions.get(event.sessionId);
     if (!session) {
       this.logDebug(`Received end event for unknown session: ${event.sessionId}`);
@@ -312,6 +342,68 @@ export class DebugCenter {
 
   public getConfig(): DebugCenterConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Process debug event from external source (e.g., BaseModule)
+   * This method provides a standardized interface for receiving debug events from other modules
+   * @param event - Debug event from external source
+   */
+  public processDebugEvent(event: DebugEvent): void {
+    if (!this.config.enableRealTimeUpdates) {
+      return;
+    }
+
+    // Validate required fields
+    if (!event.sessionId || !event.moduleId || !event.operationId) {
+      this.logDebug('Invalid debug event received', { event });
+      return;
+    }
+
+    // Convert the external event to internal format and process
+    const internalEvent: DebugEvent = {
+      sessionId: event.sessionId,
+      moduleId: event.moduleId,
+      operationId: event.operationId,
+      timestamp: event.timestamp || Date.now(),
+      type: event.type,
+      position: event.position,
+      data: event.data || {}
+    };
+
+    // Process through the existing event handlers
+    switch (internalEvent.type) {
+      case 'start':
+        this.handleOperationStart(internalEvent);
+        break;
+      case 'end':
+        this.handleOperationEnd(internalEvent);
+        break;
+      case 'error':
+        this.handleOperationError(internalEvent);
+        break;
+      default:
+        this.logDebug('Unknown event type received', { type: internalEvent.type });
+    }
+
+    // Also publish to internal event bus for consistency
+    this.eventBus.publish(internalEvent);
+  }
+
+  /**
+   * Connect BaseModule to this DebugCenter instance
+   * This is a convenience method for easy integration
+   * @param baseModule - BaseModule instance to connect
+   */
+  public connectBaseModule(baseModule: any): void {
+    if (typeof baseModule.setExternalDebugHandler === 'function') {
+      baseModule.setExternalDebugHandler((event: DebugEvent) => {
+        this.processDebugEvent(event);
+      });
+      this.logDebug('BaseModule connected to DebugCenter');
+    } else {
+      this.logDebug('BaseModule does not support external debug handler');
+    }
   }
 
   public async destroy(): Promise<void> {

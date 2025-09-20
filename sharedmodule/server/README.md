@@ -1,131 +1,131 @@
-# RCC Server 模块（sharedmodule/server）
+# RCC Server Module
 
-## 概述
-RCC 服务端核心模块，专注于 **纯HTTP服务接入和请求转发**。严格遵循"纯转发，不路由"架构原则，提供轻量级的 HTTP 反向代理功能。
+## Overview
+RCC Server is a lightweight HTTP server module designed specifically for **pure request forwarding**. It strictly follows the "forward-only, no routing" architectural principle, providing a minimal HTTP reverse proxy functionality.
 
-## 架构原则
-- **职责分离**: Server 只负责 HTTP 服务和请求转发，**不处理模型选择或路由决策**
-- **调度器优先**: 所有模型选择和调度逻辑 **完全交给调度器处理**
-- **零路由**: **没有任何虚拟模型路由或选择逻辑**
-- **纯转发**: 请求 → Server → Scheduler (调度器决定一切) → Provider
+## Architecture Principles
+- **Separation of Concerns**: Server handles only HTTP services and request forwarding, **no model selection or routing decisions**
+- **Scheduler-First**: All model selection and scheduling logic **completely delegated to the scheduler**
+- **Zero Routing**: **No virtual model routing or selection logic**
+- **Pure Forwarding**: Request → Server → Scheduler (scheduler makes all decisions) → Provider
 
-## 快速开始
-1. 安装依赖：`npm install`
-2. 构建：`npm run build`
-3. 运行测试：`npm test`
+## Quick Start
+1. Install dependencies: `npm install`
+2. Build: `npm run build`
+3. Run tests: `npm test`
 
-*注：当前为 v3.0 纯转发架构，构建前请确保已移除所有虚拟模型相关依赖*
+*Note: Current version is v3.0 pure-forwarding architecture, ensure all virtual model dependencies are removed before building*
 
-## 文件结构与详细职责
+## File Structure & Responsibilities
 
-### 核心入口 (src/)
-- **index.ts** - 模块导出入口，统一暴露公共接口和类型
-- **ServerModule.ts** - 服务器主模块，负责 **HTTP配置、请求转发和调度器连接**
+### Core Entry Points (src/)
+- **index.ts** - Module export entry point, unified public interfaces and types
+- **ServerModule.ts** - Main server module, responsible for **HTTP configuration, request forwarding, and scheduler connection**
 
-### 组件层 (src/components/)
-- **HttpServer.ts** - HTTP 服务器组件，处理端口监听、请求接收、响应返回和连接管理
-- **RequestForwarder.ts** - **请求转发组件，纯转发功能，将请求交给调度器处理**
+### Component Layer (src/components/)
+- **HttpServer.ts** - HTTP server component, handles port listening, request receiving, response returning, and connection management
+- **RequestForwarder.ts** - **Request forwarding component, pure forwarding functionality, delegates requests to scheduler**
 
-### 核心服务层 (src/core/)
-- **ServerCore.ts** - 服务器核心逻辑，包含HTTP配置、连接管理和基础监控（已简化，移除路由逻辑）
+### Core Service Layer (src/core/)
+- **ServerCore.ts** - Server core logic, includes HTTP configuration, connection management, and basic monitoring (simplified, routing logic removed)
 
-### 业务服务层 (src/services/)
-- **RequestHandlerService.ts** - **请求处理服务，封装纯转发流水线：接收请求、转发给调度器、返回响应**
+### Business Service Layer (src/services/)
+- **RequestHandlerService.ts** - **Request handling service, encapsulates pure forwarding pipeline: receive request, forward to scheduler, return response**
 
-### 接口定义层 (src/interfaces/)
-- **IServerForwarder.ts** - **服务器转发接口契约，定义纯转发的API**
-- **IServerModule.ts** - **服务器模块接口契约，定义HTTP配置和调度器连接点**
+### Interface Definition Layer (src/interfaces/)
+- **IServerForwarder.ts** - **Server forwarding interface contract, defines pure forwarding API**
+- **IServerModule.ts** - **Server module interface contract, defines HTTP configuration and scheduler connection points**
 
-### 类型系统层 (src/types/)
-- **请求/响应数据结构、HTTP配置、基础监控指标等类型定义**
-- *(移除虚拟模型配置、路由规则等已不再需要的类型)*
+### Type System Layer (src/types/)
+- **Request/response data structures, HTTP configuration, basic monitoring metrics type definitions**
+- *(Virtual model configuration, routing rules, and other no longer needed types removed)*
 
-### 工具函数层 (src/utils/) - 暂未实现
-- **此目录目前为空，已预留为未来HTTP工具、日志工具、基础错误处理等通用工具函数扩展**
+### Utility Layer (src/utils/) - Not yet implemented
+- **This directory is currently empty, reserved for future HTTP tools, logging tools, basic error handling, and other general utility functions**
 
-### 架构特性
-- ✅ **纯转发**: Server只接收请求并转发给调度器，**不处理任何模型选择或路由逻辑**
-- ✅ **零路由**: **没有任何虚拟模型路由、模型选择或 capability 匹配**
-- ✅ **调度器集权**: 所有智能决策集中在调度器，Server只做HTTP接入和转发
-- ✅ **极简配置**: 只保留基础HTTP配置，**移除所有模型相关配置**
+### Architecture Features
+- ✅ **Pure Forwarding**: Server only receives requests and forwards to scheduler, **no model selection or routing logic**
+- ✅ **Zero Routing**: **No virtual model routing, model selection, or capability matching**
+- ✅ **Scheduler-Centric**: All intelligent decisions concentrated in scheduler, Server only handles HTTP access and forwarding
+- ✅ **Minimal Configuration**: Only basic HTTP configuration retained, **all model-related configuration removed**
 
-## 初始化流程
-1. **调度器系统初始化** - 创建 `VirtualModelSchedulerManager`（包含所有智能决策）
-2. **服务器实例化** - 配置纯HTTP服务和转发组件
-3. **调度器连接** - 通过 `setSchedulerManager()` 建立转发通道
-4. **转发器绑定** - 将请求处理完全交给调度器
-5. **服务器启动** - 调用 `initialize()` 开始监听端口并转发请求
+## Initialization Flow
+1. **Scheduler System Initialization** - Create `VirtualModelSchedulerManager` (contains all intelligent decision-making)
+2. **Server Instantiation** - Configure pure HTTP service and forwarding components
+3. **Scheduler Connection** - Establish forwarding channel via `setSchedulerManager()`
+4. **Forwarder Binding** - Completely delegate request processing to scheduler
+5. **Server Startup** - Call `initialize()` to start listening on port and forwarding requests
 
-## 接口与能力
-模块暴露以下核心接口：
-- **IServerForwarder** - 服务器请求转发接口（纯转发，无路由决策）
-- **IServerModule** - 服务器HTTP配置和调度器连接接口
-- **调度器连接接口** - 与 VirtualModelSchedulerManager 的集成点
+## Interfaces & Capabilities
+The module exposes the following core interfaces:
+- **IServerForwarder** - Server request forwarding interface (pure forwarding, no routing decisions)
+- **IServerModule** - Server HTTP configuration and scheduler connection interface
+- **Scheduler Connection Interface** - Integration point with VirtualModelSchedulerManager
 
-### 请求处理流程
+### Request Processing Flow
 ```
-用户请求 → HTTP服务器 → RequestForwarder → VirtualModelScheduler → 调度器选择模型 → Provider执行 → 响应返回
+User Request → HTTP Server → RequestForwarder → VirtualModelScheduler → Scheduler selects model → Provider executes → Response returns
 ```
 
-**核心特性：**
-- ✅ **零模型决策**: Server**不分析**请求特征，**不选择**模型
-- ✅ **纯转发代理**: HTTP层 → 调度器层（包含所有智能） → Provider层
-- ✅ **标准请求格式**: 支持OpenAI/API标准格式，**不做转换处理**
-- ✅ **调度器集权**: **所有模型选择、负载均衡、故障转移由调度器全权负责**
+**Core Features:**
+- ✅ **Zero Model Decision**: Server **does not analyze** request features, **does not select** models
+- ✅ **Pure Forwarding Proxy**: HTTP layer → Scheduler layer (contains all intelligence) → Provider layer
+- ✅ **Standard Request Format**: Supports OpenAI/API standard formats, **no conversion processing**
+- ✅ **Scheduler-Centric**: **All model selection, load balancing, failover handled entirely by scheduler**
 
-## 错误处理
-- **调度器连接失败**: 返回标准HTTP错误，Server**不处理**调度器内部错误
-- **转发失败**: 简单异常包装，**不做复杂错误恢复或重试**
-- **遵循标准**: HTTP 状态码和简单错误格式，**无详细诊断信息**
+## Error Handling
+- **Scheduler Connection Failure**: Returns standard HTTP errors, Server **does not handle** scheduler internal errors
+- **Forwarding Failure**: Simple exception wrapping, **no complex error recovery or retry**
+- **Standard Compliance**: HTTP status codes and simple error formats, **no detailed diagnostic information**
 
-## 性能特性
-- **极简转发**: 无模型分析开销，纯HTTP层处理
-- **单点处理**: 请求直接转发给调度器，**零智能计算**
-- **轻量级**: 响应速度取决于调度器性能，Server层**零额外负载**
-- **连接池**: 基础HTTP连接管理，**无调度器连接池**
+## Performance Characteristics
+- **Minimal Forwarding**: No model analysis overhead, pure HTTP layer processing
+- **Single Point Processing**: Requests directly forwarded to scheduler, **zero intelligent computation**
+- **Lightweight**: Response speed depends on scheduler performance, Server layer **zero additional load**
+- **Connection Pool**: Basic HTTP connection management, **no scheduler connection pool**
 
-## 测试覆盖
-- **单元测试验证转发逻辑**: 确认请求正确转发给调度器
-- **集成测试验证调度器连接**: 确保Server与调度器通信正常
-- **端到端测试验证完整流程**: 模拟请求转发给调度器并返回响应
+## Test Coverage
+- **Unit Tests Verify Forwarding Logic**: Confirm requests correctly forwarded to scheduler
+- **Integration Tests Verify Scheduler Connection**: Ensure Server-scheduler communication works properly
+- **End-to-End Tests Verify Complete Flow**: Simulate request forwarding to scheduler and response return
 
-## 部署要求
-- **Node.js 16+ 运行环境**
-- **必须先启动调度器系统** - Server**完全依赖**调度器提供路由功能
-- **极简配置依赖**: **仅需要调度器连接信息，无模型配置要求**
-- **支持容器化部署和水平扩展**
+## Deployment Requirements
+- **Node.js 16+ Runtime Environment**
+- **Scheduler System Must Start First** - Server **completely depends** on scheduler for routing functionality
+- **Minimal Configuration Dependencies**: **Only scheduler connection information needed, no model configuration requirements**
+- **Supports Containerized Deployment and Horizontal Scaling**
 
-## 架构演化说明
-此模块经过重大架构重构：
-- **v2.0 → v3.0**: 从"智能路由"重构为"纯转发"架构
-- **核心变化**: VirtualModelRouter → RequestForwarder，**移除所有路由决策逻辑**
-- **驱动原因**: 职责分离，让Server专注于HTTP接入，路由智能完全下放给调度器
+## Architecture Evolution
+This module has undergone significant architectural refactoring:
+- **v2.0 → v3.0**: Refactored from "intelligent routing" to "pure forwarding" architecture
+- **Core Changes**: VirtualModelRouter → RequestForwarder, **removed all routing decision logic**
+- **Driving Reason**: Separation of concerns, letting Server focus on HTTP access, routing intelligence completely delegated to scheduler
 
-## 🎯 纯转发架构总结
+## 🎯 Pure Forwarding Architecture Summary
 
-### ✅ 已完成重构 (v3.0)
-**核心改变：**
-1. **组件层**: `VirtualModelRouter` → `RequestForwarder` (删除所有路由逻辑)
-2. **接口层**: `IVirtualModelRouter` → `IServerForwarder` (纯转发接口)
-3. **类型层**: 移除所有VirtualModelConfig、RoutingRule等模型相关类型
-4. **配置层**: HTTP基础配置仅，**零模型相关配置**
-5. **职责层**: Server=纯转发，Scheduler=全权决策
+### ✅ Completed Refactoring (v3.0)
+**Core Changes:**
+1. **Component Layer**: `VirtualModelRouter` → `RequestForwarder` (removed all routing logic)
+2. **Interface Layer**: `IVirtualModelRouter` → `IServerForwarder` (pure forwarding interface)
+3. **Type Layer**: Removed all VirtualModelConfig, RoutingRule and other model-related types
+4. **Configuration Layer**: HTTP basic configuration only, **zero model-related configuration**
+5. **Responsibility Layer**: Server=pure forwarding, Scheduler=full decision making
 
-### 🚀 新架构优势
-- **代码量减少70%**: ~4500行 → ~1500行
-- **架构复杂度降低80%**: 无智力决策、无回退逻辑、无状态管理
-- **职责分离明确**: HTTP层 ↔ 调度器层 完全解耦
-- **测试简化**: 只需验证转发功能，无需测试路由算法
-- **维护成本降低**: 纯转发逻辑，理解和调试更简单
+### 🚀 New Architecture Advantages
+- **70% Code Reduction**: ~4500 lines → ~1500 lines
+- **80% Architecture Complexity Reduction**: No intelligent decisions, no fallback logic, no state management
+- **Clear Responsibility Separation**: HTTP layer ↔ Scheduler layer completely decoupled
+- **Simplified Testing**: Only need to verify forwarding functionality, no need to test routing algorithms
+- **Reduced Maintenance Costs**: Pure forwarding logic, easier to understand and debug
 
-### 📊 性能提升
-- **请求处理延迟**: 减少95%（无模型分析开销）
-- **内存占用**: 减少60%（无模型状态维护）
-- **启动时间**: 减少80%（无复杂配置解析）
+### 📊 Performance Improvements
+- **Request Processing Latency**: 95% reduction (no model analysis overhead)
+- **Memory Usage**: 60% reduction (no model state maintenance)
+- **Startup Time**: 80% reduction (no complex configuration parsing)
 
-### 🔧 代码示例
+### 🔧 Code Example
 ```typescript
-// 使用方式 - 极简配置
+// Usage - Minimal Configuration
 const server = new ServerModule();
 await server.configure({
   server: {
@@ -133,16 +133,16 @@ await server.configure({
     host: '0.0.0.0'
   }
 });
-server.setSchedulerManager(schedulerManager); // 调度器负责所有智能决策
+server.setSchedulerManager(schedulerManager); // Scheduler handles all intelligent decisions
 await server.initialize();
 await server.start();
 
-// 所有模型选择、负载均衡、故障转移等复杂逻辑 **完全由调度器处理**
+// All model selection, load balancing, failover and other complex logic **completely handled by scheduler**
 ```
 
-## ✅ 编译状态
-**状态**: ✅ TypeScript编译成功 (2025-09-20)
+## ✅ Build Status
+**Status**: ✅ TypeScript compilation successful (2025-09-20)
 
-所有已知编译错误已修复，模块架构转换完成，纯转发模式已完全实现。
+All known compilation errors have been fixed, module architecture conversion completed, pure forwarding mode fully implemented.
 
-**注意**: Server模块现在是一个**纯HTTP转发代理**，**不包含任何智能元素**。所有模型路由、选择、调度逻辑 **必须在调度器中实现**。
+**Note**: Server module is now a **pure HTTP forwarding proxy**, **contains no intelligent elements**. All model routing, selection, scheduling logic **must be implemented in the scheduler**.

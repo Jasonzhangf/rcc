@@ -30,6 +30,16 @@ export interface BootstrapConfig {
   services: ServiceConfig[];
 
   /**
+   * Enable two-phase debug system
+   */
+  enableTwoPhaseDebug?: boolean;
+
+  /**
+   * Base directory for debug logs
+   */
+  debugBaseDirectory?: string;
+
+  /**
    * Default services to use when no services are defined in configuration
    */
   defaultServices?: ServiceConfig[];
@@ -451,6 +461,41 @@ export interface SystemHealth {
    * Last health check timestamp
    */
   lastHealthCheck: number;
+
+  /**
+   * Pipeline system status (optional for backward compatibility)
+   */
+  pipelineSystem?: {
+    /**
+     * Pipeline system status
+     */
+    status: 'not_initialized' | 'initializing' | 'initialized' | 'error';
+
+    /**
+     * Number of pipeline pools
+     */
+    pools: number;
+
+    /**
+     * Whether pipeline system is healthy
+     */
+    healthy: boolean;
+
+    /**
+     * Whether assembler is available
+     */
+    assembler: boolean;
+
+    /**
+     * Whether scheduler is available
+     */
+    scheduler: boolean;
+
+    /**
+     * Whether tracker is available
+     */
+    tracker: boolean;
+  };
 }
 
 /**

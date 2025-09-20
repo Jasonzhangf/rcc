@@ -32,6 +32,10 @@ export declare class ServerModule extends BaseModule implements IServerModule {
      */
     setSchedulerManager(schedulerManager: any): void;
     /**
+     * 设置虚拟模型调度器管理器 - 连接pipeline虚拟模型路由系统
+     */
+    setVirtualModelSchedulerManager(schedulerManager: any): void;
+    /**
      * 获取调度器管理器
      */
     getSchedulerManager(): any | null;

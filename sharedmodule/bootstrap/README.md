@@ -459,18 +459,18 @@ try {
 }
 ```
 
-## 与其他模块的集成
+## Integration with Other Modules
 
-### 关键集成点
+### Key Integration Points
 
-| 模块 | 集成方式 | 主要功能 |
-|------|----------|----------|
-| **BaseModule** | 继承 | 基础模块功能、两阶段调试系统 |
-| **rcc-config-parser** | 动态导入 | 配置解析、流水线生成 |
-| **rcc-server** | 实例化 | HTTP服务器、虚拟模型路由 |
-| **rcc-errorhandling** | 依赖注入 | 错误处理和恢复 |
-| **rcc-pipeline** | 协调器注入 | 流水线管理和调度 |
-| **rcc-virtual-model-rules** | 配置集成 | 虚拟模型规则管理 |
+| Module | Integration Method | Primary Function |
+|--------|-------------------|------------------|
+| **BaseModule** | Inheritance | Base module functionality, two-phase debug system |
+| **rcc-config-parser** | Dynamic Import | Configuration parsing, pipeline generation |
+| **rcc-server** | Instantiation | HTTP server, pure forwarding (no routing) |
+| **rcc-errorhandling** | Dependency Injection | Error handling and recovery |
+| **rcc-pipeline** | Coordinator Injection | Pipeline management and scheduling |
+| **rcc-virtual-model-rules** | Configuration Integration | Virtual model rules management |
 
 ### 组件注入示例
 

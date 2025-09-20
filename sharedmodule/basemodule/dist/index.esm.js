@@ -4,6 +4,139 @@ import { dirname, join } from 'path';
 
 // Shared type definitions to avoid circular dependencies
 // Enums
+var ErrorSource$2;
+(function (ErrorSource) {
+    ErrorSource["MODULE"] = "module";
+    ErrorSource["SYSTEM"] = "system";
+    ErrorSource["EXTERNAL"] = "external";
+    ErrorSource["NETWORK"] = "network";
+    ErrorSource["UNKNOWN"] = "unknown";
+})(ErrorSource$2 || (ErrorSource$2 = {}));
+var ErrorType$2;
+(function (ErrorType) {
+    ErrorType["BUSINESS"] = "business";
+    ErrorType["TECHNICAL"] = "technical";
+    ErrorType["CONFIGURATION"] = "configuration";
+    ErrorType["RESOURCE"] = "resource";
+    ErrorType["DEPENDENCY"] = "dependency";
+})(ErrorType$2 || (ErrorType$2 = {}));
+var ErrorSeverity$2;
+(function (ErrorSeverity) {
+    ErrorSeverity["CRITICAL"] = "critical";
+    ErrorSeverity["HIGH"] = "high";
+    ErrorSeverity["MEDIUM"] = "medium";
+    ErrorSeverity["LOW"] = "low";
+})(ErrorSeverity$2 || (ErrorSeverity$2 = {}));
+var ErrorImpact$2;
+(function (ErrorImpact) {
+    ErrorImpact["SINGLE_MODULE"] = "single_module";
+    ErrorImpact["MULTIPLE_MODULE"] = "multiple_module";
+    ErrorImpact["SYSTEM_WIDE"] = "system_wide";
+})(ErrorImpact$2 || (ErrorImpact$2 = {}));
+var ErrorRecoverability$2;
+(function (ErrorRecoverability) {
+    ErrorRecoverability["RECOVERABLE"] = "recoverable";
+    ErrorRecoverability["NON_RECOVERABLE"] = "non_recoverable";
+    ErrorRecoverability["AUTO_RECOVERABLE"] = "auto_recoverable";
+})(ErrorRecoverability$2 || (ErrorRecoverability$2 = {}));
+var ResponseStatus$2;
+(function (ResponseStatus) {
+    ResponseStatus["PENDING"] = "pending";
+    ResponseStatus["IN_PROGRESS"] = "in_progress";
+    ResponseStatus["SUCCESS"] = "success";
+    ResponseStatus["FAILURE"] = "failure";
+    ResponseStatus["RETRY"] = "retry";
+    ResponseStatus["FALLENBACK"] = "fallback";
+    ResponseStatus["CANCELLED"] = "cancelled";
+})(ResponseStatus$2 || (ResponseStatus$2 = {}));
+var ResponseActionType$2;
+(function (ResponseActionType) {
+    ResponseActionType["RETRY"] = "retry";
+    ResponseActionType["FALLBACK"] = "fallback";
+    ResponseActionType["LOG"] = "log";
+    ResponseActionType["NOTIFY"] = "notify";
+    ResponseActionType["ISOLATE"] = "isolate";
+    ResponseActionType["RESTART"] = "restart";
+    ResponseActionType["CUSTOM"] = "custom";
+})(ResponseActionType$2 || (ResponseActionType$2 = {}));
+// ResponsePriority removed - use ActionPriority instead
+var PolicyType$2;
+(function (PolicyType) {
+    PolicyType["RETRY"] = "retry";
+    PolicyType["FALLBACK"] = "fallback";
+    PolicyType["ISOLATION"] = "isolation";
+    PolicyType["NOTIFICATION"] = "notification";
+    PolicyType["CUSTOM"] = "custom";
+})(PolicyType$2 || (PolicyType$2 = {}));
+var RuleType$2;
+(function (RuleType) {
+    RuleType["ROUTING"] = "routing";
+    RuleType["FILTERING"] = "filtering";
+    RuleType["TRANSFORMATION"] = "transformation";
+    RuleType["CUSTOM"] = "custom";
+})(RuleType$2 || (RuleType$2 = {}));
+var ConditionOperator$2;
+(function (ConditionOperator) {
+    ConditionOperator["EQUALS"] = "equals";
+    ConditionOperator["NOT_EQUALS"] = "not_equals";
+    ConditionOperator["CONTAINS"] = "contains";
+    ConditionOperator["NOT_CONTAINS"] = "not_contains";
+    ConditionOperator["GREATER_THAN"] = "greater_than";
+    ConditionOperator["LESS_THAN"] = "less_than";
+    ConditionOperator["IN"] = "in";
+    ConditionOperator["NOT_IN"] = "not_in";
+    ConditionOperator["REGEX"] = "regex";
+    ConditionOperator["CUSTOM"] = "custom";
+})(ConditionOperator$2 || (ConditionOperator$2 = {}));
+var LogicalOperator$2;
+(function (LogicalOperator) {
+    LogicalOperator["AND"] = "and";
+    LogicalOperator["OR"] = "or";
+})(LogicalOperator$2 || (LogicalOperator$2 = {}));
+var ActionType$2;
+(function (ActionType) {
+    ActionType["RETRY"] = "retry";
+    ActionType["FALLBACK"] = "fallback";
+    ActionType["LOG"] = "log";
+    ActionType["NOTIFY"] = "notify";
+    ActionType["ISOLATE"] = "isolate";
+    ActionType["RESTART"] = "restart";
+    ActionType["CUSTOM"] = "custom";
+})(ActionType$2 || (ActionType$2 = {}));
+var AnnotationType$2;
+(function (AnnotationType) {
+    AnnotationType["ERROR"] = "error";
+    AnnotationType["WARNING"] = "warning";
+    AnnotationType["INFO"] = "info";
+    AnnotationType["DEBUG"] = "debug";
+    AnnotationType["CUSTOM"] = "custom";
+})(AnnotationType$2 || (AnnotationType$2 = {}));
+var HandlingStatus$2;
+(function (HandlingStatus) {
+    HandlingStatus["SUCCESS"] = "success";
+    HandlingStatus["FAILURE"] = "failure";
+    HandlingStatus["PARTIAL"] = "partial";
+    HandlingStatus["RETRY"] = "retry";
+    HandlingStatus["FALLENBACK"] = "fallback";
+})(HandlingStatus$2 || (HandlingStatus$2 = {}));
+var ActionStatus$2;
+(function (ActionStatus) {
+    ActionStatus["PENDING"] = "pending";
+    ActionStatus["IN_PROGRESS"] = "in_progress";
+    ActionStatus["COMPLETED"] = "completed";
+    ActionStatus["FAILED"] = "failed";
+    ActionStatus["CANCELLED"] = "cancelled";
+})(ActionStatus$2 || (ActionStatus$2 = {}));
+var ActionPriority$2;
+(function (ActionPriority) {
+    ActionPriority["CRITICAL"] = "critical";
+    ActionPriority["HIGH"] = "high";
+    ActionPriority["MEDIUM"] = "medium";
+    ActionPriority["LOW"] = "low";
+})(ActionPriority$2 || (ActionPriority$2 = {}));
+
+// Shared type definitions to avoid circular dependencies
+// Enums
 var ErrorSource$1;
 (function (ErrorSource) {
     ErrorSource["MODULE"] = "module";
@@ -1440,6 +1573,1988 @@ let BaseModule$1 = class BaseModule {
     }
 };
 
+let UnderConstructionError$1 = class UnderConstructionError extends Error {
+    constructor(featureName, message) {
+        super(message);
+        this.name = 'UnderConstructionError';
+        this.featureName = featureName;
+    }
+};
+let UnderConstruction$1 = class UnderConstruction extends BaseModule$1 {
+    constructor() {
+        const moduleInfo = {
+            id: v4(),
+            type: 'underconstruction',
+            name: 'UnderConstruction',
+            version: '1.0.0',
+            description: 'UnderConstruction class for marking unfinished functionality',
+            metadata: {
+                config: {
+                    enableTracking: true,
+                    maxHistorySize: 1000,
+                    throwOnCall: false,
+                    logToConsole: true
+                }
+            }
+        };
+        super(moduleInfo);
+        this.underConstructionFeatures = new Map();
+        this.callHistory = [];
+    }
+    async initialize() {
+        await super.initialize();
+        console.log('UnderConstruction模块已初始化');
+    }
+    markFeature(featureName, description, options = {}) {
+        const feature = {
+            name: featureName,
+            description,
+            intendedBehavior: options.intendedBehavior || '',
+            priority: options.priority || 'medium',
+            category: options.category || 'general',
+            estimatedCompletion: options.estimatedCompletion,
+            createdAt: Date.now(),
+            createdBy: options.createdBy || 'unknown',
+            status: 'pending'
+        };
+        this.underConstructionFeatures.set(featureName, feature);
+        console.log(`功能 '${featureName}' 已标记为未完成状态`);
+    }
+    callUnderConstructionFeature(featureName, context) {
+        const config = this.getInfo().metadata?.['config'];
+        if (!this.underConstructionFeatures.has(featureName)) {
+            this.markFeature(featureName, 'Auto-marked feature');
+        }
+        const call = {
+            id: v4(),
+            featureName,
+            timestamp: Date.now(),
+            context: context || {}
+        };
+        this.callHistory.push(call);
+        if (this.callHistory.length > (config?.maxHistorySize || 1000)) {
+            this.callHistory = this.callHistory.slice(-config?.maxHistorySize || 1000);
+        }
+        if (config?.throwOnCall) {
+            throw new UnderConstructionError$1(featureName, `功能 '${featureName}' 尚未完成`);
+        }
+        console.log(`调用了未完成的功能: ${featureName}`);
+    }
+    getUnderConstructionFeatures() {
+        return Array.from(this.underConstructionFeatures.values());
+    }
+    getFeature(featureName) {
+        return this.underConstructionFeatures.get(featureName);
+    }
+    getCallHistory(limit) {
+        const history = this.callHistory.slice().reverse();
+        return limit ? history.slice(0, limit) : history;
+    }
+    completeFeature(featureName, completionNotes) {
+        const feature = this.underConstructionFeatures.get(featureName);
+        if (!feature) {
+            return false;
+        }
+        feature.status = 'completed';
+        console.log(`功能 '${featureName}' 已完成`);
+        return true;
+    }
+    updateFeatureDescription(featureName, newDescription, newIntendedBehavior) {
+        const feature = this.underConstructionFeatures.get(featureName);
+        if (!feature) {
+            return false;
+        }
+        feature.description = newDescription;
+        if (newIntendedBehavior) {
+            feature.intendedBehavior = newIntendedBehavior;
+        }
+        console.log(`功能 '${featureName}' 描述已更新`);
+        return true;
+    }
+    getStatistics() {
+        const now = Date.now();
+        const dayAgo = now - 24 * 60 * 60 * 1000;
+        const recentCalls = this.callHistory.filter(call => call.timestamp > dayAgo);
+        const byCategory = {};
+        const byPriority = {};
+        this.underConstructionFeatures.forEach(feature => {
+            byCategory[feature.category] = (byCategory[feature.category] || 0) + 1;
+            byPriority[feature.priority] = (byPriority[feature.priority] || 0) + 1;
+        });
+        return {
+            totalFeatures: this.underConstructionFeatures.size,
+            totalCalls: this.callHistory.length,
+            recentCalls24h: recentCalls.length,
+            byCategory,
+            byPriority
+        };
+    }
+    clearCallHistory() {
+        this.callHistory = [];
+        console.log('调用历史已清除');
+    }
+    async destroy() {
+        console.log('销毁UnderConstruction模块');
+        this.underConstructionFeatures.clear();
+        this.callHistory = [];
+        await super.destroy();
+    }
+};
+
+new UnderConstruction$1();
+
+// Create UnderConstruction instance for unimplemented features
+new UnderConstruction$1();
+
+// Create UnderConstruction instance for unimplemented features
+new UnderConstruction$1();
+
+// Create UnderConstruction instance for unimplemented features
+new UnderConstruction$1();
+
+/**
+ * Manages module registration and lifecycle
+ */
+let ModuleRegistry$1 = class ModuleRegistry {
+    constructor() {
+        this.modules = new Map();
+    }
+    /**
+     * Register a module with the registry
+     * @param moduleId - Module ID
+     * @param moduleInstance - Module instance
+     */
+    register(moduleId, moduleInstance) {
+        if (this.modules.has(moduleId)) {
+            throw new Error(`Module ${moduleId} is already registered`);
+        }
+        this.modules.set(moduleId, moduleInstance);
+        // Notify about new registration
+        if (this.onModuleRegistered) {
+            setImmediate(() => this.onModuleRegistered(moduleId));
+        }
+    }
+    /**
+     * Unregister a module from the registry
+     * @param moduleId - Module ID
+     */
+    unregister(moduleId) {
+        const wasRegistered = this.modules.delete(moduleId);
+        if (wasRegistered && this.onModuleUnregistered) {
+            setImmediate(() => this.onModuleUnregistered(moduleId));
+        }
+        return wasRegistered;
+    }
+    /**
+     * Get a module by ID
+     * @param moduleId - Module ID
+     * @returns Module instance or undefined
+     */
+    get(moduleId) {
+        return this.modules.get(moduleId);
+    }
+    /**
+     * Check if a module is registered
+     * @param moduleId - Module ID
+     * @returns True if module is registered
+     */
+    has(moduleId) {
+        return this.modules.has(moduleId);
+    }
+    /**
+     * Get all registered modules
+     * @returns Map of module IDs to instances
+     */
+    getAll() {
+        return new Map(this.modules);
+    }
+    /**
+     * Get the number of registered modules
+     * @returns Number of registered modules
+     */
+    getCount() {
+        return this.modules.size;
+    }
+    /**
+     * Get all module IDs
+     * @returns Array of module IDs
+     */
+    getModuleIds() {
+        return Array.from(this.modules.keys());
+    }
+    /**
+     * Set callback for module registration
+     * @param callback - Callback function
+     */
+    onModuleRegister(callback) {
+        this.onModuleRegistered = callback;
+    }
+    /**
+     * Set callback for module unregistration
+     * @param callback - Callback function
+     */
+    onModuleUnregister(callback) {
+        this.onModuleUnregistered = callback;
+    }
+    /**
+     * Clear all registered modules
+     */
+    clear() {
+        this.modules.clear();
+    }
+    /**
+     * Check if registry is empty
+     * @returns True if no modules are registered
+     */
+    isEmpty() {
+        return this.modules.size === 0;
+    }
+};
+
+/**
+ * Manages request/response lifecycle with timeout handling
+ */
+let RequestManager$1 = class RequestManager {
+    constructor() {
+        this.pendingRequests = new Map();
+    }
+    /**
+     * Create a new pending request
+     * @param correlationId - Request correlation ID
+     * @param timeout - Timeout in milliseconds
+     * @returns Promise that resolves to response or rejects on timeout
+     */
+    createRequest(correlationId, timeout = 30000) {
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                this.pendingRequests.delete(correlationId);
+                reject(new Error(`Request timeout after ${timeout}ms`));
+            }, timeout);
+            this.pendingRequests.set(correlationId, {
+                resolve,
+                reject,
+                timeoutId,
+                startTime: Date.now(),
+            });
+        });
+    }
+    /**
+     * Create a pending request with callback support
+     * @param correlationId - Request correlation ID
+     * @param callback - Callback function
+     * @param timeout - Timeout in milliseconds
+     */
+    createRequestAsync(correlationId, callback, timeout = 30000) {
+        const timeoutId = setTimeout(() => {
+            this.pendingRequests.delete(correlationId);
+            callback({
+                messageId: '',
+                correlationId,
+                success: false,
+                error: `Request timeout after ${timeout}ms`,
+                timestamp: Date.now(),
+            });
+        }, timeout);
+        this.pendingRequests.set(correlationId, {
+            resolve: (response) => {
+                clearTimeout(timeoutId);
+                this.pendingRequests.delete(correlationId);
+                callback(response);
+            },
+            reject: (error) => {
+                clearTimeout(timeoutId);
+                this.pendingRequests.delete(correlationId);
+                callback({
+                    messageId: '',
+                    correlationId,
+                    success: false,
+                    error: error.message || 'Unknown error',
+                    timestamp: Date.now(),
+                });
+            },
+            timeoutId,
+            startTime: Date.now(),
+        });
+    }
+    /**
+     * Resolve a pending request
+     * @param correlationId - Request correlation ID
+     * @param response - Response to send
+     * @returns True if request was found and resolved
+     */
+    resolveRequest(correlationId, response) {
+        const request = this.pendingRequests.get(correlationId);
+        if (!request) {
+            return false;
+        }
+        clearTimeout(request.timeoutId);
+        request.resolve(response);
+        this.pendingRequests.delete(correlationId);
+        return true;
+    }
+    /**
+     * Reject a pending request
+     * @param correlationId - Request correlation ID
+     * @param error - Error to reject with
+     * @returns True if request was found and rejected
+     */
+    rejectRequest(correlationId, error) {
+        const request = this.pendingRequests.get(correlationId);
+        if (!request) {
+            return false;
+        }
+        clearTimeout(request.timeoutId);
+        request.reject(error);
+        this.pendingRequests.delete(correlationId);
+        return true;
+    }
+    /**
+     * Check if a request is pending
+     * @param correlationId - Request correlation ID
+     * @returns True if request is pending
+     */
+    hasPendingRequest(correlationId) {
+        return this.pendingRequests.has(correlationId);
+    }
+    /**
+     * Get the number of pending requests
+     * @returns Number of pending requests
+     */
+    getPendingCount() {
+        return this.pendingRequests.size;
+    }
+    /**
+     * Get response time for a completed request
+     * @param correlationId - Request correlation ID
+     * @returns Response time in milliseconds or undefined if not found
+     */
+    getResponseTime(correlationId) {
+        const request = this.pendingRequests.get(correlationId);
+        return request ? Date.now() - request.startTime : undefined;
+    }
+    /**
+     * Cancel all pending requests
+     * @param error - Error to reject pending requests with
+     */
+    cancelAll(error = new Error('All requests cancelled')) {
+        for (const [correlationId, request] of this.pendingRequests.entries()) {
+            clearTimeout(request.timeoutId);
+            request.reject(error);
+        }
+        this.pendingRequests.clear();
+    }
+    /**
+     * Clean up expired requests older than specified time
+     * @param maxAge - Maximum age in milliseconds
+     * @returns Number of expired requests cleaned up
+     */
+    cleanupExpired(maxAge) {
+        const now = Date.now();
+        let cleanedCount = 0;
+        for (const [correlationId, request] of this.pendingRequests.entries()) {
+            if (now - request.startTime > maxAge) {
+                clearTimeout(request.timeoutId);
+                request.reject(new Error(`Request expired after ${maxAge}ms`));
+                this.pendingRequests.delete(correlationId);
+                cleanedCount++;
+            }
+        }
+        return cleanedCount;
+    }
+    /**
+     * Get all pending request correlation IDs
+     * @returns Array of correlation IDs
+     */
+    getPendingRequestIds() {
+        return Array.from(this.pendingRequests.keys());
+    }
+    /**
+     * Clear all pending requests without rejecting them
+     */
+    clear() {
+        for (const [, request] of this.pendingRequests.entries()) {
+            clearTimeout(request.timeoutId);
+        }
+        this.pendingRequests.clear();
+    }
+};
+
+/**
+ * Handles message processing, routing, and delivery
+ */
+let MessageProcessor$1 = class MessageProcessor {
+    /**
+     * Process an incoming message with TTL validation
+     * @param message - Message to process
+     * @param targetModule - Target module instance (for targeted messages)
+     * @param broadcastHandler - Handler for broadcast messages
+     * @returns Promise that resolves when message is processed
+     */
+    async processMessage(message, targetModule, broadcastHandler) {
+        // Check for TTL expiration
+        if (message.ttl && Date.now() - message.timestamp > message.ttl) {
+            throw new Error('Message TTL expired');
+        }
+        if (message.target) {
+            // Targeted message
+            if (!targetModule) {
+                throw new Error(`Target module ${message.target} not found`);
+            }
+            await this.deliverMessage(message, targetModule);
+        }
+        else {
+            // Broadcast message
+            await broadcastHandler(message);
+        }
+    }
+    /**
+     * Deliver a message to a specific module
+     * @param message - Message to deliver
+     * @param moduleInstance - Target module instance
+     * @returns Promise that resolves to response or void
+     */
+    async deliverMessage(message, moduleInstance) {
+        if (typeof moduleInstance.handleMessage !== 'function') {
+            throw new Error(`Module does not implement handleMessage method`);
+        }
+        try {
+            const response = await moduleInstance.handleMessage(message);
+            return response;
+        }
+        catch (error) {
+            throw new Error(`Failed to deliver message to module: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+    /**
+     * Broadcast a message to multiple modules
+     * @param message - Message to broadcast
+     * @param modules - Map of module IDs to instances
+     * @param deliveryHandler - Handler for individual message delivery
+     * @returns Promise that resolves when all modules have been processed
+     */
+    async broadcastMessage(message, modules, deliveryHandler) {
+        const deliveryPromises = [];
+        for (const [moduleId, moduleInstance] of modules.entries()) {
+            if (moduleId !== message.source) {
+                // Don't send back to sender
+                const deliveryPromise = deliveryHandler(message, moduleId, moduleInstance);
+                deliveryPromises.push(deliveryPromise);
+            }
+        }
+        await Promise.allSettled(deliveryPromises);
+    }
+    /**
+     * Validate message structure
+     * @param message - Message to validate
+     * @returns True if message is valid
+     */
+    validateMessage(message) {
+        const requiredFields = ['id', 'type', 'source', 'payload', 'timestamp'];
+        for (const field of requiredFields) {
+            if (!(field in message)) {
+                return false;
+            }
+        }
+        // Validate data types
+        if (typeof message.id !== 'string' || message.id.trim() === '') {
+            return false;
+        }
+        if (typeof message.type !== 'string' || message.type.trim() === '') {
+            return false;
+        }
+        if (typeof message.source !== 'string' || message.source.trim() === '') {
+            return false;
+        }
+        if (typeof message.timestamp !== 'number' || message.timestamp <= 0) {
+            return false;
+        }
+        // Validate optional fields
+        if (message.target && (typeof message.target !== 'string' || message.target.trim() === '')) {
+            return false;
+        }
+        if (message.correlationId && (typeof message.correlationId !== 'string' || message.correlationId.trim() === '')) {
+            return false;
+        }
+        if (message.ttl && (typeof message.ttl !== 'number' || message.ttl <= 0)) {
+            return false;
+        }
+        if (message.priority && (typeof message.priority !== 'number' || message.priority < 0 || message.priority > 9)) {
+            return false;
+        }
+        return true;
+    }
+    /**
+     * Sanitize message for delivery
+     * @param message - Message to sanitize
+     * @returns Sanitized message
+     */
+    sanitizeMessage(message) {
+        const sanitized = {
+            id: message.id || '',
+            type: message.type || '',
+            source: message.source || '',
+            payload: message.payload,
+            timestamp: message.timestamp || Date.now(),
+        };
+        // Add optional fields if they exist and are valid
+        if (message.target && typeof message.target === 'string' && message.target.trim() !== '') {
+            sanitized.target = message.target;
+        }
+        if (message.correlationId && typeof message.correlationId === 'string' && message.correlationId.trim() !== '') {
+            sanitized.correlationId = message.correlationId;
+        }
+        if (message.metadata && typeof message.metadata === 'object' && message.metadata !== null) {
+            sanitized.metadata = { ...message.metadata };
+        }
+        if (message.ttl && typeof message.ttl === 'number' && message.ttl > 0) {
+            sanitized.ttl = message.ttl;
+        }
+        if (message.priority !== undefined && typeof message.priority === 'number' && message.priority >= 0 && message.priority <= 9) {
+            sanitized.priority = message.priority;
+        }
+        return sanitized;
+    }
+    /**
+     * Create a response message
+     * @param originalMessage - Original message
+     * @param success - Whether operation was successful
+     * @param data - Response data
+     * @param error - Error message
+     * @returns Response message
+     */
+    createResponse(originalMessage, success, data, error) {
+        return {
+            messageId: originalMessage.id,
+            correlationId: originalMessage.correlationId || '',
+            success,
+            data,
+            error,
+            timestamp: Date.now(),
+        };
+    }
+    /**
+     * Check if message requires a response
+     * @param message - Message to check
+     * @returns True if message requires a response
+     */
+    requiresResponse(message) {
+        return !!message.correlationId;
+    }
+    /**
+     * Get message priority level
+     * @param message - Message to check
+     * @returns Priority level (0-9, default 5)
+     */
+    getMessagePriority(message) {
+        return message.priority !== undefined ? Math.max(0, Math.min(9, message.priority)) : 5;
+    }
+    /**
+     * Check if message has expired
+     * @param message - Message to check
+     * @returns True if message has expired
+     */
+    isMessageExpired(message) {
+        if (!message.ttl) {
+            return false;
+        }
+        return Date.now() - message.timestamp > message.ttl;
+    }
+    /**
+     * Get remaining TTL for message
+     * @param message - Message to check
+     * @returns Remaining TTL in milliseconds, or -1 if expired
+     */
+    getRemainingTTL(message) {
+        if (!message.ttl) {
+            return -1;
+        }
+        const elapsed = Date.now() - message.timestamp;
+        return message.ttl - elapsed;
+    }
+};
+
+/**
+ * Tracks and manages message center statistics
+ */
+let StatisticsTracker$1 = class StatisticsTracker {
+    constructor() {
+        this.stats = {
+            totalMessages: 0,
+            totalRequests: 0,
+            activeRequests: 0,
+            registeredModules: 0,
+            messagesDelivered: 0,
+            messagesFailed: 0,
+            averageResponseTime: 0,
+            uptime: 0,
+        };
+        this.responseTimes = [];
+        this.startTime = Date.now();
+        this.maxResponseTimes = 1000;
+    }
+    /**
+     * Increment total messages count
+     */
+    incrementTotalMessages() {
+        this.stats.totalMessages++;
+    }
+    /**
+     * Increment total requests count
+     */
+    incrementTotalRequests() {
+        this.stats.totalRequests++;
+    }
+    /**
+     * Increment active requests count
+     */
+    incrementActiveRequests() {
+        this.stats.activeRequests++;
+    }
+    /**
+     * Decrement active requests count
+     */
+    decrementActiveRequests() {
+        this.stats.activeRequests = Math.max(0, this.stats.activeRequests - 1);
+    }
+    /**
+     * Increment delivered messages count
+     */
+    incrementMessagesDelivered() {
+        this.stats.messagesDelivered++;
+    }
+    /**
+     * Increment failed messages count
+     */
+    incrementMessagesFailed() {
+        this.stats.messagesFailed++;
+    }
+    /**
+     * Set registered modules count
+     * @param count - Number of registered modules
+     */
+    setRegisteredModules(count) {
+        this.stats.registeredModules = count;
+    }
+    /**
+     * Record a response time
+     * @param responseTime - Response time in milliseconds
+     */
+    recordResponseTime(responseTime) {
+        this.responseTimes.push(responseTime);
+        // Keep only the most recent response times
+        if (this.responseTimes.length > this.maxResponseTimes) {
+            this.responseTimes = this.responseTimes.slice(-this.maxResponseTimes / 10);
+        }
+        // Update average response time
+        this.updateAverageResponseTime();
+    }
+    /**
+     * Update the average response time based on recorded times
+     */
+    updateAverageResponseTime() {
+        if (this.responseTimes.length > 0) {
+            const sum = this.responseTimes.reduce((acc, time) => acc + time, 0);
+            this.stats.averageResponseTime = Math.round(sum / this.responseTimes.length);
+        }
+        else {
+            this.stats.averageResponseTime = 0;
+        }
+    }
+    /**
+     * Get current statistics
+     * @returns Current statistics
+     */
+    getStats() {
+        return {
+            ...this.stats,
+            uptime: Date.now() - this.startTime,
+        };
+    }
+    /**
+     * Reset all statistics
+     */
+    reset() {
+        this.stats = {
+            totalMessages: 0,
+            totalRequests: 0,
+            activeRequests: 0,
+            registeredModules: this.stats.registeredModules, // Keep current module count
+            messagesDelivered: 0,
+            messagesFailed: 0,
+            averageResponseTime: 0,
+            uptime: 0,
+        };
+        this.responseTimes = [];
+        this.startTime = Date.now();
+    }
+    /**
+     * Get response time statistics
+     * @returns Response time statistics
+     */
+    getResponseTimeStats() {
+        if (this.responseTimes.length === 0) {
+            return {
+                count: 0,
+                average: 0,
+                min: 0,
+                max: 0,
+                last: undefined,
+            };
+        }
+        const count = this.responseTimes.length;
+        const sum = this.responseTimes.reduce((acc, time) => acc + time, 0);
+        const average = Math.round(sum / count);
+        const min = Math.min(...this.responseTimes);
+        const max = Math.max(...this.responseTimes);
+        const last = this.responseTimes[this.responseTimes.length - 1];
+        return {
+            count,
+            average,
+            min,
+            max,
+            last,
+        };
+    }
+    /**
+     * Get success rate (percentage of successful deliveries)
+     * @returns Success rate percentage (0-100)
+     */
+    getSuccessRate() {
+        const total = this.stats.messagesDelivered + this.stats.messagesFailed;
+        if (total === 0) {
+            return 0;
+        }
+        return Math.round((this.stats.messagesDelivered / total) * 100);
+    }
+    /**
+     * Get throughput (messages per second)
+     * @returns Messages per second
+     */
+    getThroughput() {
+        const uptime = (Date.now() - this.startTime) / 1000; // Convert to seconds
+        if (uptime <= 0) {
+            return 0;
+        }
+        return Math.round(this.stats.totalMessages / uptime);
+    }
+    /**
+     * Get detailed performance metrics
+     * @returns Detailed performance metrics
+     */
+    getPerformanceMetrics() {
+        const responseTimeStats = this.getResponseTimeStats();
+        return {
+            uptime: Date.now() - this.startTime,
+            throughput: this.getThroughput(),
+            successRate: this.getSuccessRate(),
+            responseTime: {
+                average: responseTimeStats.average,
+                min: responseTimeStats.min,
+                max: responseTimeStats.max,
+                count: responseTimeStats.count,
+            },
+            load: {
+                activeRequests: this.stats.activeRequests,
+                registeredModules: this.stats.registeredModules,
+            },
+        };
+    }
+    /**
+     * Get the number of recorded response times
+     * @returns Number of recorded response times
+     */
+    getResponseTimeCount() {
+        return this.responseTimes.length;
+    }
+    /**
+     * Clear recorded response times
+     */
+    clearResponseTimes() {
+        this.responseTimes = [];
+        this.stats.averageResponseTime = 0;
+    }
+    /**
+     * Set the maximum number of response times to keep
+     * @param max - Maximum number of response times
+     */
+    setMaxResponseTimes(max) {
+        this.maxResponseTimes = Math.max(1, max);
+        // Trim existing response times if needed
+        if (this.responseTimes.length > this.maxResponseTimes) {
+            this.responseTimes = this.responseTimes.slice(-Math.floor(this.maxResponseTimes / 10));
+        }
+    }
+    /**
+     * Get uptime in human-readable format
+     * @returns Human-readable uptime string
+     */
+    getUptimeString() {
+        const uptime = Date.now() - this.startTime;
+        const seconds = Math.floor(uptime / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        if (days > 0) {
+            return `${days}d ${hours % 24}h ${minutes % 60}m ${seconds % 60}s`;
+        }
+        else if (hours > 0) {
+            return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+        }
+        else if (minutes > 0) {
+            return `${minutes}m ${seconds % 60}s`;
+        }
+        else {
+            return `${seconds}s`;
+        }
+    }
+};
+
+/**
+ * Refactored Message center for module communication
+ * Uses composition pattern to separate concerns
+ */
+let MessageCenter$2 = class MessageCenter {
+    /**
+     * Private constructor for singleton pattern
+     */
+    constructor() {
+        this.moduleRegistry = new ModuleRegistry$1();
+        this.requestManager = new RequestManager$1();
+        this.messageProcessor = new MessageProcessor$1();
+        this.statisticsTracker = new StatisticsTracker$1();
+        this.setupEventHandlers();
+    }
+    /**
+     * Get the singleton instance of MessageCenter
+     * @returns MessageCenter instance
+     */
+    static getInstance() {
+        if (!MessageCenter.instance) {
+            MessageCenter.instance = new MessageCenter();
+        }
+        return MessageCenter.instance;
+    }
+    /**
+     * Set up event handlers for module lifecycle events
+     */
+    setupEventHandlers() {
+        this.moduleRegistry.onModuleRegister((moduleId) => {
+            this.statisticsTracker.setRegisteredModules(this.moduleRegistry.getCount());
+            // Notify other modules about new registration
+            this.broadcastMessage({
+                id: v4(),
+                type: 'module_registered',
+                source: 'MessageCenter',
+                payload: { moduleId },
+                timestamp: Date.now(),
+            });
+        });
+        this.moduleRegistry.onModuleUnregister((moduleId) => {
+            this.statisticsTracker.setRegisteredModules(this.moduleRegistry.getCount());
+            // Clean up any pending requests for this module
+            this.requestManager.cancelAll(new Error(`Module ${moduleId} was unregistered`));
+            // Notify other modules about unregistration
+            this.broadcastMessage({
+                id: v4(),
+                type: 'module_unregistered',
+                source: 'MessageCenter',
+                payload: { moduleId },
+                timestamp: Date.now(),
+            });
+        });
+    }
+    /**
+     * Register a module with the message center
+     * @param moduleId - Module ID
+     * @param moduleInstance - Module instance
+     */
+    registerModule(moduleId, moduleInstance) {
+        this.moduleRegistry.register(moduleId, moduleInstance);
+    }
+    /**
+     * Unregister a module from the message center
+     * @param moduleId - Module ID
+     */
+    unregisterModule(moduleId) {
+        this.moduleRegistry.unregister(moduleId);
+    }
+    /**
+     * Send a one-way message
+     * @param message - Message to send
+     */
+    sendMessage(message) {
+        if (!this.messageProcessor.validateMessage(message)) {
+            console.error('Invalid message structure:', message);
+            this.statisticsTracker.incrementMessagesFailed();
+            return;
+        }
+        this.statisticsTracker.incrementTotalMessages();
+        setImmediate(() => {
+            this.processMessage(message).catch((error) => {
+                console.error(`Error processing message ${message.id}:`, error);
+                this.statisticsTracker.incrementMessagesFailed();
+            });
+        });
+    }
+    /**
+     * Broadcast a message to all modules
+     * @param message - Message to broadcast
+     */
+    broadcastMessage(message) {
+        if (!this.messageProcessor.validateMessage(message)) {
+            console.error('Invalid broadcast message structure:', message);
+            this.statisticsTracker.incrementMessagesFailed();
+            return;
+        }
+        this.statisticsTracker.incrementTotalMessages();
+        setImmediate(() => {
+            this.messageProcessor
+                .broadcastMessage(message, this.moduleRegistry.getAll(), async (msg, moduleId, moduleInstance) => {
+                try {
+                    await this.messageProcessor.deliverMessage(msg, moduleInstance);
+                    this.statisticsTracker.incrementMessagesDelivered();
+                }
+                catch (error) {
+                    console.error(`Error delivering broadcast message to ${moduleId}:`, error);
+                    this.statisticsTracker.incrementMessagesFailed();
+                }
+            })
+                .catch((error) => {
+                console.error('Error broadcasting message:', error);
+                this.statisticsTracker.incrementMessagesFailed();
+            });
+        });
+    }
+    /**
+     * Send a request and wait for response
+     * @param message - Request message
+     * @param timeout - Timeout in milliseconds
+     * @returns Promise that resolves to the response
+     */
+    sendRequest(message, timeout = 30000) {
+        if (!this.messageProcessor.validateMessage(message)) {
+            console.error('Invalid request message structure:', message);
+            return Promise.reject(new Error('Invalid message structure'));
+        }
+        if (!message.correlationId) {
+            message.correlationId = v4();
+        }
+        this.statisticsTracker.incrementTotalMessages();
+        this.statisticsTracker.incrementTotalRequests();
+        this.statisticsTracker.incrementActiveRequests();
+        return this.requestManager.createRequest(message.correlationId, timeout).finally(() => {
+            this.statisticsTracker.decrementActiveRequests();
+        });
+    }
+    /**
+     * Send a request with callback (non-blocking)
+     * @param message - Request message
+     * @param callback - Callback function for response
+     * @param timeout - Timeout in milliseconds
+     */
+    sendRequestAsync(message, callback, timeout = 30000) {
+        if (!this.messageProcessor.validateMessage(message)) {
+            console.error('Invalid async request message structure:', message);
+            callback({
+                messageId: message.id,
+                correlationId: message.correlationId || '',
+                success: false,
+                error: 'Invalid message structure',
+                timestamp: Date.now(),
+            });
+            return;
+        }
+        if (!message.correlationId) {
+            message.correlationId = v4();
+        }
+        this.statisticsTracker.incrementTotalMessages();
+        this.statisticsTracker.incrementTotalRequests();
+        this.statisticsTracker.incrementActiveRequests();
+        this.requestManager.createRequestAsync(message.correlationId, (response) => {
+            this.statisticsTracker.decrementActiveRequests();
+            callback(response);
+        }, timeout);
+    }
+    /**
+     * Process an incoming message
+     * @param message - Message to process
+     */
+    async processMessage(message) {
+        try {
+            const targetModule = message.target ? this.moduleRegistry.get(message.target) : undefined;
+            await this.messageProcessor.processMessage(message, targetModule, async (broadcastMsg) => {
+                await this.broadcastMessage(broadcastMsg);
+            });
+            this.statisticsTracker.incrementMessagesDelivered();
+            // Handle response for requests
+            if (message.correlationId && this.requestManager.hasPendingRequest(message.correlationId)) {
+                const responseTime = this.requestManager.getResponseTime(message.correlationId);
+                if (responseTime) {
+                    this.statisticsTracker.recordResponseTime(responseTime);
+                }
+            }
+        }
+        catch (error) {
+            this.statisticsTracker.incrementMessagesFailed();
+            // If this was a request, send error response
+            if (message.correlationId && this.requestManager.hasPendingRequest(message.correlationId)) {
+                this.requestManager.rejectRequest(message.correlationId, error);
+            }
+            else {
+                console.error(`Error processing message ${message.id}:`, error);
+            }
+        }
+    }
+    /**
+     * Get message center statistics
+     * @returns Statistics object
+     */
+    getStats() {
+        return this.statisticsTracker.getStats();
+    }
+    /**
+     * Get detailed performance metrics
+     * @returns Detailed performance metrics
+     */
+    getPerformanceMetrics() {
+        return this.statisticsTracker.getPerformanceMetrics();
+    }
+    /**
+     * Reset message center statistics
+     */
+    resetStats() {
+        this.statisticsTracker.reset();
+    }
+    /**
+     * Get the number of registered modules
+     * @returns Number of registered modules
+     */
+    getModuleCount() {
+        return this.moduleRegistry.getCount();
+    }
+    /**
+     * Check if a module is registered
+     * @param moduleId - Module ID
+     * @returns True if module is registered
+     */
+    isModuleRegistered(moduleId) {
+        return this.moduleRegistry.has(moduleId);
+    }
+    /**
+     * Get all registered module IDs
+     * @returns Array of module IDs
+     */
+    getModuleIds() {
+        return this.moduleRegistry.getModuleIds();
+    }
+    /**
+     * Get the number of pending requests
+     * @returns Number of pending requests
+     */
+    getPendingRequestCount() {
+        return this.requestManager.getPendingCount();
+    }
+    /**
+     * Get system uptime in human-readable format
+     * @returns Uptime string
+     */
+    getUptime() {
+        return this.statisticsTracker.getUptimeString();
+    }
+    /**
+     * Clean up resources
+     */
+    destroy() {
+        this.requestManager.cancelAll();
+        this.moduleRegistry.clear();
+        this.statisticsTracker.reset();
+    }
+};
+
+/**
+ * Debug Event Bus - 事件驱动的调试通信总线
+ * Event-driven debug communication bus
+ */
+let DebugEventBus$2 = class DebugEventBus {
+    constructor() {
+        this.subscribers = new Map();
+        this.eventQueue = [];
+        this.maxQueueSize = 10000;
+    }
+    static getInstance() {
+        if (!DebugEventBus.instance) {
+            DebugEventBus.instance = new DebugEventBus();
+        }
+        return DebugEventBus.instance;
+    }
+    /**
+     * Publish a debug event
+     * @param event - Debug event to publish
+     */
+    publish(event) {
+        // Add to queue
+        if (this.eventQueue.length >= this.maxQueueSize) {
+            this.eventQueue.shift(); // Remove oldest event
+        }
+        this.eventQueue.push(event);
+        // Process event immediately
+        this.processEvent(event);
+    }
+    /**
+     * Process a single event
+     * @param event - Event to process
+     */
+    processEvent(event) {
+        const subscribers = this.subscribers.get(event.type) || [];
+        const allSubscribers = this.subscribers.get('*') || [];
+        // Notify type-specific subscribers
+        subscribers.forEach(callback => {
+            try {
+                callback(event);
+            }
+            catch (error) {
+                console.error('Error in debug event subscriber:', error);
+            }
+        });
+        // Notify wildcard subscribers
+        allSubscribers.forEach(callback => {
+            try {
+                callback(event);
+            }
+            catch (error) {
+                console.error('Error in debug event subscriber:', error);
+            }
+        });
+    }
+    /**
+     * Subscribe to debug events
+     * @param eventType - Event type to subscribe to ('*' for all events)
+     * @param callback - Callback function
+     */
+    subscribe(eventType, callback) {
+        if (!this.subscribers.has(eventType)) {
+            this.subscribers.set(eventType, []);
+        }
+        this.subscribers.get(eventType).push(callback);
+    }
+    /**
+     * Unsubscribe from debug events
+     * @param eventType - Event type to unsubscribe from
+     * @param callback - Callback function to remove
+     */
+    unsubscribe(eventType, callback) {
+        const subscribers = this.subscribers.get(eventType);
+        if (subscribers) {
+            const index = subscribers.indexOf(callback);
+            if (index > -1) {
+                subscribers.splice(index, 1);
+            }
+        }
+    }
+    /**
+     * Get recent events from the queue
+     * @param limit - Maximum number of events to return
+     * @param type - Optional event type filter
+     */
+    getRecentEvents(limit = 100, type) {
+        let events = [...this.eventQueue];
+        if (type) {
+            events = events.filter(event => event.type === type);
+        }
+        return events.slice(-limit);
+    }
+    /**
+     * Clear the event queue
+     */
+    clear() {
+        this.eventQueue = [];
+        this.subscribers.clear();
+    }
+    /**
+     * Get queue statistics
+     */
+    getStats() {
+        return {
+            queueSize: this.eventQueue.length,
+            subscriberCount: Array.from(this.subscribers.values()).reduce((sum, subs) => sum + subs.length, 0),
+            eventTypes: Array.from(this.subscribers.keys()),
+            maxQueueSize: this.maxQueueSize
+        };
+    }
+    /**
+     * Set maximum queue size
+     * @param size - Maximum queue size
+     */
+    setMaxQueueSize(size) {
+        this.maxQueueSize = Math.max(100, size);
+        // Trim queue if necessary
+        if (this.eventQueue.length > this.maxQueueSize) {
+            this.eventQueue = this.eventQueue.slice(-this.maxQueueSize);
+        }
+    }
+};
+
+/**
+ * Abstract base class for all modules
+ * Provides foundational functionality for module management, connections, validation, debug, and messaging
+ */
+let BaseModule$2 = class BaseModule {
+    /**
+     * Creates an instance of BaseModule
+     * @param info - Module information
+     */
+    constructor(info) {
+        /**
+         * Input connections
+         */
+        this.inputConnections = new Map();
+        /**
+         * Output connections
+         */
+        this.outputConnections = new Map();
+        /**
+         * Validation rules for input data
+         */
+        this.validationRules = [];
+        /**
+         * Whether the module is initialized
+         */
+        this.initialized = false;
+        /**
+         * Configuration data for the module
+         */
+        this.config = {};
+        /**
+         * Whether the module is configured
+         */
+        this.configured = false;
+        /**
+         * Debug log entries
+         */
+        this.debugLogs = [];
+        /**
+         * Pending message requests
+         */
+        this.pendingRequests = new Map();
+        this.info = info;
+        this.messageCenter = MessageCenter$2.getInstance();
+        // Initialize debug configuration with defaults
+        this.debugConfig = {
+            enabled: true,
+            level: 'debug',
+            recordStack: true,
+            maxLogEntries: 1000,
+            consoleOutput: true,
+            trackDataFlow: true,
+            enableFileLogging: false,
+            maxFileSize: 10485760, // 10MB
+            maxLogFiles: 5
+        };
+        // Initialize debug event bus
+        this.eventBus = DebugEventBus$2.getInstance();
+    }
+    /**
+     * Static factory method to create an instance of the module
+     * This ensures static compilation with dynamic instantiation
+     * @param info - Module information
+     * @returns Instance of the module
+     */
+    static createInstance(info) {
+        return new this(info);
+    }
+    /**
+     * Sets the debug configuration
+     * @param config - Debug configuration
+     */
+    setDebugConfig(config) {
+        this.debugConfig = { ...this.debugConfig, ...config };
+    }
+    /**
+     * Sets the pipeline position for this module
+     * @param position - Pipeline position
+     */
+    setPipelinePosition(position) {
+        this.pipelinePosition = position;
+        this.debugConfig.pipelinePosition = position;
+    }
+    /**
+     * Sets the current session ID for pipeline operations
+     * @param sessionId - Session ID
+     */
+    setCurrentSession(sessionId) {
+        this.currentSessionId = sessionId;
+    }
+    /**
+     * Gets the current debug configuration
+     * @returns Debug configuration
+     */
+    getDebugConfig() {
+        return { ...this.debugConfig };
+    }
+    /**
+     * Start a pipeline session
+     * @param sessionId - Session ID
+     * @param pipelineConfig - Pipeline configuration
+     */
+    startPipelineSession(sessionId, pipelineConfig) {
+        this.currentSessionId = sessionId;
+        const event = {
+            sessionId,
+            moduleId: this.info.id,
+            operationId: 'session_start',
+            timestamp: Date.now(),
+            type: 'start',
+            position: this.pipelinePosition || 'middle',
+            data: {
+                pipelineConfig,
+                moduleInfo: {
+                    id: this.info.id,
+                    name: this.info.name,
+                    version: this.info.version
+                }
+            }
+        };
+        this.eventBus.publish(event);
+        // Log locally for backward compatibility
+        this.logInfo('Pipeline session started', {
+            sessionId,
+            pipelinePosition: this.pipelinePosition
+        }, 'startPipelineSession');
+    }
+    /**
+     * End a pipeline session
+     * @param sessionId - Session ID
+     * @param success - Whether session was successful
+     */
+    endPipelineSession(sessionId, success = true) {
+        const event = {
+            sessionId,
+            moduleId: this.info.id,
+            operationId: 'session_end',
+            timestamp: Date.now(),
+            type: success ? 'end' : 'error',
+            position: this.pipelinePosition || 'middle',
+            data: {
+                success,
+                moduleInfo: {
+                    id: this.info.id,
+                    name: this.info.name,
+                    version: this.info.version
+                }
+            }
+        };
+        this.eventBus.publish(event);
+        this.currentSessionId = undefined;
+        // Log locally for backward compatibility
+        this.logInfo('Pipeline session ended', {
+            sessionId,
+            success,
+            pipelinePosition: this.pipelinePosition
+        }, 'endPipelineSession');
+    }
+    /**
+     * Logs a debug message
+     * @param level - Log level
+     * @param message - Log message
+     * @param data - Additional data to log
+     * @param method - Method name where the log was generated
+     */
+    debug(level, message, data, method) {
+        // Check if debug is enabled and level is appropriate
+        if (!this.debugConfig.enabled)
+            return;
+        const levelOrder = ['trace', 'debug', 'info', 'warn', 'error'];
+        const currentLevelIndex = levelOrder.indexOf(this.debugConfig.level);
+        const messageLevelIndex = levelOrder.indexOf(level);
+        if (messageLevelIndex < currentLevelIndex)
+            return;
+        // Create log entry
+        const logEntry = {
+            timestamp: Date.now(),
+            level,
+            message,
+            moduleId: this.info.id,
+            method
+        };
+        // Add data if provided
+        if (data !== undefined) {
+            logEntry.data = data;
+        }
+        // Record stack trace if enabled
+        if (this.debugConfig.recordStack && level === 'error') {
+            try {
+                throw new Error('Stack trace');
+            }
+            catch (e) {
+                if (e instanceof Error) {
+                    logEntry.stack = e.stack || undefined;
+                }
+            }
+        }
+        // Add to logs
+        this.debugLogs.push(logEntry);
+        // Trim logs if necessary
+        if (this.debugLogs.length > this.debugConfig.maxLogEntries) {
+            this.debugLogs = this.debugLogs.slice(-this.debugConfig.maxLogEntries);
+        }
+        // Output to console if enabled
+        if (this.debugConfig.consoleOutput) {
+            const timestamp = new Date(logEntry.timestamp).toISOString();
+            const prefix = `[${timestamp}] [${this.info.id}] [${level.toUpperCase()}]${method ? ` [${method}]` : ''}`;
+            switch (level) {
+                case 'trace':
+                case 'debug':
+                case 'info':
+                    console.log(`${prefix} ${message}`, data || '');
+                    break;
+                case 'warn':
+                    console.warn(`${prefix} ${message}`, data || '');
+                    break;
+                case 'error':
+                    console.error(`${prefix} ${message}`, data || '');
+                    break;
+            }
+        }
+    }
+    /**
+     * Logs a trace message
+     * @param message - Log message
+     * @param data - Additional data to log
+     * @param method - Method name where the log was generated
+     */
+    trace(message, data, method) {
+        this.debug('trace', message, data, method);
+    }
+    /**
+     * Logs a debug message
+     * @param message - Log message
+     * @param data - Additional data to log
+     * @param method - Method name where the log was generated
+     */
+    log(message, data, method) {
+        this.debug('debug', message, data, method);
+    }
+    /**
+     * Logs an info message
+     * @param message - Log message
+     * @param data - Additional data to log
+     * @param method - Method name where the log was generated
+     */
+    logInfo(message, data, method) {
+        this.debug('info', message, data, method);
+    }
+    /**
+     * Logs a warning message
+     * @param message - Log message
+     * @param data - Additional data to log
+     * @param method - Method name where the log was generated
+     */
+    warn(message, data, method) {
+        this.debug('warn', message, data, method);
+    }
+    /**
+     * Logs an error message
+     * @param message - Log message
+     * @param data - Additional data to log
+     * @param method - Method name where the log was generated
+     */
+    error(message, data, method) {
+        this.debug('error', message, data, method);
+    }
+    /**
+     * Gets debug logs
+     * @param level - Optional filter by log level
+     * @param limit - Optional limit on number of entries returned
+     * @returns Array of debug log entries
+     */
+    getDebugLogs(level, limit) {
+        let logs = [...this.debugLogs];
+        // Filter by level if specified
+        if (level) {
+            logs = logs.filter(log => log.level === level);
+        }
+        // Limit results if specified
+        if (limit && limit > 0) {
+            logs = logs.slice(-limit);
+        }
+        return logs;
+    }
+    /**
+     * Clears debug logs
+     */
+    clearDebugLogs() {
+        this.debugLogs = [];
+    }
+    /**
+     * Configures the module with initialization data
+     * This method should be called before initialize()
+     * @param config - Configuration data for the module
+     */
+    configure(config) {
+        if (this.initialized) {
+            throw new Error('Cannot configure module after initialization');
+        }
+        this.config = { ...config };
+        this.configured = true;
+        // Log configuration
+        this.debug('debug', 'Module configured', config, 'configure');
+    }
+    /**
+     * Gets the module information
+     * @returns Module information
+     */
+    getInfo() {
+        return { ...this.info };
+    }
+    /**
+     * Gets the module configuration
+     * @returns Module configuration
+     */
+    getConfig() {
+        return { ...this.config };
+    }
+    /**
+     * Initializes the module
+     * This method should be overridden by subclasses
+     */
+    async initialize() {
+        if (!this.configured) {
+            console.warn(`Module ${this.info.id} is being initialized without configuration`);
+        }
+        // Register with message center
+        this.messageCenter.registerModule(this.info.id, this);
+        // Base initialization logic
+        this.initialized = true;
+        // Log initialization
+        this.logInfo('Module initialized', { configured: this.configured }, 'initialize');
+    }
+    /**
+     * Adds an input connection
+     * @param connection - Connection information
+     */
+    addInputConnection(connection) {
+        if (connection.type !== 'input') {
+            throw new Error('Invalid connection type for input');
+        }
+        this.inputConnections.set(connection.id, connection);
+    }
+    /**
+     * Adds an output connection
+     * @param connection - Connection information
+     */
+    addOutputConnection(connection) {
+        if (connection.type !== 'output') {
+            throw new Error('Invalid connection type for output');
+        }
+        this.outputConnections.set(connection.id, connection);
+    }
+    /**
+     * Removes an input connection
+     * @param connectionId - Connection ID
+     */
+    removeInputConnection(connectionId) {
+        this.inputConnections.delete(connectionId);
+    }
+    /**
+     * Removes an output connection
+     * @param connectionId - Connection ID
+     */
+    removeOutputConnection(connectionId) {
+        this.outputConnections.delete(connectionId);
+    }
+    /**
+     * Gets all input connections
+     * @returns Array of input connections
+     */
+    getInputConnections() {
+        return Array.from(this.inputConnections.values());
+    }
+    /**
+     * Gets all output connections
+     * @returns Array of output connections
+     */
+    getOutputConnections() {
+        return Array.from(this.outputConnections.values());
+    }
+    /**
+     * Validates input data against validation rules
+     * @param data - Data to validate
+     * @returns Validation result
+     */
+    validateInput(data) {
+        const errors = [];
+        for (const rule of this.validationRules) {
+            const value = data[rule.field];
+            switch (rule.type) {
+                case 'required':
+                    if (value === undefined || value === null) {
+                        errors.push(rule.message);
+                    }
+                    break;
+                case 'string':
+                    if (typeof value !== 'string') {
+                        errors.push(rule.message);
+                    }
+                    break;
+                case 'number':
+                    if (typeof value !== 'number') {
+                        errors.push(rule.message);
+                    }
+                    break;
+                case 'boolean':
+                    if (typeof value !== 'boolean') {
+                        errors.push(rule.message);
+                    }
+                    break;
+                case 'object':
+                    if (typeof value !== 'object' || value === null) {
+                        errors.push(rule.message);
+                    }
+                    break;
+                case 'array':
+                    if (!Array.isArray(value)) {
+                        errors.push(rule.message);
+                    }
+                    break;
+                case 'custom':
+                    if (rule.validator && !rule.validator(value)) {
+                        errors.push(rule.message);
+                    }
+                    break;
+            }
+        }
+        return {
+            isValid: errors.length === 0,
+            errors,
+            data
+        };
+    }
+    /**
+     * Performs handshake with another module
+     * @param targetModule - Target module to handshake with
+     * @returns Whether handshake was successful
+     */
+    async handshake(targetModule) {
+        // Base handshake implementation
+        // This should be overridden by subclasses for specific handshake logic
+        const result = true;
+        // Log handshake
+        this.debug('debug', 'Handshake performed', { targetModule: targetModule.getInfo().id }, 'handshake');
+        return result;
+    }
+    /**
+     * Transfers data to connected modules
+     * @param data - Data to transfer
+     * @param targetConnectionId - Optional target connection ID
+     */
+    async transferData(data, targetConnectionId) {
+        // Get target connections
+        let targetConnections;
+        if (targetConnectionId) {
+            // If a specific connection ID is provided, use it
+            const connection = this.outputConnections.get(targetConnectionId);
+            if (!connection) {
+                throw new Error(`Output connection with ID '${targetConnectionId}' not found`);
+            }
+            targetConnections = [connection];
+        }
+        else {
+            // Otherwise, use all output connections
+            targetConnections = Array.from(this.outputConnections.values());
+        }
+        // Create data transfer objects for each target connection
+        const transfers = targetConnections.map(connection => ({
+            id: `${this.info.id}-${connection.id}-${Date.now()}`,
+            sourceConnectionId: connection.id,
+            targetConnectionId: connection.targetModuleId,
+            data,
+            timestamp: Date.now(),
+            metadata: connection.metadata
+        }));
+        // Send data to each target module
+        for (const transfer of transfers) {
+            // In a real implementation, you would send the data to the target module
+            // For now, we'll just log the transfer
+            console.log(`Transferring data from module ${this.info.id} to connection ${transfer.targetConnectionId}:`, data);
+            // Log data transfer if tracking is enabled
+            if (this.debugConfig.trackDataFlow) {
+                this.debug('debug', 'Data transferred', transfer, 'transferData');
+            }
+        }
+    }
+    /**
+     * Receives data from connected modules
+     * This method should be overridden by subclasses
+     * @param dataTransfer - Data transfer information
+     */
+    async receiveData(dataTransfer) {
+        // Base receive data implementation
+        // This should be overridden by subclasses for specific receive logic
+        console.log(`Module ${this.info.id} received data:`, dataTransfer.data);
+        // Log data reception if tracking is enabled
+        if (this.debugConfig.trackDataFlow) {
+            this.debug('debug', 'Data received', dataTransfer, 'receiveData');
+        }
+    }
+    /**
+     * Cleans up resources and connections
+     */
+    async destroy() {
+        // Log destruction before clearing logs
+        this.logInfo('Module destroyed', {}, 'destroy');
+        // Clean up connections
+        this.inputConnections.clear();
+        this.outputConnections.clear();
+        this.initialized = false;
+        this.configured = false;
+        this.config = {};
+        // Unregister from message center
+        this.messageCenter.unregisterModule(this.info.id);
+        // Clear debug logs
+        this.clearDebugLogs();
+        // Clear pending requests
+        this.pendingRequests.clear();
+    }
+    /**
+     * Send a one-way message (fire and forget)
+     * @param type - Message type
+     * @param payload - Message payload
+     * @param target - Target module ID (optional for broadcasts)
+     * @param metadata - Additional metadata
+     * @param ttl - Time to live in milliseconds
+     * @param priority - Message priority (0-9)
+     */
+    sendMessage(type, payload, target, metadata, ttl, priority) {
+        const message = {
+            id: v4(),
+            type,
+            source: this.info.id,
+            target,
+            payload,
+            timestamp: Date.now(),
+            metadata,
+            ttl,
+            priority
+        };
+        try {
+            if (target) {
+                this.messageCenter.sendMessage(message);
+                this.debug('debug', 'Message sent', { type, target }, 'sendMessage');
+            }
+            else {
+                this.messageCenter.broadcastMessage(message);
+                this.debug('debug', 'Message broadcast', { type }, 'sendMessage');
+            }
+        }
+        catch (error) {
+            this.debug('error', 'Failed to send message', { error: error.message }, 'sendMessage');
+            throw error;
+        }
+    }
+    /**
+     * Send a message and wait for response (blocking)
+     * @param type - Message type
+     * @param payload - Message payload
+     * @param target - Target module ID
+     * @param timeout - Timeout in milliseconds
+     * @param metadata - Additional metadata
+     * @param ttl - Time to live in milliseconds
+     * @param priority - Message priority (0-9)
+     * @returns Promise that resolves to the response
+     */
+    async sendRequest(type, payload, target, timeout = 30000, metadata, ttl, priority) {
+        const message = {
+            id: v4(),
+            type,
+            source: this.info.id,
+            target,
+            payload,
+            timestamp: Date.now(),
+            correlationId: v4(),
+            metadata,
+            ttl,
+            priority
+        };
+        try {
+            this.debug('debug', 'Sending request', { type, target }, 'sendRequest');
+            const response = await this.messageCenter.sendRequest(message, timeout);
+            this.debug('debug', 'Received response', { type, target, success: response.success }, 'sendRequest');
+            return response;
+        }
+        catch (error) {
+            this.debug('error', 'Request failed', { type, target, error: error.message }, 'sendRequest');
+            throw error;
+        }
+    }
+    /**
+     * Send a message with callback for response (non-blocking)
+     * @param type - Message type
+     * @param payload - Message payload
+     * @param target - Target module ID
+     * @param callback - Callback function for response
+     * @param timeout - Timeout in milliseconds
+     * @param metadata - Additional metadata
+     * @param ttl - Time to live in milliseconds
+     * @param priority - Message priority (0-9)
+     */
+    sendRequestAsync(type, payload, target, callback, timeout = 30000, metadata, ttl, priority) {
+        const message = {
+            id: v4(),
+            type,
+            source: this.info.id,
+            target,
+            payload,
+            timestamp: Date.now(),
+            correlationId: v4(),
+            metadata,
+            ttl,
+            priority
+        };
+        try {
+            this.debug('debug', 'Sending async request', { type, target }, 'sendRequestAsync');
+            this.messageCenter.sendRequestAsync(message, (response) => {
+                this.debug('debug', 'Received async response', { type, target, success: response.success }, 'sendRequestAsync');
+                callback(response);
+            }, timeout);
+        }
+        catch (error) {
+            this.debug('error', 'Async request failed', { type, target, error: error.message }, 'sendRequestAsync');
+            throw error;
+        }
+    }
+    /**
+     * Broadcast a message to all modules
+     * @param type - Message type
+     * @param payload - Message payload
+     * @param metadata - Additional metadata
+     * @param ttl - Time to live in milliseconds
+     * @param priority - Message priority (0-9)
+     */
+    broadcastMessage(type, payload, metadata, ttl, priority) {
+        this.sendMessage(type, payload, undefined, metadata, ttl, priority);
+    }
+    /**
+     * Handle incoming messages
+     * This method should be overridden by subclasses
+     * @param message - The incoming message
+     * @returns Promise that resolves to a response or void
+     */
+    async handleMessage(message) {
+        this.debug('debug', 'Handling message', { type: message.type, source: message.source }, 'handleMessage');
+        // Base message handling implementation
+        // This should be overridden by subclasses for specific message handling logic
+        switch (message.type) {
+            case 'ping':
+                return {
+                    messageId: message.id,
+                    correlationId: message.correlationId || '',
+                    success: true,
+                    data: { pong: true, moduleId: this.info.id },
+                    timestamp: Date.now()
+                };
+            default:
+                this.debug('warn', 'Unhandled message type', { type: message.type }, 'handleMessage');
+                return {
+                    messageId: message.id,
+                    correlationId: message.correlationId || '',
+                    success: false,
+                    error: `Unhandled message type: ${message.type}`,
+                    timestamp: Date.now()
+                };
+        }
+    }
+    /**
+     * Handle module lifecycle events
+     * @param moduleId - The module ID that was registered
+     */
+    onModuleRegistered(moduleId) {
+        this.logInfo('Module registered', { moduleId }, 'onModuleRegistered');
+    }
+    /**
+     * Handle module lifecycle events
+     * @param moduleId - The module ID that was unregistered
+     */
+    onModuleUnregistered(moduleId) {
+        this.logInfo('Module unregistered', { moduleId }, 'onModuleUnregistered');
+    }
+    // ========================================
+    // I/O Tracking Methods
+    // ========================================
+    /**
+     * Record an I/O operation start
+     * @param operationId - Unique identifier for the operation
+     * @param input - Input data
+     * @param method - Method name that performed the operation
+     */
+    startIOTracking(operationId, input, method) {
+        if (!this.currentSessionId || !this.debugConfig.enabled)
+            return;
+        const event = {
+            sessionId: this.currentSessionId,
+            moduleId: this.info.id,
+            operationId,
+            timestamp: Date.now(),
+            type: 'start',
+            position: this.pipelinePosition || 'middle',
+            data: {
+                input,
+                method,
+                pipelinePosition: this.pipelinePosition,
+                moduleInfo: {
+                    id: this.info.id,
+                    name: this.info.name,
+                    version: this.info.version
+                }
+            }
+        };
+        this.eventBus.publish(event);
+        // Log locally for backward compatibility
+        this.debug('debug', `I/O tracking started: ${operationId}`, {
+            sessionId: this.currentSessionId,
+            input: this.debugConfig.trackDataFlow ? input : '[INPUT_DATA]',
+            method
+        }, 'startIOTracking');
+    }
+    /**
+     * Record an I/O operation end
+     * @param operationId - Unique identifier for the operation
+     * @param output - Output data
+     * @param success - Whether the operation was successful
+     * @param error - Error message if operation failed
+     */
+    endIOTracking(operationId, output, success = true, error) {
+        if (!this.currentSessionId || !this.debugConfig.enabled)
+            return;
+        const event = {
+            sessionId: this.currentSessionId,
+            moduleId: this.info.id,
+            operationId,
+            timestamp: Date.now(),
+            type: success ? 'end' : 'error',
+            position: this.pipelinePosition || 'middle',
+            data: {
+                output,
+                success,
+                error,
+                pipelinePosition: this.pipelinePosition,
+                moduleInfo: {
+                    id: this.info.id,
+                    name: this.info.name,
+                    version: this.info.version
+                }
+            }
+        };
+        this.eventBus.publish(event);
+        // Log locally for backward compatibility
+        this.debug('debug', `I/O tracking ended: ${operationId}`, {
+            sessionId: this.currentSessionId,
+            output: this.debugConfig.trackDataFlow ? output : '[OUTPUT_DATA]',
+            success,
+            error
+        }, 'endIOTracking');
+    }
+};
+
 class UnderConstructionError extends Error {
     constructor(featureName, message) {
         super(message);
@@ -1447,7 +3562,7 @@ class UnderConstructionError extends Error {
         this.featureName = featureName;
     }
 }
-class UnderConstruction extends BaseModule$1 {
+class UnderConstruction extends BaseModule$2 {
     constructor() {
         const moduleInfo = {
             id: v4(),
@@ -6884,5 +8999,5 @@ class BaseModule {
     }
 }
 
-export { ActionPriority$1 as ActionPriority, ActionStatus$1 as ActionStatus, ActionType$1 as ActionType, AnnotationType$1 as AnnotationType, BaseModule, ConditionOperator$1 as ConditionOperator, ConfigValidator, ConfigValidator as ConfigurationValidation, CycleRecorder, CycleRecorder as CycleRecording, DebugEventBus, ErrorImpact$1 as ErrorImpact, ErrorRecorder, ErrorRecorder as ErrorRecording, ErrorRecoverability$1 as ErrorRecoverability, ErrorSeverity$1 as ErrorSeverity, ErrorSource$1 as ErrorSource, ErrorType$1 as ErrorType, FieldTruncator as FieldTruncation, FieldTruncator, GlobalConfigManager, GlobalConfigManager as GlobalConfiguration, HandlingStatus$1 as HandlingStatus, LogicalOperator$1 as LogicalOperator, MessageCenter, MessageProcessor, ModuleRegistry, PathResolver as PathResolution, PathResolver, PolicyType$1 as PolicyType, RecordingManager, RequestContextManager, RequestContextManager as RequestContextTracking, RequestManager, ResponseActionType$1 as ResponseActionType, ResponseStatus$1 as ResponseStatus, RuleType$1 as RuleType, StatisticsTracker };
+export { ActionPriority$2 as ActionPriority, ActionStatus$2 as ActionStatus, ActionType$2 as ActionType, AnnotationType$2 as AnnotationType, BaseModule, ConditionOperator$2 as ConditionOperator, ConfigValidator, ConfigValidator as ConfigurationValidation, CycleRecorder, CycleRecorder as CycleRecording, DebugEventBus, ErrorImpact$2 as ErrorImpact, ErrorRecorder, ErrorRecorder as ErrorRecording, ErrorRecoverability$2 as ErrorRecoverability, ErrorSeverity$2 as ErrorSeverity, ErrorSource$2 as ErrorSource, ErrorType$2 as ErrorType, FieldTruncator as FieldTruncation, FieldTruncator, GlobalConfigManager, GlobalConfigManager as GlobalConfiguration, HandlingStatus$2 as HandlingStatus, LogicalOperator$2 as LogicalOperator, MessageCenter, MessageProcessor, ModuleRegistry, PathResolver as PathResolution, PathResolver, PolicyType$2 as PolicyType, RecordingManager, RequestContextManager, RequestContextManager as RequestContextTracking, RequestManager, ResponseActionType$2 as ResponseActionType, ResponseStatus$2 as ResponseStatus, RuleType$2 as RuleType, StatisticsTracker };
 //# sourceMappingURL=index.esm.js.map

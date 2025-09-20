@@ -68,10 +68,10 @@ export function createPipelineConfigGenerator(): PipelineConfigGenerator {
 export async function parseConfigFile(filePath: string): Promise<any> {
   const loader = createConfigLoader();
   const parser = createConfigParser();
-  
+
   await loader.initialize();
   await parser.initialize();
-  
+
   try {
     const rawData = await loader.loadFromFile(filePath);
     const config = await parser.parseConfig(rawData);
@@ -88,20 +88,95 @@ export async function parseConfigFile(filePath: string): Promise<any> {
 export async function processConfigFile(filePath: string): Promise<any> {
   const loader = createConfigLoader();
   const parser = createConfigParser();
-  
+
   await loader.initialize();
   await parser.initialize();
-  
+
   try {
     // 1. 加载配置
     const rawData = await loader.loadFromFile(filePath);
-    
+
     // 2. 解析配置
     const config = await parser.parseConfig(rawData);
-    
+
     return config;
   } finally {
     await loader.destroy();
     await parser.destroy();
   }
+}
+
+/**
+ * 生成ServerModule配置包装器
+ */
+export async function generateServerWrapper(config: any): Promise<any> {
+  const parser = createConfigParser();
+
+  await parser.initialize();
+
+  try {
+    return parser.generateServerWrapper(config);
+  } finally {
+    await parser.destroy();
+  }
+}
+
+/**
+ * 生成PipelineAssembler配置包装器
+ */
+export async function generatePipelineWrapper(config: any): Promise<any> {
+  const parser = createConfigParser();
+
+  await parser.initialize();
+
+  try {
+    return parser.generatePipelineWrapper(config);
+  } finally {
+    await parser.destroy();
+  }
+}
+
+/**
+ * 生成所有配置包装器
+ */
+export async function generateAllWrappers(config: any): Promise<{
+  server: any;
+  pipeline: any;
+}> {
+  const parser = createConfigParser();
+
+  await parser.initialize();
+
+  try {
+    return parser.generateAllWrappers(config);
+  } finally {
+    await parser.destroy();
+  }
+}
+
+/**
+ * 从配置文件生成ServerModule包装器
+ */
+export async function generateServerWrapperFromFile(filePath: string): Promise<any> {
+  const config = await processConfigFile(filePath);
+  return generateServerWrapper(config);
+}
+
+/**
+ * 从配置文件生成PipelineAssembler包装器
+ */
+export async function generatePipelineWrapperFromFile(filePath: string): Promise<any> {
+  const config = await processConfigFile(filePath);
+  return generatePipelineWrapper(config);
+}
+
+/**
+ * 从配置文件生成所有包装器
+ */
+export async function generateAllWrappersFromFile(filePath: string): Promise<{
+  server: any;
+  pipeline: any;
+}> {
+  const config = await processConfigFile(filePath);
+  return generateAllWrappers(config);
 }

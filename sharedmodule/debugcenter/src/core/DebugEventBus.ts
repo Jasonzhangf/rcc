@@ -4,8 +4,9 @@
  */
 
 // DebugEvent interface defined here to avoid circular imports
+// This interface must be compatible with BaseModule's DebugEvent interface
 export interface DebugEvent {
-  sessionId: string;
+  sessionId?: string;  // Optional for compatibility with BaseModule
   moduleId: string;
   operationId: string;
   timestamp: number;

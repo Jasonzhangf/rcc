@@ -24,6 +24,10 @@ import {
   PipelineModule,
 } from './types';
 
+// Import wrapper generation functions from config-parser
+import { generateAllWrappers } from '../sharedmodule/config-parser/src/index';
+import { WrapperGenerator, ConfigValidator } from './utils/config-validation';
+
 // Get current directory for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -209,7 +213,7 @@ interface StartOptions {
 }
 
 /**
- * Initialize ServerModule with comprehensive configuration
+ * Initialize ServerModule with comprehensive configuration using wrapper
  */
 async function initializeServer(
   ServerModule: ServerModuleModule,
@@ -230,22 +234,89 @@ async function initializeServer(
     await resolvePortConflict(port);
   }
 
-  // Server configuration with type safety
+  console.log('🔧 Generating server wrapper configuration with enhanced validation...');
+
+  try {
+    // Generate server wrapper using enhanced validation system
+    const wrapperResult = await WrapperGenerator.generateWrappersWithValidation(
+      config,
+      generateAllWrappers
+    );
+
+    if (!wrapperResult.success) {
+      console.warn('⚠️  Wrapper generation validation failed, using fallback configuration');
+      if (wrapperResult.errors && wrapperResult.errors.length > 0) {
+        console.warn('   Validation errors:');
+        wrapperResult.errors.forEach((error) => {
+          console.warn(`   - ${error.code}: ${error.message} (${error.path})`);
+        });
+      }
+      const fallbackWrappers = WrapperGenerator.generateFallbackWrappers(config);
+      return createServerConfig(fallbackWrappers.server, options, config);
+    }
+
+    // Validate server wrapper specifically
+    const serverErrors = ConfigValidator.validateServerWrapper(wrapperResult.server!);
+    if (serverErrors.length > 0) {
+      console.warn('⚠️  Server wrapper validation failed, using fallback');
+      serverErrors.forEach((error) => {
+        console.warn(`   - ${error.code}: ${error.message}`);
+      });
+      const fallbackWrappers = WrapperGenerator.generateFallbackWrappers(config);
+      return createServerConfig(fallbackWrappers.server, options, config);
+    }
+
+    console.log(`✅ Server wrapper generated and validated successfully`);
+    console.log(`   - Generation time: ${wrapperResult.metadata?.generationTime}ms`);
+    console.log(`   - Providers: ${wrapperResult.metadata?.providerCount}`);
+    console.log(`   - Virtual models: ${wrapperResult.metadata?.virtualModelCount}`);
+
+    return createServerConfig(wrapperResult.server!, options, config);
+  } catch (error) {
+    console.warn(
+      `⚠️  Wrapper generation failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    console.log('   Using fallback configuration...');
+    const fallbackWrappers = WrapperGenerator.generateFallbackWrappers(config);
+    return createServerConfig(fallbackWrappers.server, options, config);
+  }
+}
+
+/**
+ * Create server configuration from validated wrapper
+ */
+function createServerConfig(
+  serverWrapper: any,
+  options: {
+    port: number;
+    debugPath: string;
+    systemDebugPath: string;
+    enablePipelineTracking: boolean;
+    enableTwoPhaseDebug: boolean;
+  },
+  config: RccConfig
+): any {
+  const { port, debugPath, systemDebugPath, enablePipelineTracking, enableTwoPhaseDebug } = options;
+
+  // Create server configuration by combining wrapper with RCC-specific settings
   const serverConfig: ServerModuleConfig = {
-    port,
-    host: '0.0.0.0',
-    cors: {
+    // Use wrapper configuration as base
+    port: port || serverWrapper.port,
+    host: serverWrapper.host || '0.0.0.0',
+    cors: serverWrapper.cors || {
       origin: '*',
       credentials: true,
     },
-    compression: true,
-    helmet: true,
-    rateLimit: {
+    compression: serverWrapper.compression !== false,
+    helmet: serverWrapper.helmet !== false,
+    rateLimit: serverWrapper.rateLimit || {
       windowMs: 900000, // 15 minutes
       max: 1000,
     },
-    timeout: 60000,
-    bodyLimit: '50mb',
+    timeout: serverWrapper.timeout || 60000,
+    bodyLimit: serverWrapper.bodyLimit || '50mb',
+
+    // RCC-specific configuration
     enableVirtualModels: true,
     enablePipeline: enablePipelineTracking,
     debug: {
@@ -265,9 +336,20 @@ async function initializeServer(
     },
     basePath: debugPath,
     enableTwoPhaseDebug,
+
+    // Include pipeline configuration from wrapper
+    pipeline: serverWrapper.pipeline,
   };
 
-  return { serverConfig, systemDebugPath, debugPath };
+  console.log(`🔧 Server configuration created using validated wrapper`);
+  console.log(`   - Port: ${serverConfig.port}`);
+  console.log(`   - Host: ${serverConfig.host}`);
+  console.log(`   - Pipeline enabled: ${serverConfig.enablePipeline}`);
+  console.log(
+    `   - CORS origin: ${Array.isArray(serverConfig.cors.origin) ? serverConfig.cors.origin.join(', ') : serverConfig.cors.origin}`
+  );
+
+  return { serverConfig, systemDebugPath, debugPath, serverWrapper };
 }
 
 /**
@@ -335,7 +417,7 @@ async function resolvePortConflict(port: number): Promise<void> {
 }
 
 /**
- * Initialize Pipeline system with type-safe imports
+ * Initialize Pipeline system with type-safe imports and wrapper configuration
  */
 async function initializePipelineSystem(
   config: RccConfig,
@@ -345,6 +427,76 @@ async function initializePipelineSystem(
   const importManager = DynamicImportManager.getInstance();
 
   try {
+    console.log(
+      '🔧 Generating configuration wrappers for pipeline system with enhanced validation...'
+    );
+
+    // Generate pipeline wrapper using enhanced validation system
+    const wrapperResult = await WrapperGenerator.generateWrappersWithValidation(
+      config,
+      generateAllWrappers
+    );
+
+    if (!wrapperResult.success) {
+      console.warn(
+        '⚠️  Pipeline wrapper generation validation failed, using fallback configuration'
+      );
+      if (wrapperResult.errors && wrapperResult.errors.length > 0) {
+        console.warn('   Validation errors:');
+        wrapperResult.errors.forEach((error) => {
+          console.warn(`   - ${error.code}: ${error.message} (${error.path})`);
+        });
+      }
+      const fallbackWrappers = WrapperGenerator.generateFallbackWrappers(config);
+      return createPipelineSystem(fallbackWrappers.pipeline, config, systemDebugPath, verbose);
+    }
+
+    // Validate pipeline wrapper specifically
+    const pipelineErrors = ConfigValidator.validatePipelineWrapper(wrapperResult.pipeline!);
+    if (pipelineErrors.length > 0) {
+      console.warn('⚠️  Pipeline wrapper validation failed, using fallback');
+      pipelineErrors.forEach((error) => {
+        console.warn(`   - ${error.code}: ${error.message}`);
+      });
+      const fallbackWrappers = WrapperGenerator.generateFallbackWrappers(config);
+      return createPipelineSystem(fallbackWrappers.pipeline, config, systemDebugPath, verbose);
+    }
+
+    console.log(`✅ Pipeline wrapper generated and validated successfully`);
+    console.log(`   - Generation time: ${wrapperResult.metadata?.generationTime}ms`);
+    console.log(`   - Virtual models: ${wrapperResult.pipeline?.virtualModels?.length || 0}`);
+    console.log(`   - Modules: ${wrapperResult.pipeline?.modules?.length || 0}`);
+
+    return createPipelineSystem(wrapperResult.pipeline!, config, systemDebugPath, verbose);
+  } catch (error) {
+    console.warn(
+      `⚠️  Pipeline wrapper generation failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    console.log('   Using fallback configuration...');
+    const fallbackWrappers = WrapperGenerator.generateFallbackWrappers(config);
+    return createPipelineSystem(fallbackWrappers.pipeline, config, systemDebugPath, verbose);
+  }
+}
+
+/**
+ * Create pipeline system from validated wrapper
+ */
+async function createPipelineSystem(
+  pipelineWrapper: any,
+  config: RccConfig,
+  systemDebugPath: string,
+  verbose: boolean = false
+): Promise<any> {
+  const importManager = DynamicImportManager.getInstance();
+
+  try {
+    if (verbose) {
+      console.log(`📋 Pipeline wrapper contains:`);
+      console.log(`   - Virtual models: ${pipelineWrapper.virtualModels?.length || 0}`);
+      console.log(`   - Modules: ${pipelineWrapper.modules?.length || 0}`);
+      console.log(`   - Routing strategy: ${pipelineWrapper.routing?.strategy || 'default'}`);
+    }
+
     // Pipeline module import with type safety
     const pipelineModule = await importManager.import<PipelineModule>('rcc-pipeline', {
       validate: (module) =>
@@ -371,19 +523,12 @@ async function initializePipelineSystem(
     await pipelineTracker.initialize();
     console.log(`✅ PipelineTracker initialized`);
 
-    // Validate configuration
-    const providerKeys = Object.keys(config.providers || {});
-    const virtualModelKeys = Object.keys(config.virtualModels || {});
-
-    if (providerKeys.length === 0) {
-      throw new Error('Configuration validation failed: No providers configured');
+    // Validate wrapper configuration (additional safety check)
+    if (!pipelineWrapper.virtualModels || pipelineWrapper.virtualModels.length === 0) {
+      throw new Error('Pipeline wrapper validation failed: No virtual models configured');
     }
 
-    if (virtualModelKeys.length === 0) {
-      throw new Error('Configuration validation failed: No virtual models configured');
-    }
-
-    // Provider discovery options
+    // Use wrapper configuration for assembler
     const providerDiscoveryOptions = {
       scanPaths: ['./sharedmodule'],
       providerPatterns: ['*Provider.js', '*Provider.ts'],
@@ -392,8 +537,9 @@ async function initializePipelineSystem(
     };
 
     if (verbose) {
-      console.log(`📋 Providers found: ${providerKeys.join(', ')}`);
-      console.log(`📋 Virtual models found: ${virtualModelKeys.join(', ')}`);
+      console.log(
+        `📋 Virtual models in wrapper: ${pipelineWrapper.virtualModels.map((vm) => vm.id).join(', ')}`
+      );
     }
 
     // Pipeline factory configuration
@@ -406,7 +552,7 @@ async function initializePipelineSystem(
       metricsEnabled: true,
     };
 
-    // Assembler configuration
+    // Assembler configuration using wrapper data
     const assemblerConfig = {
       providerDiscoveryOptions,
       pipelineFactoryConfig,
@@ -414,12 +560,27 @@ async function initializePipelineSystem(
       fallbackStrategy: 'first-available',
     };
 
-    // Convert virtual models to array format
-    const virtualModelConfigs = Object.values(config.virtualModels || {});
+    // Use virtual models from wrapper
+    const virtualModelConfigs = pipelineWrapper.virtualModels;
 
-    return { PipelineAssembler, pipelineTracker, assemblerConfig, virtualModelConfigs };
+    if (verbose) {
+      console.log(`✅ Pipeline system created successfully`);
+      console.log(`   - Virtual model count: ${virtualModelConfigs.length}`);
+      console.log(`   - Routing strategy: ${pipelineWrapper.routing.strategy}`);
+      console.log(`   - Fallback strategy: ${pipelineWrapper.routing.fallbackStrategy}`);
+    }
+
+    return {
+      PipelineAssembler,
+      pipelineTracker,
+      assemblerConfig,
+      virtualModelConfigs,
+      pipelineWrapper,
+    };
   } catch (error) {
-    console.log(`⚠️  Pipeline module initialization failed: ${error.message}`);
+    console.log(
+      `⚠️  Pipeline module initialization failed: ${error instanceof Error ? error.message : String(error)}`
+    );
     throw error;
   }
 }
@@ -584,7 +745,7 @@ program
       }
 
       // Initialize server
-      const { serverConfig } = await initializeServer(ServerModule, config, {
+      const { serverConfig, serverWrapper } = await initializeServer(ServerModule, config, {
         port,
         debugPath,
         systemDebugPath,
@@ -597,11 +758,24 @@ program
 
       // Create server instance
       const server = new ServerModule();
+      console.log('🔧 Passing validated configuration to ServerModule:');
+      console.log('   - Using validated server wrapper for HTTP configuration');
+      console.log('   - Pipeline wrapper used for pipeline system initialization');
+      console.log(`   - Server port: ${serverConfig.port}`);
+      console.log(`   - Pipeline tracking: ${serverConfig.enablePipeline}`);
+      console.log(`   - Validation successful: ✅`);
       await server.configure(serverConfig);
 
       if (debugCenter) {
         server.debugCenter = debugCenter;
         server.debugCenterSessionId = systemStartSessionId;
+
+        // Connect BaseModule to DebugCenter for comprehensive IO tracking
+        server.setExternalDebugHandler((event: any) => {
+          debugCenter.processDebugEvent(event);
+        });
+
+        console.log('🔗 ServerModule connected to DebugCenter for IO tracking');
       }
 
       await server.initialize();

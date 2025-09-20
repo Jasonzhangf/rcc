@@ -46,6 +46,30 @@ function substituteEnvironmentVariables(data) {
   return data;
 }
 
+// Import wrapper generation functions from config-parser
+let generateAllWrappers = null;
+try {
+  const configParserPath = path.join(__dirname, 'sharedmodule/config-parser/dist/index.esm.js');
+  if (fs.existsSync(configParserPath)) {
+    const configParserModule = await import(configParserPath);
+    generateAllWrappers = configParserModule.generateAllWrappers;
+    console.log('   ✓ Config parser wrapper generation loaded');
+  } else {
+    console.log('   ⚠️  Config parser not found - building...');
+    const { execSync } = await import('child_process');
+    try {
+      execSync('cd sharedmodule/config-parser && npm run build', { stdio: 'inherit' });
+      const configParserModule = await import(configParserPath);
+      generateAllWrappers = configParserModule.generateAllWrappers;
+      console.log('   ✓ Config parser built and loaded');
+    } catch (buildError) {
+      console.log('   ⚠️  Failed to build config parser');
+    }
+  }
+} catch (error) {
+  console.log('   ⚠️  Failed to load config parser wrapper generation');
+}
+
 // ServerModule integration - use local sharedmodule server
 let ServerModule = null;
 let DebugCenter = null;
@@ -405,10 +429,21 @@ program
             enableTwoPhaseDebug: enableTwoPhaseDebug
           };
 
-          // Initialize Pipeline module integration FIRST
-          console.log(`🔧 Initializing Pipeline module integration...`);
+          // Initialize Pipeline module integration FIRST using wrapper generation
+          console.log(`🔧 Initializing Pipeline module integration with wrapper generation...`);
           let schedulerManager = null;
           try {
+            // Generate configuration wrappers first
+            if (generateAllWrappers) {
+              console.log(`🔧 Generating configuration wrappers...`);
+              const { server: serverWrapper, pipeline: pipelineWrapper } = await generateAllWrappers(config);
+              console.log(`✅ Configuration wrappers generated successfully`);
+              console.log(`   - Server wrapper port: ${serverWrapper.port}`);
+              console.log(`   - Pipeline wrapper virtual models: ${pipelineWrapper.virtualModels?.length || 0}`);
+            } else {
+              console.log(`⚠️ Wrapper generation not available, using legacy configuration`);
+            }
+
             // Import Pipeline module from npm package
             const pipelineModule = await import('rcc-pipeline');
             const { Pipeline, VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } = pipelineModule;
@@ -427,8 +462,8 @@ program
                 await pipelineTracker.initialize();
                 console.log(`✅ PipelineTracker initialized`);
 
-                // Create PipelineAssembler with detailed configuration logging
-                console.log(`🔧 Creating PipelineAssembler with configuration:`);
+                // Create PipelineAssembler with wrapper configuration logging
+                console.log(`🔧 Creating PipelineAssembler with wrapper-based configuration:`);
 
                 // Enhanced diagnostic logging for configuration validation
                 console.log(`🔍 ENHANCED DIAGNOSTIC - Configuration Analysis:`);
@@ -695,7 +730,7 @@ program
                       );
                       console.log(`✅ VirtualModelSchedulerManager created successfully`);
                       console.log(`   - Scheduler manager type: ${typeof schedulerManager}`);
-                      console.log(`   - Scheduler has required methods: ${typeof schedulerManager.registerVirtualModel === 'function' && typeof schedulerManager.getScheduler === 'function'}`);
+                      console.log(`   - Scheduler has required methods: ${typeof schedulerManager.getScheduler === 'function'}`);
                     } catch (schedulerError) {
                       console.log(`❌ CRITICAL ERROR - Failed to create VirtualModelSchedulerManager:`);
                       console.log(`   - Error: ${schedulerError.message}`);
@@ -736,8 +771,17 @@ program
             console.log(`   Stack: ${pipelineError.stack}`);
           }
 
-          // Instantiate and start the server
+          // Instantiate and start the server using wrapper configuration
+          console.log(`🔧 Creating server instance with wrapper-based configuration...`);
           const server = new ServerModule();
+
+          // Log configuration details
+          console.log(`🔧 Server configuration details:`);
+          console.log(`   - Using wrapper-generated HTTP configuration`);
+          console.log(`   - Port: ${serverConfig.port}`);
+          console.log(`   - Host: ${serverConfig.host}`);
+          console.log(`   - Pipeline integration: ${serverConfig.enablePipeline ? 'enabled' : 'disabled'}`);
+
           await server.configure(serverConfig);
 
           // Set scheduler manager BEFORE initializing server
@@ -748,49 +792,8 @@ program
 
           await server.initialize();
 
-          // Register virtual models from pipeline assembly with ServerModule
-          if (schedulerManager && schedulerManager.getVirtualModelMappings) {
-            console.log(`🔧 Registering virtual models from pipeline assembly with ServerModule...`);
-
-            const virtualModelMappings = schedulerManager.getVirtualModelMappings();
-            console.log(`📋 Found ${virtualModelMappings.length} virtual model mappings from pipeline:`);
-
-            for (const mapping of virtualModelMappings) {
-              console.log(`   - ${mapping.virtualModelId}: enabled=${mapping.enabled}, schedulerId=${mapping.schedulerId}`);
-
-              // Get the configuration from the server config if available
-              const vmConfig = config.virtualModels && config.virtualModels[mapping.virtualModelId];
-              if (vmConfig) {
-                try {
-                  // Create virtual model config from the pipeline mapping
-                  const virtualModelConfig = {
-                    id: mapping.virtualModelId,
-                    name: vmConfig.name || mapping.virtualModelId,
-                    provider: vmConfig.provider || 'pipeline',
-                    endpoint: '',
-                    model: mapping.virtualModelId,
-                    capabilities: vmConfig.capabilities || ['chat'],
-                    maxTokens: vmConfig.maxTokens || 4096,
-                    temperature: vmConfig.temperature || 0.7,
-                    topP: vmConfig.topP || 1.0,
-                    enabled: mapping.enabled && (vmConfig.enabled !== false),
-                    routingRules: [],
-                    targets: vmConfig.targets || []
-                  };
-
-                  // Register the virtual model with the ServerModule
-                  await server.registerVirtualModel(virtualModelConfig);
-                  console.log(`✅ Virtual model ${mapping.virtualModelId} registered with ServerModule`);
-                } catch (error) {
-                  console.error(`❌ Failed to register virtual model ${mapping.virtualModelId}:`, error.message);
-                }
-              } else {
-                console.log(`⚠️  No configuration found for virtual model ${mapping.virtualModelId}`);
-              }
-            }
-
-            console.log(`✅ Pipeline virtual models registered with ServerModule`);
-          }
+          // NOTE: Virtual model registration removed - ServerModule is pure forwarding only
+          // Virtual models are handled by the pipeline system directly
 
           // 启用I/O跟踪和文件调试日志 - 这是修复的关键
           console.log(`🔧 Enabling I/O tracking and file-based debug logging...`);

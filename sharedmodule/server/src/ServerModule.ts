@@ -58,19 +58,19 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * 配置服务器 - 只保留基础HTTP配置
    */
-  public async configure(config: any): Promise<void> {
+  public override async configure(config: any): Promise<void> {
     this.log('Configuring Server Module', { config });
 
     // 基础验证（只验证HTTP配置）
-    if (!config || !config.server) {
+    if (!config) {
       throw new Error('Server configuration is required');
     }
 
     // 配置核心组件（不包含任何虚拟模型配置）
-    await this.serverCore.configure(config.server);
+    await this.serverCore.configure(config);
     await this.requestHandlerService.configure(config);
 
-    this.serverConfig = config.server as ServerConfig;
+    this.serverConfig = config as ServerConfig;
     this.config = config; // 父类配置
   }
 
@@ -114,30 +114,7 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * 启动服务器 - 只启动HTTP监听
    */
-  public override async start(): Promise<void> {
-    if (this.isRunning) {
-      this.warn('Server is already running');
-      return;
-    }
-
-    if (!this.serverConfig) {
-      throw new Error('Server must be configured before starting');
-    }
-
-    try {
-      this.log('Starting Server Module');
-
-      // 启动HTTP服务器
-      await this.httpServer.listen(this.serverConfig.port || 3000, this.serverConfig.host || 'localhost');
-
-      // 启动转发器（但没有调度器也能启动，只是转发会失败）
-      this.isRunning = true;
-      this.log('Server Module started successfully');
-
-    } catch (error) {
-      this.error('Failed to start server module', { error });
-      throw error;
-    }
+  public async start(): Promise<void> {
     if (this.isRunning) {
       this.warn('Server is already running');
       return;
@@ -184,6 +161,14 @@ export class ServerModule extends BaseModule implements IServerModule {
   }
 
   /**
+   * 设置虚拟模型调度器管理器 - 连接pipeline虚拟模型路由系统
+   */
+  public setVirtualModelSchedulerManager(schedulerManager: any): void {
+    this.forwarder.setVirtualModelSchedulerManager(schedulerManager);
+    this.log('Virtual model scheduler manager connected to server');
+  }
+
+  /**
    * 获取调度器管理器
    */
   public getSchedulerManager(): any | null {
@@ -194,7 +179,7 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * 停止服务
    */
-  public override async stop(): Promise<void> {
+  public async stop(): Promise<void> {
     if (!this.isRunning) return;
 
     try {
@@ -211,7 +196,7 @@ export class ServerModule extends BaseModule implements IServerModule {
   /**
    * 重启服务
    */
-  public override async restart(): Promise<void> {
+  public async restart(): Promise<void> {
     await this.stop();
     await this.start();
   }
@@ -271,7 +256,7 @@ export class ServerModule extends BaseModule implements IServerModule {
     return this.serverCore.getConnections();
   }
 
-  public getConfig(): ServerConfig {
+  public override getConfig(): ServerConfig {
     return this.serverConfig || {} as ServerConfig;
   }
 

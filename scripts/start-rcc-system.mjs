@@ -167,15 +167,69 @@ class RCCSystemInitializer {
         pipelineConfig: this.config.pipeline
       });
 
+      // Generate configuration wrappers for pipeline-first architecture
+      this.log('configuration', 'Generating configuration wrappers...', {
+        wrapperGeneration: 'enabled'
+      });
+
+      try {
+        // Import wrapper generation from config-parser
+        const configParserPath = path.join(process.cwd(), 'sharedmodule', 'config-parser', 'dist', 'index.esm.js');
+
+        if (fs.existsSync(configParserPath)) {
+          const configParserModule = await import(configParserPath);
+          const { generateAllWrappers } = configParserModule;
+
+          if (generateAllWrappers) {
+            const { server: serverWrapper, pipeline: pipelineWrapper } = await generateAllWrappers(this.config);
+
+            this.serverWrapper = serverWrapper;
+            this.pipelineWrapper = pipelineWrapper;
+
+            this.log('configuration', 'Configuration wrappers generated successfully', {
+              serverWrapperPort: serverWrapper.port,
+              pipelineWrapperVirtualModels: pipelineWrapper.virtualModels?.length || 0,
+              pipelineWrapperModules: pipelineWrapper.modules?.length || 0
+            });
+          } else {
+            this.log('configuration', 'Wrapper generation function not available');
+          }
+        } else {
+          this.log('configuration', 'Config parser module not found, using legacy configuration');
+        }
+      } catch (wrapperError) {
+        this.log('configuration', 'Wrapper generation failed, using legacy configuration', {
+          error: wrapperError.message
+        });
+      }
+
     } catch (error) {
       throw new Error(`Configuration loading failed: ${error.message}`);
     }
   }
 
   async initializePipelineSystem() {
-    this.log('pipeline', 'Initializing pipeline system with complete assembly flow...');
+    this.log('pipeline', 'Initializing pipeline system with wrapper-based assembly flow...');
 
     try {
+      // Use pipeline wrapper if available, otherwise use legacy config
+      let pipelineConfig = this.config.pipeline || {};
+      let virtualModelsConfig = this.config.virtualModels || {};
+
+      if (this.pipelineWrapper) {
+        this.log('pipeline', 'Using pipeline wrapper configuration', {
+          virtualModelsCount: this.pipelineWrapper.virtualModels?.length || 0,
+          modulesCount: this.pipelineWrapper.modules?.length || 0,
+          routingStrategy: this.pipelineWrapper.routing?.strategy || 'default'
+        });
+
+        // Extract configuration from wrapper
+        pipelineConfig = this.pipelineWrapper.modules || {};
+        virtualModelsConfig = this.pipelineWrapper.virtualModels || [];
+      } else {
+        this.log('pipeline', 'Pipeline wrapper not available, using legacy configuration');
+      }
+
       // Import Pipeline module components
       const pipelinePath = path.join(process.cwd(), 'sharedmodule', 'pipeline', 'dist', 'index.esm.js');
 
@@ -226,8 +280,8 @@ class RCCSystemInitializer {
       const moduleScanner = new ModuleScanner();
 
       const scannerOptions = {
-        scanPaths: this.config.pipeline?.scanPaths || ['./sharedmodule'],
-        providerPatterns: this.config.pipeline?.providerPatterns || ['*Provider.js', '*Provider.ts'],
+        scanPaths: pipelineConfig?.scanPaths || this.config.pipeline?.scanPaths || ['./sharedmodule'],
+        providerPatterns: pipelineConfig?.providerPatterns || this.config.pipeline?.providerPatterns || ['*Provider.js', '*Provider.ts'],
         recursive: true
       };
 
@@ -256,14 +310,14 @@ class RCCSystemInitializer {
 
       await tracker.initialize();
 
-      // Create assembler configuration
+      // Create assembler configuration using wrapper or legacy config
       const assemblerConfig = {
         providerDiscoveryOptions: scannerOptions,
         pipelineFactoryConfig: {
-          defaultTimeout: this.config.pipeline?.defaultTimeout || 30000,
-          defaultHealthCheckInterval: this.config.pipeline?.healthCheckInterval || 60000,
-          defaultMaxRetries: this.config.pipeline?.maxRetries || 3,
-          defaultLoadBalancingStrategy: this.config.pipeline?.loadBalancingStrategy || 'round-robin',
+          defaultTimeout: pipelineConfig?.defaultTimeout || this.config.pipeline?.defaultTimeout || 30000,
+          defaultHealthCheckInterval: pipelineConfig?.healthCheckInterval || this.config.pipeline?.healthCheckInterval || 60000,
+          defaultMaxRetries: pipelineConfig?.maxRetries || this.config.pipeline?.maxRetries || 3,
+          defaultLoadBalancingStrategy: pipelineConfig?.loadBalancingStrategy || this.config.pipeline?.loadBalancingStrategy || 'round-robin',
           enableHealthChecks: true,
           metricsEnabled: true
         },
@@ -274,13 +328,22 @@ class RCCSystemInitializer {
       // Create assembler
       const assembler = new PipelineAssembler(assemblerConfig, tracker);
 
-      // Prepare virtual model configurations
-      const virtualModelConfigs = Object.entries(this.config.virtualModels || {}).map(([modelId, config]) => ({
-        id: modelId,
-        name: modelId,
-        ...config,
-        targets: config.targets || []
-      }));
+      // Prepare virtual model configurations using wrapper if available
+      let virtualModelConfigs;
+      if (this.pipelineWrapper && this.pipelineWrapper.virtualModels) {
+        // Use virtual models from wrapper
+        virtualModelConfigs = this.pipelineWrapper.virtualModels;
+        this.log('pipeline', `Using ${virtualModelConfigs.length} virtual models from wrapper configuration`);
+      } else {
+        // Use legacy configuration format
+        virtualModelConfigs = Object.entries(this.config.virtualModels || {}).map(([modelId, config]) => ({
+          id: modelId,
+          name: modelId,
+          ...config,
+          targets: config.targets || []
+        }));
+        this.log('pipeline', `Using ${virtualModelConfigs.length} virtual models from legacy configuration`);
+      }
 
       this.log('pipeline', `Assembling pipelines for ${virtualModelConfigs.length} virtual models...`);
 
@@ -310,7 +373,7 @@ class RCCSystemInitializer {
       this.pipelineAssembler = assembler;
       this.pipelineTracker = tracker;
 
-      this.log('pipeline', 'Pipeline system initialization completed successfully');
+      this.log('pipeline', 'Pipeline system initialization completed successfully with wrapper integration');
 
     } catch (error) {
       throw new Error(`Pipeline system initialization failed: ${error.message}`);
@@ -392,46 +455,111 @@ class RCCSystemInitializer {
       const serverModule = await import(serverPath);
       const ServerModule = serverModule.ServerModule || serverModule.default;
 
-      // Create server configuration
-      const serverConfig = {
-        port: this.port,
-        host: '0.0.0.0',
-        cors: {
-          origin: '*',
-          credentials: true
-        },
-        compression: true,
-        helmet: true,
-        rateLimit: {
-          windowMs: 900000,
-          max: 1000
-        },
-        timeout: 60000,
-        bodyLimit: '50mb',
-        enableVirtualModels: true,
-        enablePipeline: true,
-        debug: {
-          enabled: true,
-          level: 'debug'
-        },
-        monitoring: {
-          enabled: true,
-          detailedMetrics: true,
-          requestTracing: true,
-          performanceMonitoring: true
-        },
-        // Include pipeline configuration and providers for reference
-        providers: this.config.providers,
-        virtualModels: this.config.virtualModels,
-        pipeline: this.config.pipeline,
-        parsedConfig: {
+      // Create server configuration using wrapper or legacy config
+      let serverConfig;
+      if (this.serverWrapper) {
+        this.log('server', 'Creating server configuration using server wrapper', {
+          wrapperPort: this.serverWrapper.port,
+          wrapperHost: this.serverWrapper.host,
+          pipelineEnabled: this.serverWrapper.pipeline?.enabled
+        });
+
+        // Use server wrapper as base and add RCC-specific configuration
+        serverConfig = {
+          // Use wrapper configuration
+          port: this.port || this.serverWrapper.port,
+          host: this.serverWrapper.host || '0.0.0.0',
+          cors: this.serverWrapper.cors || {
+            origin: '*',
+            credentials: true
+          },
+          compression: this.serverWrapper.compression !== false,
+          helmet: this.serverWrapper.helmet !== false,
+          rateLimit: this.serverWrapper.rateLimit || {
+            windowMs: 900000,
+            max: 1000
+          },
+          timeout: this.serverWrapper.timeout || 60000,
+          bodyLimit: this.serverWrapper.bodyLimit || '50mb',
+
+          // RCC-specific configuration
+          enableVirtualModels: true,
+          enablePipeline: true,
+          debug: {
+            enabled: true,
+            level: 'debug'
+          },
+          monitoring: {
+            enabled: true,
+            detailedMetrics: true,
+            requestTracing: true,
+            performanceMonitoring: true
+          },
+
+          // Include pipeline configuration from wrapper
+          pipeline: this.serverWrapper.pipeline,
+
+          // Include original configuration for reference
           providers: this.config.providers,
           virtualModels: this.config.virtualModels,
-          pipeline: this.config.pipeline
-        },
-        basePath: this.debugPath,
-        enableTwoPhaseDebug: true
-      };
+          parsedConfig: {
+            providers: this.config.providers,
+            virtualModels: this.config.virtualModels,
+            pipeline: this.config.pipeline
+          },
+          basePath: this.debugPath,
+          enableTwoPhaseDebug: true
+        };
+
+        this.log('server', 'Server configuration created using wrapper', {
+          finalPort: serverConfig.port,
+          finalHost: serverConfig.host,
+          pipelineEnabled: serverConfig.enablePipeline
+        });
+      } else {
+        this.log('server', 'Server wrapper not available, using legacy configuration');
+
+        // Use legacy configuration format
+        serverConfig = {
+          port: this.port,
+          host: '0.0.0.0',
+          cors: {
+            origin: '*',
+            credentials: true
+          },
+          compression: true,
+          helmet: true,
+          rateLimit: {
+            windowMs: 900000,
+            max: 1000
+          },
+          timeout: 60000,
+          bodyLimit: '50mb',
+          enableVirtualModels: true,
+          enablePipeline: true,
+          debug: {
+            enabled: true,
+            level: 'debug'
+          },
+          monitoring: {
+            enabled: true,
+            detailedMetrics: true,
+            requestTracing: true,
+            performanceMonitoring: true
+          },
+          // Include pipeline configuration and providers for reference
+          providers: this.config.providers,
+          virtualModels: this.config.virtualModels,
+          pipeline: this.config.pipeline,
+          parsedConfig: {
+            providers: this.config.providers,
+            virtualModels: this.config.virtualModels,
+            pipeline: this.config.pipeline
+          },
+          basePath: this.debugPath,
+          enableTwoPhaseDebug: true
+        };
+      }
 
       // Create ServerModule instance with prepared scheduler manager (T3: 流水线优先架构)
       this.log('server', 'Creating ServerModule instance with VirtualModelSchedulerManager...');
@@ -487,40 +615,12 @@ class RCCSystemInitializer {
         virtualModels: virtualModelMappings.map(m => m.virtualModelId)
       });
 
-      // Register virtual models with server (using mappings from scheduler)
-      for (const mapping of virtualModelMappings) {
-        try {
-          // Convert scheduler manager mapping to ServerModule virtual model config
-          const virtualModelConfig = {
-            id: mapping.virtualModelId,
-            name: mapping.config.name,
-            provider: mapping.config.provider,
-            model: mapping.config.modelId,
-            endpoint: mapping.config.endpoint || '',
-            apiKey: mapping.config.apiKey,
-            capabilities: mapping.config.capabilities || ['chat'],
-            maxTokens: mapping.config.maxTokens || 4096,
-            temperature: mapping.config.temperature || 0.7,
-            topP: mapping.config.topP || 1.0,
-            enabled: mapping.enabled,
-            routingRules: mapping.config.routingRules || [],
-            targets: mapping.config.targets || []
-          };
-
-          await this.server.registerVirtualModel(virtualModelConfig);
-
-          this.log('virtual-models', `Registered virtual model: ${mapping.virtualModelId}`, {
-            provider: mapping.config.provider,
-            model: mapping.config.modelId,
-            enabled: mapping.enabled
-          });
-
-        } catch (error) {
-          this.log('virtual-models', `Failed to register virtual model ${mapping.virtualModelId}`, {
-            error: error.message
-          });
-        }
-      }
+      // NOTE: Virtual model registration removed - ServerModule is pure forwarding only
+      // Virtual models are handled by the pipeline system directly
+      this.log('virtual-models', 'Virtual model mappings available (not registering with server)', {
+        totalMappings: virtualModelMappings.length,
+        virtualModels: virtualModelMappings.map(m => m.virtualModelId)
+      });
 
       this.log('virtual-models', 'Virtual model routing configuration completed', {
         totalRegistered: virtualModelMappings.length,

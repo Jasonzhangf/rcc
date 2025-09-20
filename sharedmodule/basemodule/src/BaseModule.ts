@@ -3,7 +3,8 @@ import { ConnectionInfo, DataTransfer } from './interfaces/Connection';
 import { ValidationRule, ValidationResult } from './interfaces/Validation';
 import { Message, MessageResponse, MessageHandler } from './interfaces/Message';
 import { MessageCenter } from './MessageCenter';
-import { DebugEventBus, DebugEvent } from './debug/DebugEventBus';
+// DebugEventBus has been moved to rcc-debugcenter package
+// This module now uses a simplified debug interface for backward compatibility
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -19,27 +20,27 @@ export interface DebugLogEntry {
    * Timestamp of the log entry
    */
   timestamp: number;
-  
+
   /**
    * Log level
    */
   level: DebugLevel;
-  
+
   /**
    * Log message
    */
   message: string;
-  
+
   /**
    * Additional data associated with the log
    */
   data?: any;
-  
+
   /**
    * Call stack information
    */
   stack?: string;
-  
+
   /**
    * Module ID that generated the log
    */
@@ -49,6 +50,19 @@ export interface DebugLogEntry {
    * Method name where the log was generated
    */
   method?: string | undefined;
+}
+
+/**
+ * Simplified debug event for backward compatibility
+ */
+interface DebugEvent {
+  sessionId?: string;
+  moduleId: string;
+  operationId: string;
+  timestamp: number;
+  type: 'start' | 'end' | 'error';
+  position: 'start' | 'middle' | 'end';
+  data: any;
 }
 /**
  * Debug configuration
@@ -122,9 +136,9 @@ export abstract class BaseModule implements MessageHandler {
   protected debugLogs: DebugLogEntry[] = [];
   
   /**
-   * Debug event bus
+   * External debug handler for integration with DebugCenter
    */
-  protected eventBus: DebugEventBus;
+  protected externalDebugHandler?: (event: DebugEvent) => void;
 
   /**
    * Current session ID for pipeline operations
@@ -165,8 +179,8 @@ export abstract class BaseModule implements MessageHandler {
       maxLogFiles: 5
     };
 
-    // Initialize debug event bus
-    this.eventBus = DebugEventBus.getInstance();
+    // Debug event bus functionality moved to rcc-debugcenter package
+    // This module now uses external debug handler pattern
   }
   
   /**
@@ -211,7 +225,15 @@ export abstract class BaseModule implements MessageHandler {
   public getDebugConfig(): DebugConfig {
     return { ...this.debugConfig };
   }
-  
+
+  /**
+   * Set external debug handler for integration with DebugCenter
+   * @param handler - External debug event handler
+   */
+  public setExternalDebugHandler(handler: (event: DebugEvent) => void): void {
+    this.externalDebugHandler = handler;
+  }
+
   /**
    * Start a pipeline session
    * @param sessionId - Session ID
@@ -237,7 +259,10 @@ export abstract class BaseModule implements MessageHandler {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
 
     // Log locally for backward compatibility
     this.logInfo('Pipeline session started', {
@@ -269,7 +294,10 @@ export abstract class BaseModule implements MessageHandler {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
     this.currentSessionId = undefined;
 
     // Log locally for backward compatibility
@@ -924,7 +952,10 @@ export abstract class BaseModule implements MessageHandler {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
 
     // Log locally for backward compatibility
     this.debug('debug', `I/O tracking started: ${operationId}`, {
@@ -964,7 +995,10 @@ export abstract class BaseModule implements MessageHandler {
       }
     };
 
-    this.eventBus.publish(event);
+    // Send to external debug handler if available
+    if (this.externalDebugHandler) {
+      this.externalDebugHandler(event);
+    }
 
     // Log locally for backward compatibility
     this.debug('debug', `I/O tracking ended: ${operationId}`, {

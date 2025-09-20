@@ -4,8 +4,6 @@ export { RequestForwarder } from './components/RequestForwarder';
 export type { IServerModule, IHttpServer, IClientManager, IMiddlewareManager, RouteConfig } from './interfaces/IServerModule';
 export type { IServerForwarder } from './interfaces/IServerForwarder';
 export type { ServerConfig, ClientRequest, ClientResponse, ServerStatus, RequestMetrics, ConnectionInfo, MiddlewareConfig, PipelineIntegrationConfig } from './types/ServerTypes';
-export { DynamicImportManager } from './utils/dynamic-import-manager';
-export { SafeJson } from './utils/safe-json';
 export declare const version = "3.0.0";
 export declare const name = "RCC Server Module";
 /**

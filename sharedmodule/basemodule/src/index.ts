@@ -26,8 +26,8 @@ export {
 // Export BaseModule
 export { BaseModule } from './BaseModule';
 
-// Export DebugEventBus (now from debugcenter)
-export { DebugEventBus, type DebugEvent } from './debug/DebugEventBus';
+// DebugEventBus has been moved to rcc-debugcenter package
+// Import from 'rcc-debugcenter' instead
 
 // Note: DebugModule types have been moved to rcc-debugcenter package
 // Import from 'rcc-debugcenter' instead

@@ -69,13 +69,25 @@ export interface PipelineConfig {
 }
 
 /**
- * Main RCC configuration structure
+ * Main RCC configuration structure with wrapper support
  */
 export interface RccConfig {
   port?: number;
   server?: {
     port?: number;
     host?: string;
+    cors?: {
+      origin?: string | string[];
+      credentials?: boolean;
+    };
+    compression?: boolean;
+    helmet?: boolean;
+    rateLimit?: {
+      windowMs?: number;
+      max?: number;
+    };
+    timeout?: number;
+    bodyLimit?: string;
     [key: string]: any;
   };
   providers: Record<string, ProviderConfig>;
@@ -145,13 +157,14 @@ export interface DebugOptions {
 }
 
 /**
- * Server module types (placeholders - actual types should be imported from modules)
+ * Server Module Types with Wrapper Integration
+ * Updated for wrapper-based configuration system
  */
 export interface ServerModuleConfig {
   port: number;
   host: string;
   cors: {
-    origin: string;
+    origin: string | string[];
     credentials: boolean;
   };
   compression: boolean;
@@ -178,6 +191,12 @@ export interface ServerModuleConfig {
   };
   basePath: string;
   enableTwoPhaseDebug: boolean;
+  pipeline?: {
+    enabled: boolean;
+    unifiedErrorHandling: boolean;
+    unifiedMonitoring: boolean;
+    errorMapping: Record<string, string>;
+  };
 }
 
 export interface BaseModuleModule {
@@ -185,6 +204,9 @@ export interface BaseModuleModule {
   [key: string]: any;
 }
 
+/**
+ * ServerModule interface with wrapper configuration support
+ */
 export interface ServerModuleModule {
   new (): any;
   configure: (config: ServerModuleConfig) => Promise<void>;
@@ -192,7 +214,7 @@ export interface ServerModuleModule {
   start: () => Promise<void>;
   stop: () => Promise<void>;
   setVirtualModelSchedulerManager?: (manager: any) => void;
-  registerVirtualModel?: (config: VirtualModelConfig) => Promise<void>;
+  // NOTE: registerVirtualModel removed - ServerModule is pure forwarding only
   setDebugConfig?: (config: DebugOptions) => void;
   enableTwoPhaseDebug?: (enabled: boolean, baseDir: string, options: any) => void;
   pipelineTracker?: any;
@@ -208,6 +230,9 @@ export interface DebugCenterModule {
   };
 }
 
+/**
+ * Pipeline module interface with wrapper configuration support
+ */
 export interface PipelineModule {
   Pipeline: any;
   VirtualModelSchedulerManager: {
@@ -340,6 +365,89 @@ declare global {
       rccConfig?: RccConfig;
     }
   }
+}
+
+/**
+ * Wrapper configuration interfaces imported from config-parser
+ * These interfaces define the clean separation between HTTP and pipeline configuration
+ */
+export interface ServerWrapper {
+  port: number;
+  host: string;
+  cors: {
+    origin: string | string[];
+    credentials: boolean;
+  };
+  compression: boolean;
+  helmet: boolean;
+  rateLimit: {
+    windowMs: number;
+    max: number;
+  };
+  timeout: number;
+  bodyLimit: string;
+  pipeline?: {
+    enabled: boolean;
+    unifiedErrorHandling: boolean;
+    unifiedMonitoring: boolean;
+    errorMapping: Record<string, string>;
+  };
+}
+
+export interface PipelineWrapper {
+  virtualModels: VirtualModelConfig[];
+  modules: {
+    id: string;
+    type: string;
+    config?: Record<string, any>;
+    enabled?: boolean;
+    priority?: number;
+  }[];
+  routing: {
+    strategy: 'round-robin' | 'least-connections' | 'weighted' | 'custom';
+    fallbackStrategy: 'first-available' | 'round-robin' | 'weighted';
+    rules?: Array<{
+      condition: string;
+      action: 'allow' | 'deny' | 'rewrite' | 'redirect';
+      target?: string;
+    }>;
+  };
+  metadata: {
+    version: string;
+    createdAt: string;
+    updatedAt: string;
+    providerCount: number;
+    virtualModelCount: number;
+  };
+}
+
+/**
+ * Configuration validation error types
+ */
+export interface ConfigValidationError {
+  code: string;
+  message: string;
+  path: string;
+  expected?: any;
+  actual?: any;
+  severity: 'error' | 'warning';
+}
+
+/**
+ * Wrapper generation result
+ */
+export interface WrapperGenerationResult {
+  success: boolean;
+  server?: ServerWrapper;
+  pipeline?: PipelineWrapper;
+  errors?: ConfigValidationError[];
+  warnings?: string[];
+  metadata?: {
+    generationTime: number;
+    providerCount: number;
+    virtualModelCount: number;
+    configVersion: string;
+  };
 }
 
 export {};

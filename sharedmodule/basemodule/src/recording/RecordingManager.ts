@@ -13,22 +13,60 @@ import {
 } from '../interfaces/Recording';
 import { v4 as uuidv4 } from 'uuid';
 import { DebugLevel } from '../interfaces/Debug';
+import { UnderConstruction } from 'rcc-underconstruction';
+
+// Create UnderConstruction instance for unimplemented features
+const underConstruction = new UnderConstruction();
+
+// Import specialized components
+import { RequestContextManager } from './RequestContextManager';
+import { GlobalConfigManager } from './GlobalConfigManager';
+import { ConfigValidator } from './ConfigValidator';
+import { PathResolver } from './PathResolver';
+import { CycleRecorder } from './CycleRecorder';
+import { ErrorRecorder } from './ErrorRecorder';
+import { FieldTruncator } from './FieldTruncator';
 
 /**
  * Core recording manager that coordinates all recording components
+ *
+ * This class acts as a facade that coordinates specialized recording components:
+ * - RequestContextManager: Manages request lifecycle and context
+ * - GlobalConfigManager: Handles global configuration and versioning
+ * - ConfigValidator: Validates configuration consistency
+ * - PathResolver: Resolves file paths and templates
+ * - CycleRecorder: Handles circular recording operations
+ * - ErrorRecorder: Manages error recording and tracking
+ * - FieldTruncator: Handles field truncation and data processing
  */
 export class RecordingManager {
   private config: BaseModuleRecordingConfig;
   private globalConfig: GlobalRecordingConfig | null = null;
-  private activeRequests: Map<string, RequestContext> = new Map();
-  private activeCycles: Map<string, CycleHandle> = new Map();
-  private errorRecords: Map<string, ErrorRecord> = new Map();
   private configChangeCallbacks: Set<(config: BaseModuleRecordingConfig) => Promise<void> | void> = new Set();
-  private truncationStats: Map<string, number> = new Map();
+
+  // Specialized components
+  private requestContextManager: RequestContextManager;
+  private globalConfigManager: GlobalConfigManager;
+  private configValidator: ConfigValidator;
+  private pathResolver: PathResolver;
+  private cycleRecorder: CycleRecorder;
+  private errorRecorder: ErrorRecorder;
+  private fieldTruncator: FieldTruncator;
 
   constructor(config: BaseModuleRecordingConfig = {}) {
     this.config = this.validateConfig(config);
-    this.initializeGlobalConfig();
+
+    // Initialize specialized components
+    this.globalConfigManager = new GlobalConfigManager(this.config);
+    this.globalConfig = this.globalConfigManager.getGlobalConfig();
+
+    this.configValidator = new ConfigValidator(this.config);
+    this.pathResolver = new PathResolver();
+
+    this.requestContextManager = new RequestContextManager();
+    this.cycleRecorder = new CycleRecorder(this.config.cycle || {}, this.config.truncation);
+    this.errorRecorder = new ErrorRecorder(this.config.error || {});
+    this.fieldTruncator = new FieldTruncator(this.config.truncation || {});
   }
 
   // ========================================
@@ -43,7 +81,7 @@ export class RecordingManager {
       const oldConfig = { ...this.config };
 
       // Validate configuration before applying
-      const validationError = this.validateConfiguration({ ...this.config, ...newConfig });
+      const validationError = this.configValidator.validateConfiguration({ ...this.config, ...newConfig });
       if (validationError && !force) {
         return {
           success: false,
@@ -52,10 +90,10 @@ export class RecordingManager {
         };
       }
 
-      this.config = this.validateConfig({ ...this.config, ...newConfig });
+      this.config = this.configValidator.validateConfig({ ...this.config, ...newConfig });
 
       // Validate consistency
-      const consistencyResult = this.validateConfigurationConsistency();
+      const consistencyResult = this.configValidator.validateConfigurationConsistency();
       if (!consistencyResult.valid && !force) {
         return {
           success: false,
@@ -64,13 +102,12 @@ export class RecordingManager {
         };
       }
 
-      // Update global config if needed
-      if (newConfig.globalConfig) {
-        this.globalConfig = {
-          ...this.globalConfig!,
-          ...newConfig.globalConfig
-        };
-      }
+      // Update global config
+      await this.globalConfigManager.updateGlobalConfig(this.config as any);
+      this.globalConfig = this.globalConfigManager.getGlobalConfig();
+
+      // Update specialized components with new config
+      this.updateComponentConfigs();
 
       // Notify all callbacks
       await this.notifyConfigChange(this.config);
@@ -122,6 +159,17 @@ export class RecordingManager {
     return this.globalConfig ? { ...this.globalConfig } : null;
   }
 
+  /**
+   * Update component configurations
+   */
+  private updateComponentConfigs(): void {
+    // Note: PathResolver doesn't have updateConfig method
+    // Note: RequestContextManager doesn't have updateConfig method
+    this.cycleRecorder.updateConfig(this.config.cycle || {});
+    this.errorRecorder.updateConfig(this.config.error || {});
+    this.fieldTruncator.updateConfig(this.config.truncation || {});
+  }
+
   // ========================================
   // Request Context Management
   // ========================================
@@ -134,94 +182,42 @@ export class RecordingManager {
     inheritContext?: string;
     createNewContext?: boolean;
   } = {}): RequestContext {
-    const requestId = options.inheritContext || uuidv4();
-    const sessionId = this.globalConfig?.sessionId || uuidv4();
-    const traceId = uuidv4();
-    const chainId = options.inheritContext ? this.getRequestContext(options.inheritContext)?.chainId || uuidv4() : uuidv4();
-
-    let context: RequestContext;
-
-    if (options.inheritContext && this.activeRequests.has(options.inheritContext)) {
-      // Inherit from existing context
-      const existing = this.activeRequests.get(options.inheritContext)!;
-      context = {
-        ...existing,
-        currentModule: this.extractModuleName(options.customConfig?.module) || 'unknown',
-        moduleStack: [...existing.moduleStack, this.extractModuleName(options.customConfig?.module) || 'unknown']
-      };
-    } else {
-      // Create new context
-      const basePath = this.resolveBasePath(options.customConfig);
-      context = {
-        requestId,
-        sessionId,
-        traceId,
-        chainId,
-        startModule: this.extractModuleName(options.customConfig?.module) || 'unknown',
-        startTime: Date.now(),
-        basePath,
-        currentPath: basePath,
-        pathHistory: [],
-        configSnapshot: this.createConfigSnapshot(options.customConfig),
-        sharedData: new Map(),
-        status: 'active',
-        currentModule: this.extractModuleName(options.customConfig?.module) || 'unknown',
-        moduleStack: [this.extractModuleName(options.customConfig?.module) || 'unknown']
-      };
-    }
-
-    this.activeRequests.set(requestId, context);
-    return context;
+    return this.requestContextManager.createContext({
+      ...options,
+      customConfig: options.customConfig
+    });
   }
 
   /**
    * Get request context
    */
   getRequestContext(requestId: string): RequestContext | undefined {
-    return this.activeRequests.get(requestId);
+    return this.requestContextManager.getContext(requestId);
   }
 
   /**
    * Update request context
    */
   updateRequestContext(requestId: string, updates: Partial<RequestContext>): boolean {
-    const context = this.activeRequests.get(requestId);
-    if (!context) return false;
-
-    // Store original path for history tracking
-    const originalPath = context.currentPath;
-
-    // Apply updates
-    Object.assign(context, updates);
-
-    // Update path history if path changed
-    if (updates.currentPath && updates.currentPath !== originalPath) {
-      context.pathHistory.push({
-        moduleId: updates.currentModule || context.currentModule,
-        path: updates.currentPath,
-        timestamp: Date.now()
-      });
-    }
-
-    return true;
+    return this.requestContextManager.updateContext(requestId, updates);
   }
 
   /**
    * Complete request context
    */
   completeRequestContext(requestId: string, status: 'completed' | 'error' = 'completed'): boolean {
-    const context = this.activeRequests.get(requestId);
+    const context = this.requestContextManager.getContext(requestId);
     if (!context) return false;
 
-    context.status = status;
-    context.moduleStack = context.moduleStack.filter(module => module !== context.currentModule);
+    const result = this.requestContextManager.completeContext(requestId, status);
 
-    // Generate trace report
-    const report = this.generateTraceReport(context);
-    this.saveTraceReport(report);
+    // Generate trace report if context was found and completed
+    if (result && context) {
+      const report = this.generateTraceReport(context);
+      this.saveTraceReport(report);
+    }
 
-    this.activeRequests.delete(requestId);
-    return true;
+    return result;
   }
 
   // ========================================
@@ -231,46 +227,28 @@ export class RecordingManager {
   /**
    * Start cycle recording
    */
-  startCycleRecording(requestId: string, operation: string, module: string): CycleHandle | null {
+  async startCycleRecording(requestId: string, operation: string, module: string): Promise<CycleHandle | null> {
     if (!this.config.cycle?.enabled) return null;
 
     const context = this.getRequestContext(requestId);
     if (!context) return null;
 
-    const cycleId = uuidv4();
-    const basePath = this.resolveCyclePath(context, cycleId);
-    const format = this.config.cycle.format || 'json';
-
-    const handle: CycleHandle = {
-      cycleId,
-      operation,
-      startTime: Date.now(),
-      module,
-      basePath,
-      format
-    };
-
-    this.activeCycles.set(cycleId, handle);
-
-    // Create initial cycle record
-    this.recordCycleEvent(handle, {
-      index: 0,
-      type: 'start',
-      module,
-      operation,
-      timestamp: Date.now(),
-      cycleId,
-      traceId: context.traceId,
-      requestId
+    return this.cycleRecorder.startCycle(operation, module, {
+      requestId,
+      basePath: this.pathResolver.resolveCyclePath(this.config.cycle || {}, {
+        cycleId: '', // Will be set by cycle recorder
+        requestId: context.requestId,
+        sessionId: context.sessionId,
+        timestamp: Date.now()
+      }),
+      customConfig: this.config.cycle
     });
-
-    return handle;
   }
 
   /**
    * Record cycle event
    */
-  recordCycleEvent(handle: CycleHandle, event: {
+  async recordCycleEvent(handle: CycleHandle, event: {
     index: number;
     type: 'start' | 'middle' | 'end';
     module: string;
@@ -283,21 +261,17 @@ export class RecordingManager {
     cycleId: string;
     traceId?: string;
     requestId?: string;
-  }): boolean {
+  }): Promise<boolean> {
     if (!this.config.cycle?.enabled) return false;
 
     try {
       // Apply field truncation if enabled
       let eventData = { ...event };
       if (this.config.truncation?.enabled) {
-        eventData = this.truncateFields(eventData, 'cycle');
+        eventData = this.fieldTruncator.truncateFields(eventData, 'cycle');
       }
 
-      // Save to file based on format
-      const filePath = this.resolveCycleFilePath(handle, event.type);
-      this.writeCycleRecord(filePath, eventData, handle.format);
-
-      return true;
+      return this.cycleRecorder.recordCycleEvent(handle, eventData);
     } catch (error) {
       this.logError('Failed to record cycle event', error);
       return false;
@@ -307,12 +281,12 @@ export class RecordingManager {
   /**
    * End cycle recording
    */
-  endCycleRecording(handle: CycleHandle, result?: any, error?: string): boolean {
-    if (!this.activeCycles.has(handle.cycleId)) return false;
+  async endCycleRecording(handle: CycleHandle, result?: any, error?: string): Promise<boolean> {
+    if (!this.config.cycle?.enabled) return false;
 
     try {
       const context = handle.requestId ? this.getRequestContext(handle.requestId) : undefined;
-      this.recordCycleEvent(handle, {
+      const event = {
         index: -1,
         type: 'end',
         module: handle.module,
@@ -323,13 +297,22 @@ export class RecordingManager {
         cycleId: handle.cycleId,
         traceId: context?.traceId,
         requestId: handle.requestId
-      });
+      };
 
-      // Generate summary
-      this.generateCycleSummary(handle);
+      // Apply field truncation if enabled
+      let eventData = { ...event };
+      if (this.config.truncation?.enabled) {
+        eventData = this.fieldTruncator.truncateFields(eventData, 'cycle');
+      }
 
-      this.activeCycles.delete(handle.cycleId);
-      return true;
+      const success = await this.cycleRecorder.endCycle(handle, eventData);
+
+      if (success) {
+        // Generate summary
+        this.generateCycleSummary(handle);
+      }
+
+      return success;
     } catch (error) {
       this.logError('Failed to end cycle recording', error);
       return false;
@@ -343,7 +326,7 @@ export class RecordingManager {
   /**
    * Record error
    */
-  recordError(errorData: {
+  async recordError(errorData: {
     error: Error | string;
     level?: 'trace' | 'debug' | 'info' | 'warning' | 'error' | 'fatal';
     category?: 'network' | 'validation' | 'processing' | 'system' | 'security' | 'business';
@@ -351,32 +334,10 @@ export class RecordingManager {
     context?: Record<string, any>;
     recoverable?: boolean;
     cycleId?: string;
-  }): string {
+  }): Promise<string> {
     if (!this.config.error?.enabled) return '';
 
-    const errorId = uuidv4();
-    const context = this.findRequestContext(errorData.cycleId);
-
-    const record: ErrorRecord = {
-      errorId,
-      cycleId: errorData.cycleId,
-      module: errorData.context?.module || 'unknown',
-      category: errorData.category || 'system',
-      level: errorData.level || 'error',
-      timestamp: Date.now(),
-      message: typeof errorData.error === 'string' ? errorData.error : errorData.error.message,
-      stack: typeof errorData.error === 'object' ? errorData.error.stack : undefined,
-      context: errorData.context,
-      operation: errorData.operation,
-      recoverable: errorData.recoverable ?? true,
-      resolved: false,
-      filePath: this.resolveErrorPath(errorId)
-    };
-
-    this.errorRecords.set(errorId, record);
-    this.writeErrorRecord(record);
-
-    return errorId;
+    return await this.errorRecorder.recordError(errorData);
   }
 
   /**
@@ -390,37 +351,14 @@ export class RecordingManager {
     timeRange?: { start: number; end: number };
     operation?: string;
   }): ErrorRecord[] {
-    let records = Array.from(this.errorRecords.values());
-
-    if (filters) {
-      records = records.filter(record => {
-        if (filters.level && !filters.level.includes(record.level)) return false;
-        if (filters.category && !filters.category.includes(record.category)) return false;
-        if (filters.module && record.module !== filters.module) return false;
-        if (filters.resolved !== undefined && record.resolved !== filters.resolved) return false;
-        if (filters.timeRange) {
-          if (record.timestamp < filters.timeRange.start || record.timestamp > filters.timeRange.end) return false;
-        }
-        if (filters.operation && record.operation !== filters.operation) return false;
-        return true;
-      });
-    }
-
-    return records.sort((a, b) => b.timestamp - a.timestamp);
+    return this.errorRecorder.getErrors(filters);
   }
 
   /**
    * Resolve error
    */
-  resolveError(errorId: string, resolution: string): boolean {
-    const record = this.errorRecords.get(errorId);
-    if (!record) return false;
-
-    record.resolved = true;
-    record.resolution = resolution;
-    this.writeErrorRecord(record);
-
-    return true;
+  async resolveError(errorId: string, resolution: string): Promise<boolean> {
+    return await this.errorRecorder.resolveError(errorId, resolution);
   }
 
   // ========================================
@@ -432,201 +370,30 @@ export class RecordingManager {
    */
   truncateFields(data: any, context: string): any {
     if (!this.config.truncation?.enabled) return data;
-
-    const truncationConfig = this.config.truncation;
-    const stats = {
-      totalProcessed: 0,
-      totalTruncated: 0,
-      totalReplaced: 0,
-      totalHidden: 0,
-      fieldStats: new Map<string, { processed: number; truncated: number; replaced: number; hidden: number }>()
-    };
-
-    const result = this.truncateFieldsRecursive(data, '', truncationConfig, stats, context);
-
-    // Update truncation statistics
-    this.updateTruncationStats(stats);
-
-    return result;
+    return this.fieldTruncator.truncateFields(data, context);
   }
 
   /**
    * Get truncation statistics
    */
   getTruncationStats(): TruncationReport {
-    const totalProcessed = this.truncationStats.get('totalProcessed') || 0;
-    const totalTruncated = this.truncationStats.get('totalTruncated') || 0;
-    const totalReplaced = this.truncationStats.get('totalReplaced') || 0;
-    const totalHidden = this.truncationStats.get('totalHidden') || 0;
-
-    return {
-      totalProcessed,
-      totalTruncated,
-      totalReplaced,
-      totalHidden,
-      savingsPercentage: totalProcessed > 0 ? ((totalTruncated + totalReplaced + totalHidden) / totalProcessed) * 100 : 0,
-      fieldDetails: [] // TODO: Implement field details tracking
-    };
+    return this.fieldTruncator.getReport();
   }
 
   // ========================================
   // Helper Methods
   // ========================================
 
+  /**
+   * Validate configuration (delegated to ConfigValidator)
+   */
   private validateConfig(config: BaseModuleRecordingConfig): BaseModuleRecordingConfig {
-    const defaultBasePath = './recording-logs';
-
-    // Basic validation
-    const validatedConfig: BaseModuleRecordingConfig = {
-      enabled: config.enabled ?? false,
-      basePath: config.basePath || defaultBasePath,
-      port: config.port,
-      cycle: {
-        enabled: config.cycle?.enabled ?? false,
-        mode: config.cycle?.mode || 'single',
-        basePath: config.cycle?.basePath || config.basePath || defaultBasePath,
-        cycleDirTemplate: config.cycle?.cycleDirTemplate || 'cycles/${cycleId}',
-        mainFileTemplate: config.cycle?.mainFileTemplate || 'main.${format}',
-        summaryFileTemplate: config.cycle?.summaryFileTemplate || 'summary.json',
-        format: config.cycle?.format || 'json',
-        includeIndex: config.cycle?.includeIndex ?? true,
-        includeTimestamp: config.cycle?.includeTimestamp ?? true,
-        autoCreateDirectory: config.cycle?.autoCreateDirectory ?? true,
-        autoCloseOnComplete: config.cycle?.autoCloseOnComplete ?? true,
-        maxCyclesRetained: config.cycle?.maxCyclesRetained || 100
-      },
-      error: {
-        enabled: config.error?.enabled ?? false,
-        levels: config.error?.levels || ['error', 'fatal'],
-        categories: config.error?.categories || ['system', 'processing'],
-        basePath: config.error?.basePath || config.basePath || defaultBasePath,
-        indexFileTemplate: config.error?.indexFileTemplate || 'errors/index.jsonl',
-        detailFileTemplate: config.error?.detailFileTemplate || 'errors/${errorId}.json',
-        summaryFileTemplate: config.error?.summaryFileTemplate || 'errors/summary.json',
-        dailyDirTemplate: config.error?.dailyDirTemplate || 'errors/${date}',
-        indexFormat: config.error?.indexFormat || 'jsonl',
-        detailFormat: config.error?.detailFormat || 'json',
-        autoRecoveryTracking: config.error?.autoRecoveryTracking ?? true,
-        maxErrorsRetained: config.error?.maxErrorsRetained || 1000,
-        enableStatistics: config.error?.enableStatistics ?? true
-      },
-      truncation: config.truncation,
-      file: {
-        autoCleanup: config.file?.autoCleanup ?? true,
-        maxFileAge: config.file?.maxFileAge || 7 * 24 * 60 * 60 * 1000, // 7 days
-        maxFileSize: config.file?.maxFileSize || 10 * 1024 * 1024, // 10MB
-        atomicWrites: config.file?.atomicWrites ?? true,
-        backupOnWrite: config.file?.backupOnWrite ?? true,
-        compressionEnabled: config.file?.compressionEnabled ?? false
-      }
-    };
-
-    // Validate configuration dependencies
-    if (validatedConfig.cycle?.enabled && !validatedConfig.cycle?.basePath) {
-      throw new Error('Cycle recording requires basePath to be specified');
-    }
-
-    return validatedConfig;
+    return this.configValidator.validateConfig(config);
   }
 
-  private initializeGlobalConfig(): void {
-    this.globalConfig = {
-      sessionId: uuidv4(),
-      environment: process.env.NODE_ENV as any || 'development',
-      version: '1.0.0',
-      baseConfig: this.config,
-      moduleOverrides: new Map(),
-      configVersion: '1.0.0',
-      lastUpdated: Date.now(),
-      consistency: {
-        enforced: true,
-        validationInterval: 60000, // 1 minute
-        allowedDeviations: []
-      }
-    };
-  }
-
-  private createConfigSnapshot(customConfig?: Partial<BaseModuleRecordingConfig>) {
-    return {
-      enabled: customConfig?.enabled ?? this.config.enabled ?? false,
-      basePath: customConfig?.basePath ?? this.config.basePath ?? '',
-      port: customConfig?.port ?? this.config.port,
-      cycleConfig: customConfig?.cycle ?? (this.config.cycle || {}),
-      errorConfig: customConfig?.error ?? (this.config.error || {}),
-      truncationConfig: customConfig?.truncation ?? (this.config.truncation || {}),
-      timestamp: Date.now()
-    };
-  }
-
-  private resolveBasePath(customConfig?: Partial<BaseModuleRecordingConfig>): string {
-    const basePath = customConfig?.basePath || this.config.basePath || './recording-logs';
-    return this.resolvePathTemplate(basePath, {});
-  }
-
-  private resolveCyclePath(context: RequestContext, cycleId: string): string {
-    const template = this.config.cycle?.cycleDirTemplate || 'cycles/${cycleId}';
-    const variables = {
-      cycleId,
-      requestId: context.requestId,
-      sessionId: context.sessionId,
-      timestamp: Date.now(),
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    return this.resolvePathTemplate(template, variables);
-  }
-
-  private resolveCycleFilePath(handle: CycleHandle, type: 'start' | 'middle' | 'end'): string {
-    const template = this.config.cycle?.mainFileTemplate || 'main.${format}';
-    const variables = {
-      cycleId: handle.cycleId,
-      format: handle.format,
-      type,
-      timestamp: Date.now()
-    };
-
-    return this.resolvePathTemplate(template, variables);
-  }
-
-  private resolveErrorPath(errorId: string): string {
-    const template = this.config.error?.detailFileTemplate || 'errors/${errorId}.json';
-    const variables = {
-      errorId,
-      timestamp: Date.now(),
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    return this.resolvePathTemplate(template, variables);
-  }
-
-  private resolvePathTemplate(template: string, variables: Record<string, any>): string {
-    let result = template;
-
-    for (const [key, value] of Object.entries(variables)) {
-      result = result.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), String(value));
-    }
-
-    return result;
-  }
-
-  private validateConfiguration(config: BaseModuleRecordingConfig): string | null {
-    // Check for specific validation failures
-    if (config.cycle?.enabled === true && !config.cycle?.basePath) {
-      return 'Cycle recording enabled but basePath is required';
-    }
-    return null;
-  }
-
-  private validateConfigurationConsistency(): ConsistencyValidationResult {
-    // TODO: Implement consistency validation
-    return {
-      valid: true,
-      errors: [],
-      warnings: [],
-      details: {}
-    };
-  }
-
+  /**
+   * Notify configuration changes to all registered callbacks
+   */
   private async notifyConfigChange(config: BaseModuleRecordingConfig): Promise<void> {
     const promises = Array.from(this.configChangeCallbacks).map(callback => {
       try {
@@ -640,20 +407,20 @@ export class RecordingManager {
     await Promise.all(promises);
   }
 
-  private findRequestContext(cycleId?: string): RequestContext | undefined {
-    if (!cycleId) return undefined;
-
-    for (const context of Array.from(this.activeRequests.values())) {
-      if (context.sharedData.has(`cycle_${cycleId}`)) {
-        return context;
-      }
-    }
-
-    return undefined;
-  }
-
+  /**
+   * Generate trace report for completed request context
+   */
   private generateTraceReport(context: RequestContext) {
-    // TODO: Implement trace report generation
+    // Feature: Trace report generation
+    underConstruction.callUnderConstructionFeature('trace-report-generation', {
+      caller: 'RecordingManager.generateTraceReport',
+      parameters: {
+        context,
+        reportFormat: 'comprehensive',
+        includePerformance: true
+      },
+      purpose: 'Generate comprehensive trace reports with performance metrics'
+    });
     return {
       traceId: context.traceId,
       requestId: context.requestId,
@@ -674,88 +441,41 @@ export class RecordingManager {
     };
   }
 
+  /**
+   * Save trace report to persistent storage
+   */
   private saveTraceReport(report: any): void {
-    // TODO: Implement trace report saving
+    // Feature: Trace report saving
+    underConstruction.callUnderConstructionFeature('trace-report-saving', {
+      caller: 'RecordingManager.saveTraceReport',
+      parameters: {
+        report,
+        saveStrategy: 'timestamped-directory',
+        compression: true
+      },
+      purpose: 'Save trace reports to persistent storage with compression'
+    });
   }
 
-  private writeCycleRecord(filePath: string, data: any, format: string): void {
-    // TODO: Implement cycle record writing
-  }
-
+  /**
+   * Generate cycle summary for completed cycle
+   */
   private generateCycleSummary(handle: CycleHandle): void {
-    // TODO: Implement cycle summary generation
+    // Feature: Cycle summary generation
+    underConstruction.callUnderConstructionFeature('cycle-summary-generation', {
+      caller: 'RecordingManager.generateCycleSummary',
+      parameters: {
+        handle,
+        summaryType: 'statistical-overview',
+        includeTiming: true
+      },
+      purpose: 'Generate statistical summaries for completed cycles'
+    });
   }
 
-  private writeErrorRecord(record: ErrorRecord): void {
-    // TODO: Implement error record writing
-  }
-
-  private truncateFieldsRecursive(
-    data: any,
-    path: string,
-    config: any,
-    stats: any,
-    context: string
-  ): any {
-    if (!this.config.truncation?.enabled) {
-      return data;
-    }
-
-    stats.totalProcessed++;
-
-    // Handle primitive types
-    if (typeof data !== 'object' || data === null) {
-      if (typeof data === 'string' && data.length > this.config.truncation.defaultMaxLength!) {
-        stats.totalTruncated++;
-        return data.substring(0, this.config.truncation.defaultMaxLength!) + '...';
-      }
-      return data;
-    }
-
-    // Handle arrays
-    if (Array.isArray(data)) {
-      if (!this.config.truncation.truncateArrays) {
-        return data;
-      }
-
-      const newArray = [];
-      const limit = Math.min(data.length, this.config.truncation.arrayTruncateLimit!);
-
-      for (let i = 0; i < limit; i++) {
-        newArray.push(this.truncateFieldsRecursive(data[i], `${path}.${i}`, config, stats, context));
-      }
-
-      if (data.length > limit) {
-        newArray.push(`[Array truncated from ${data.length} to ${limit} elements]`);
-        stats.totalTruncated++;
-      }
-
-      return newArray;
-    }
-
-    // Handle objects
-    const result: any = {};
-    for (const [key, value] of Object.entries(data)) {
-      const fieldPath = path ? `${path}.${key}` : key;
-      result[key] = this.truncateFieldsRecursive(value, fieldPath, config, stats, context);
-    }
-
-    return result;
-  }
-
-  private updateTruncationStats(stats: any): void {
-    this.truncationStats.set('totalProcessed', (this.truncationStats.get('totalProcessed') || 0) + stats.totalProcessed);
-    this.truncationStats.set('totalTruncated', (this.truncationStats.get('totalTruncated') || 0) + stats.totalTruncated);
-    this.truncationStats.set('totalReplaced', (this.truncationStats.get('totalReplaced') || 0) + stats.totalReplaced);
-    this.truncationStats.set('totalHidden', (this.truncationStats.get('totalHidden') || 0) + stats.totalHidden);
-  }
-
-  private extractModuleName(module: string | ModuleRecordingConfig | undefined): string | undefined {
-    if (!module) return undefined;
-    if (typeof module === 'string') return module;
-    return module.enabled ? 'module-config' : 'unknown';
-  }
-
+  /**
+   * Log error with context
+   */
   private logError(message: string, error: any): void {
     console.error(`[RecordingManager] ${message}:`, error);
   }

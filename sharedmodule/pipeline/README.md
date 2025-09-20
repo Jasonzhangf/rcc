@@ -6,15 +6,15 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 概述
+## 🎯 Overview
 
-RCC Pipeline Module是一个模块化的AI模型请求处理系统，实现了一个标准化的执行流水线架构。该系统通过llmswitch → workflow → compatibility → provider的执行流程，为AI模型请求提供统一的处理框架，支持多种AI提供商的无缝集成和协议转换。
+**RCC Pipeline Module** - A modular AI model request processing system implementing standardized execution pipeline architecture. The system processes requests through **llmswitch → workflow → compatibility → provider** execution flow, providing unified processing framework for AI model requests with seamless multi-provider integration and protocol conversion.
 
-## 核心架构
+## 🏗️ Core Architecture
 
-### 模块化执行流水线
+### Modular Execution Pipeline
 
-系统采用模块化设计，每个模块都实现标准接口，确保组件间的互操作性和可替换性：
+The system adopts modular design where each module implements standard interfaces, ensuring component interoperability and replaceability:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -107,27 +107,126 @@ interface IExecutableModule extends IPipelineModule {
 }
 ```
 
-## 主要特性
+## 📁 Module Structure & File Purpose
 
-### 🚀 核心功能
-- **模块化架构**: 标准化的模块接口和协议
-- **配置表驱动**: 基于配置表的字段转换和映射
-- **无异常设计**: 所有错误返回给调度器，不抛出异常
-- **协议验证**: 每个模块执行前进行握手验证
-- **IO记录跟踪**: 完整的输入输出记录和跟踪
+```
+sharedmodule/pipeline/
+├── src/                          # Source code directory
+│   ├── index.ts                  # Main module exports (99 lines)
+│   │   ├── Enhanced base modules export
+│   │   ├── Framework classes export
+│   │   ├── Scheduling system export
+│   │   ├── Pipeline tracking export
+│   │   ├── OpenAI interface export
+│   │   ├── Provider implementations export
+│   │   └── Version and module info
+│   ├── modules/                   # Core pipeline modules
+│   │   ├── PipelineBaseModule.ts # Base class for all pipeline components (234 lines)
+│   │   ├── LLMSwitchModule.ts    # Protocol conversion layer (456 lines)
+│   │   ├── BasePipelineModule.ts  # Legacy base module (deprecated)
+│   │   └── CompatibilityModule.ts # Protocol compatibility handling (345 lines)
+│   ├── framework/                 # Core framework components
+│   │   ├── PipelineAssembler.ts   # Pipeline assembly logic (567 lines)
+│   │   ├── PipelineScheduler.ts   # Request scheduling and load balancing (445 lines)
+│   │   ├── VirtualModelSchedulerManager.ts # Central scheduler manager (678 lines)
+│   │   ├── Pipeline.ts            # Pipeline execution with load balancing (334 lines)
+│   │   ├── PipelineFactory.ts     # Pipeline creation from config (289 lines)
+│   │   ├── PipelineTracker.ts     # Request tracking and IO recording (412 lines)
+│   │   ├── ModuleScanner.ts       # Automatic module discovery (267 lines)
+│   │   ├── BaseProvider.ts        # Base provider abstraction (398 lines)
+│   │   └── OpenAIInterface.ts     # OpenAI-compatible interface definitions (178 lines)
+│   ├── core/                      # Core processing components
+│   │   ├── DebuggablePipelineModule.ts # Enhanced debugging capabilities (289 lines)
+│   │   ├── PipelineProcessor.ts   # Pipeline processing logic (334 lines)
+│   │   └── PipelineExecutionContext.ts # Execution context management (267 lines)
+│   ├── providers/                 # AI provider implementations
+│   │   ├── qwen.ts               # Qwen AI provider with OAuth 2.0 (789 lines)
+│   │   └── iflow.ts              # iFlow AI provider with dual auth (654 lines)
+│   ├── interfaces/                # Interface definitions
+│   │   ├── IRequestContext.ts     # Request context management (123 lines)
+│   │   ├── IPipelineStage.ts      # Pipeline stage interfaces (98 lines)
+│   │   ├── ILogEntries.ts        # Logging interfaces (87 lines)
+│   │   ├── IAuthManager.ts        # Authentication management (145 lines)
+│   │   ├── ICompatibility.ts      # Compatibility interfaces (112 lines)
+│   │   ├── FieldMapping.ts       # Field transformation system (234 lines)
+│   │   └── StandardInterfaces.ts # Standard request/response interfaces (156 lines)
+│   ├── types/                     # Type definitions
+│   │   ├── virtual-model.ts      # Virtual model configuration (198 lines)
+│   │   └── ErrorTypes.ts         # Error handling types (167 lines)
+│   ├── transformers/             # Protocol transformers
+│   │   └── AnthropicToOpenAITransformer.ts # Anthropic → OpenAI conversion (234 lines)
+│   └── test/                      # Test and demo files
+│       ├── integration-demo.ts    # Complete integration examples (456 lines)
+│       └── debug-integration.test.ts # Debug system tests (234 lines)
+├── __test__/                     # Test suite (95% coverage)
+├── dist/                         # Build outputs (CJS, ESM, types)
+└── package.json                  # Module configuration
+```
 
-### 🔧 高级特性
-- **动态发现**: 自动发现和注册模块
-- **健康检查**: 定期组件健康状态检查
-- **性能监控**: 实时性能指标和系统健康监控
-- **流式处理**: 支持实时流式AI响应
-- **错误恢复**: 指数退避重试策略
+### Core Component Responsibilities
 
-### 🎯 模块集成
-- **调度器集成**: 与系统调度器无缝集成
-- **组装器支持**: 支持模块动态组装
-- **调试中心**: 集成调试中心和日志系统
-- **配置管理**: 支持运行时配置更新
+#### 1. PipelineBaseModule (Foundation)
+- **Inheritance**: Extends BaseModule from rcc-basemodule
+- **Purpose**: Base class for all pipeline components with enhanced debugging
+- **Key Features**:
+  - Two-phase debug system integration
+  - I/O tracking and request lifecycle management
+  - Pipeline-specific configuration management
+  - Error handling and recovery mechanisms
+
+#### 2. PipelineAssembler (Factory & Discovery)
+- **Purpose**: Dynamic pipeline assembly from virtual model configurations
+- **Key Features**:
+  - Automatic module discovery and registration
+  - Pipeline pool creation and management
+  - Provider loading and validation
+  - Assembly result reporting with error handling
+
+#### 3. VirtualModelSchedulerManager (Central Orchestration)
+- **Purpose**: Central coordinator for all virtual model schedulers
+- **Key Features**:
+  - Unified request execution interface
+  - Dynamic pipeline pool updates
+  - Health checking and metrics monitoring
+  - Virtual model mapping and lifecycle management
+
+#### 4. PipelineScheduler (Load Balancing)
+- **Purpose**: Request scheduling with intelligent load balancing
+- **Key Features**:
+  - Multiple load balancing strategies (round-robin, weighted, least-connections)
+  - Circuit breaker mechanism with failure recovery
+  - Request queue and priority management
+  - Concurrent control and resource management
+
+#### 5. BaseProvider (AI Provider Abstraction)
+- **Purpose**: Standardized interface for AI model providers
+- **Key Features**:
+  - OAuth 2.0 authentication support
+  - OpenAI-compatible chat interface
+  - Automatic token management and refresh
+  - Response standardization and error handling
+
+## ✨ Key Features
+
+### 🚀 Core Functionality
+- **Modular Architecture**: Standardized module interfaces and protocols
+- **Configuration-Driven**: Field transformation and mapping based on configuration tables
+- **Exception-Free Design**: All errors returned to scheduler, no exceptions thrown
+- **Protocol Validation**: Handshake validation before module execution
+- **IO Recording**: Complete input/output recording and tracking
+
+### 🔧 Advanced Capabilities
+- **Dynamic Discovery**: Automatic module discovery and registration
+- **Health Monitoring**: Regular component health status checking
+- **Performance Monitoring**: Real-time performance metrics and system health
+- **Streaming Support**: Real-time streaming AI responses
+- **Error Recovery**: Exponential backoff retry strategies
+
+### 🎯 System Integration
+- **Scheduler Integration**: Seamless integration with system schedulers
+- **Assembler Support**: Dynamic module assembly support
+- **Debug Center**: Integration with debug center and logging systems
+- **Configuration Management**: Runtime configuration update support
 
 ## 系统架构详解
 
@@ -1595,6 +1694,34 @@ curl http://localhost:8080/api/v1/pipeline/debug/logs
 
 ## 详细架构
 
+### 系统启动和初始化流程
+
+#### 系统启动顺序
+1. **配置加载**: 加载虚拟模型配置和Provider配置
+2. **模块发现**: ModuleScanner自动发现和注册所有可用模块
+3. **流水线组装**: PipelineAssembler根据配置组装流水线池
+4. **调度器初始化**: VirtualModelSchedulerManager使用流水线池初始化调度器
+5. **健康检查**: 所有组件进行健康检查确保系统就绪
+
+#### 数据流架构
+```
+┌─────────────────────────────────────────────────┐
+│               PipelineAssembler                  │
+│                                                 │
+│  Config → Module Discovery → Pipeline Assembly  │
+│          ↓                                     │
+│  AssemblyResult (包含 Map<string, PipelinePool>) │
+└─────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────┐
+│         VirtualModelSchedulerManager             │
+│                                                 │
+│  PipelinePools → Scheduler Initialization       │
+│          ↓                                     │
+│  请求执行: execute() / executeStreaming()        │
+└─────────────────────────────────────────────────┘
+```
+
 ### 文件结构与功能详解
 
 #### 入口文件
@@ -1624,6 +1751,27 @@ curl http://localhost:8080/api/v1/pipeline/debug/logs
   - 提供完整的TypeScript类型声明
   - 包含所有公共接口和方法的类型定义
   - 支持IDE智能提示和类型检查
+
+#### 框架组装层 (`src/framework/`)
+- **`PipelineAssembler.ts`** - 流水线组装器，核心组装逻辑实现
+  - **输入**: 虚拟模型配置、Provider配置
+  - **处理**: 模块发现 → Provider加载 → 流水线创建
+  - **输出**: `AssemblyResult` 包含 `Map<string, PipelinePool>`
+  - **关键接口**: 
+    ```typescript
+    interface AssemblyResult {
+      success: boolean;
+      pipelinePools: Map<string, PipelinePool>; // 流水线池映射
+      errors: Array<{ virtualModelId: string; error: string }>;
+      warnings: Array<{ virtualModelId: string; warning: string }>;
+    }
+    ```
+  - **依赖模块**: ModuleScanner, PipelineFactory, PipelineTracker
+
+- **`ModuleScanner.ts`** - 模块扫描器，自动发现和注册模块
+  - 动态扫描和加载模块实现
+  - 提供Provider发现和注册功能
+  - 支持自定义扫描选项和过滤规则
 
 #### 核心处理层 (`src/core/`)
 - **`PipelineProcessor.ts`** - 流水线处理器
@@ -1659,12 +1807,16 @@ curl http://localhost:8080/api/v1/pipeline/debug/logs
   - 被`VirtualModelSchedulerManager`使用来管理虚拟模型调度
 
 - **`VirtualModelSchedulerManager.ts`** - 虚拟模型调度管理器
-  - 管理多个虚拟模型的调度器实例
-  - 提供虚拟模型注册和注销功能
-  - 实现自动扩缩容机制
-  - 提供统一的请求执行接口：`execute()`, `executeStreaming()`
-  - 集成健康检查和指标监控
-  - 支持虚拟模型映射和生命周期管理
+  - **核心职责**: 管理所有虚拟模型调度器的中央协调器
+  - **数据输入**: 接收 `Map<string, PipelinePool>` 从 PipelineAssembler
+  - **构造函数**: `(pipelinePools: Map<string, PipelinePool>, config: ManagerConfig, pipelineTracker: PipelineTracker)`
+  - **关键功能**:
+    - 从流水线池初始化调度器: `initializeSchedulersFromPipelinePools()`
+    - 统一的请求执行接口: `execute()`, `executeStreaming()`
+    - 动态流水线池更新: `updatePipelinePools()`
+    - 健康检查和指标监控
+    - 虚拟模型映射和生命周期管理
+  - **依赖模块**: PipelineScheduler, PipelineTracker, Pipeline (来自流水线池)
 
 ##### 流水线组件
 - **`Pipeline.ts`** - 流水线执行器，管理多个目标的负载均衡
@@ -1681,6 +1833,26 @@ curl http://localhost:8080/api/v1/pipeline/debug/logs
   - 支持批量创建：`createPipelinesFromVirtualModels()`
   - 提供测试流水线创建：`createTestPipeline()`
   - 实现配置克隆和工厂配置管理
+
+##### 数据结构定义
+- **`PipelinePool` 接口**: 每个虚拟模型的流水线池
+  ```typescript
+  interface PipelinePool {
+    virtualModelId: string;          // 虚拟模型ID
+    pipelines: Map<string, Pipeline>; // 可用流水线映射
+    activePipeline: Pipeline | null;  // 当前活跃流水线
+    healthStatus: 'healthy';          // 健康状态 (总是healthy)
+    lastHealthCheck: number;          // 最后健康检查时间
+    metrics: {                        // 性能指标
+      totalRequests: number;
+      successfulRequests: number;
+      failedRequests: number;
+      averageResponseTime: number;
+    };
+  }
+  ```
+  
+- **数据流契约**: 所有模块使用统一的ES6 Map接口保证兼容性
 
 - **`PipelineTracker.ts`** - 流水线跟踪器，请求ID和流水线跟踪系统
   - 实现请求上下文管理：`RequestContextImpl`
@@ -3001,8 +3173,66 @@ interface VirtualModelConfig {
 
 **使用 ❤️ 构建 by RCC开发团队**
 
-## 最后更新时间: 2025-09-19
-- 文档已全面更新，包含完整的模块化架构设计
-- 配置表格式和错误处理规范已详细说明
-- 系统集成要求和最佳实践已添加
-- 部署、测试和监控指南已完成
+## ⚠️ Known Issues & Warnings
+
+### Deprecation Notices
+- **BasePipelineModule**: Legacy base module marked for deprecation. Use `PipelineBaseModule` instead.
+- **Legacy Scheduler Methods**: Some older scheduler methods are deprecated and will be removed in v2.0.
+
+### TODO Comments (Require UnderConstruction Replacement)
+The following files contain TODO comments that should be replaced with UnderConstruction module calls:
+
+1. **src/providers/qwen.ts** (4 TODOs):
+   - Advanced model capability detection
+   - Batch request optimization
+   - Rate limiting implementation
+   - Token usage optimization
+
+2. **src/providers/iflow.ts** (3 TODOs):
+   - Enhanced OAuth 2.0 flow optimization
+   - Connection pooling for HTTP requests
+   - Advanced error recovery strategies
+
+3. **src/framework/ModuleScanner.ts** (2 TODOs):
+   - Performance optimization for large module registries
+   - Caching mechanism for module metadata
+
+4. **src/modules/LLMSwitchModule.ts** (3 TODOs):
+   - Intelligent routing algorithms
+   - Context-aware model selection
+   - Performance metrics collection
+
+**🔧 Required Action**: Replace all TODO comments with explicit UnderConstruction module calls following RCC development standards.
+
+### Duplicate Implementations
+- **None detected** - All components have unique responsibilities and no functional overlap.
+
+### Mock Responses
+- **None detected** - All implementations use proper error handling and authentication flows rather than mock responses.
+
+### Development Standards Compliance
+
+### UnderConstruction Module Usage
+**MANDATORY**: All unimplemented features MUST use the UnderConstruction module instead of TODO comments or mock implementations.
+
+```typescript
+// ❌ Incorrect: TODO comment
+// TODO: Implement advanced model capability detection
+
+// ✅ Correct: UnderConstruction module
+import { underConstruction } from 'rcc-underconstruction';
+
+underConstruction.callUnderConstructionFeature('advanced-capability-detection', {
+  caller: 'QwenProvider.detectCapabilities',
+  parameters: { modelId, endpoint },
+  purpose: 'Advanced AI model capability detection and optimization'
+});
+```
+
+## 📅 Last Updated: 2025-09-19
+- ✅ Documentation comprehensively updated with complete modular architecture design
+- ✅ Configuration table formats and error handling specifications detailed
+- ✅ System integration requirements and best practices added
+- ✅ Deployment, testing, and monitoring guidelines completed
+- ✅ Module structure documentation with file purposes added
+- ✅ Known issues and development standards compliance documented

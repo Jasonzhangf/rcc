@@ -9,7 +9,7 @@ export interface IBootstrapService {
   /**
    * Initialize the bootstrap service with configuration
    */
-  configure(config: BootstrapConfig): void;
+  configure(config: BootstrapConfig): Promise<void>;
 
   /**
    * Start the bootstrap service and initialize all services

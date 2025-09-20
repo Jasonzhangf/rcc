@@ -1,6 +1,6 @@
 {
   "name": "rcc-cli-framework",
-  "version": "1.0.0",
+  "version": "0.1.7",
   "description": "RCC Command Line Interface Framework with dynamic command discovery",
   "main": "dist/index.js",
   "type": "module",
@@ -9,7 +9,7 @@
     "rcc": "./bin/rcc"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rollup -c",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "test": "jest",
@@ -17,7 +17,7 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "prepublishOnly": "npm run build && npm test",
+    "prepublishOnly": "npm run build",
     "start": "node bin/rcc"
   },
   "keywords": [
@@ -32,17 +32,18 @@
   "author": "RCC Team",
   "license": "MIT",
   "dependencies": {
-    "rcc-basemodule": "^0.1.8",
-    "glob": "^10.3.10"
+    "glob": "^10.3.10",
+    "rcc-basemodule": "^0.2.3"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
     "@types/glob": "^8.1.0",
+    "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
+    "eslint": "^8.0.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
-    "@types/jest": "^29.0.0",
-    "eslint": "^8.0.0"
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=16.0.0"

@@ -3,15 +3,14 @@
  * 流水线基础模块 - 具有增强调试功能的流水线组件基础模块
  */
 
-import { BaseModule, ModuleInfo } from 'rcc-basemodule';
-import { DebugCenter, PipelinePosition } from 'rcc-debugcenter';
-import { ErrorHandlingCenter } from 'rcc-errorhandling';
+import { BaseModule, ModuleInfo, DebugCenter, PipelinePosition, ModuleIOEntry, DebugConfig as BaseDebugConfig, IOTrackingConfig as BaseIOTrackingConfig } from 'rcc-basemodule';
+import { ErrorHandlingCenter, ErrorInfo } from 'rcc-errorhandling';
 
 /**
- * IO Tracking Configuration
- * IO跟踪配置
+ * Enhanced IO Tracking Configuration with strict typing
+ * 增强的IO跟踪配置，具有严格类型
  */
-interface IOTrackingConfig {
+export interface IOTrackingConfig extends BaseIOTrackingConfig {
   enabled?: boolean;
   baseDirectory?: string;
   maxFiles?: number;
@@ -26,10 +25,10 @@ interface IOTrackingConfig {
 }
 
 /**
- * Debug Configuration
- * 调试配置
+ * Enhanced Debug Configuration with strict typing
+ * 增强的调试配置，具有严格类型
  */
-interface DebugConfig {
+export interface DebugConfig extends BaseDebugConfig {
   enabled?: boolean;
   level?: 'debug' | 'trace' | 'info' | 'warn' | 'error';
   recordStack?: boolean;
@@ -41,6 +40,52 @@ interface DebugConfig {
   maxLogFiles?: number;
   baseDirectory?: string;
   ioTracking?: IOTrackingConfig;
+}
+
+/**
+ * Provider information structure
+ * 提供者信息结构
+ */
+export interface ProviderInfo {
+  name: string;
+  endpoint?: string;
+  supportedModels: string[];
+  defaultModel?: string;
+  type: 'provider' | 'scheduler' | 'tracker' | 'pipeline';
+}
+
+/**
+ * Pipeline operation context for error handling
+ * 用于错误处理的流水线操作上下文
+ */
+export interface PipelineOperationContext {
+  operation?: string;
+  stage?: string;
+  requestId?: string;
+  additionalData?: Record<string, unknown>;
+}
+
+/**
+ * Pipeline stage data structure
+ * 流水线阶段数据结构
+ */
+export interface PipelineStageData {
+  stageName: string;
+  stageData?: unknown;
+  status: 'started' | 'completed' | 'failed';
+  timestamp: number;
+}
+
+/**
+ * Pipeline operation result for tracking
+ * 用于跟踪的流水线操作结果
+ */
+export interface PipelineOperationResult<T> {
+  success: boolean;
+  result?: T;
+  error?: string;
+  duration: number;
+  operationType: string;
 }
 
 /**
@@ -71,8 +116,8 @@ export interface PipelineModuleConfig {
 }
 
 /**
- * Pipeline Base Module with enhanced debug capabilities
- * 具有增强调试功能的流水线基础模块
+ * Pipeline Base Module with enhanced debug capabilities and strict type safety
+ * 具有增强调试功能和严格类型安全的流水线基础模块
  */
 export class PipelineBaseModule extends BaseModule {
   protected pipelineConfig: PipelineModuleConfig;
@@ -91,9 +136,9 @@ export class PipelineBaseModule extends BaseModule {
 
     super(moduleInfo);
 
-    this.pipelineConfig = config;
+    this.pipelineConfig = { ...config };
 
-    // Initialize error handler
+    // Initialize error handler with proper configuration
     this.errorHandler = new ErrorHandlingCenter({
       id: `${config.id}-error-handler`,
       name: `${config.name} Error Handler`,
@@ -102,46 +147,54 @@ export class PipelineBaseModule extends BaseModule {
       description: `Error handler for ${config.name}`
     });
 
-    // Enable two-phase debug if configured
+    // Initialize debug center if two-phase debug is enabled
     if (config.enableTwoPhaseDebug) {
-      const debugConfig: DebugConfig = {
-        enabled: true,
-        level: 'debug',
-        recordStack: true,
-        maxLogEntries: 1000,
-        consoleOutput: true,
-        trackDataFlow: true,
-        enableFileLogging: true,
-        maxFileSize: 10485760, // 10MB
-        maxLogFiles: 5,
-        baseDirectory: config.debugBaseDirectory || '~/.rcc/debug-logs',
-        ioTracking: config.ioTrackingConfig || {
-          enabled: config.enableIOTracking || false,
-          autoRecord: false,
-          saveIndividualFiles: true,
-          saveSessionFiles: false,
-          ioDirectory: `${config.debugBaseDirectory || '~/.rcc/debug-logs'}/io`,
-          includeTimestamp: true,
-          includeDuration: true,
-          maxEntriesPerFile: 100
-        }
-      };
-
-      this.setDebugConfig(debugConfig);
-
-      if (config.enableIOTracking) {
-        this.enableTwoPhaseDebug(
-          true,
-          config.debugBaseDirectory || '~/.rcc/debug-logs',
-          config.ioTrackingConfig
-        );
-      }
+      this.initializeDebugCenter(config);
     }
 
-    this.logInfo('Pipeline base module initialized', { config }, 'constructor');
+    this.logInfo('Pipeline base module initialized', { config: this.getSafeConfig() }, 'constructor');
 
     // Store debug center reference if available
     this.debugCenter = this.getDebugCenter();
+  }
+
+  /**
+   * Initialize debug center with proper configuration
+   * 使用适当的配置初始化调试中心
+   */
+  private initializeDebugCenter(config: PipelineModuleConfig): void {
+    const debugConfig: DebugConfig = {
+      enabled: true,
+      level: 'debug',
+      recordStack: true,
+      maxLogEntries: 1000,
+      consoleOutput: true,
+      trackDataFlow: true,
+      enableFileLogging: true,
+      maxFileSize: 10485760, // 10MB
+      maxLogFiles: 5,
+      baseDirectory: config.debugBaseDirectory || '~/.rcc/debug-logs',
+      ioTracking: config.ioTrackingConfig || {
+        enabled: config.enableIOTracking || false,
+        autoRecord: false,
+        saveIndividualFiles: true,
+        saveSessionFiles: false,
+        ioDirectory: `${config.debugBaseDirectory || '~/.rcc/debug-logs'}/io`,
+        includeTimestamp: true,
+        includeDuration: true,
+        maxEntriesPerFile: 100
+      }
+    };
+
+    this.setDebugConfig(debugConfig);
+
+    if (config.enableIOTracking) {
+      this.enableTwoPhaseDebug(
+        true,
+        config.debugBaseDirectory || '~/.rcc/debug-logs',
+        config.ioTrackingConfig
+      );
+    }
   }
 
   /**
@@ -153,8 +206,27 @@ export class PipelineBaseModule extends BaseModule {
     baseDirectory?: string,
     ioTrackingConfig?: IOTrackingConfig
   ): void {
-    // Method implementation would go here
-    this.logInfo('Two-phase debug system enabled', { enabled, baseDirectory, ioTrackingConfig }, 'enableTwoPhaseDebug');
+    if (!enabled) {
+      this.logInfo('Two-phase debug system disabled', {}, 'enableTwoPhaseDebug');
+      return;
+    }
+
+    // Initialize debug center
+    if (!this.debugCenter) {
+      this.initializeDebugCenter({
+        ...this.pipelineConfig,
+        enableTwoPhaseDebug: true,
+        debugBaseDirectory: baseDirectory,
+        enableIOTracking: ioTrackingConfig?.enabled ?? false,
+        ioTrackingConfig
+      });
+    }
+
+    this.logInfo('Two-phase debug system enabled', {
+      enabled,
+      baseDirectory,
+      ioTrackingConfig: ioTrackingConfig ?? 'default'
+    }, 'enableTwoPhaseDebug');
   }
 
   /**
@@ -166,8 +238,8 @@ export class PipelineBaseModule extends BaseModule {
   }
 
   /**
-   * Get pipeline configuration
-   * 获取流水线配置
+   * Get pipeline configuration (safe copy)
+   * 获取流水线配置（安全副本）
    */
   public getPipelineConfig(): PipelineModuleConfig {
     return { ...this.pipelineConfig };
@@ -178,20 +250,45 @@ export class PipelineBaseModule extends BaseModule {
    * 更新流水线配置
    */
   public updatePipelineConfig(newConfig: Partial<PipelineModuleConfig>): void {
-    const oldConfig = { ...this.pipelineConfig };
+    const oldConfig = this.getSafeConfig(); // Get safe copy of current config
+
+    // Validate and merge configuration
     this.pipelineConfig = { ...this.pipelineConfig, ...newConfig };
+
+    // Reinitialize debug center if debug configuration changed
+    if (newConfig.enableTwoPhaseDebug !== undefined ||
+        newConfig.enableIOTracking !== undefined ||
+        newConfig.debugBaseDirectory !== undefined) {
+      this.initializeDebugCenter(this.pipelineConfig);
+      this.debugCenter = this.getDebugCenter();
+    }
 
     this.logInfo('Pipeline configuration updated', {
       oldConfig,
-      newConfig: this.pipelineConfig
+      newConfig: this.getSafeConfig()
     }, 'updatePipelineConfig');
+  }
+
+  /**
+   * Get safe configuration for logging (without sensitive data)
+   * 获取用于日志记录的安全配置（不包含敏感数据）
+   */
+  private getSafeConfig(): Partial<PipelineModuleConfig> {
+    const { providerName, endpoint, supportedModels, defaultModel, type } = this.pipelineConfig;
+    return {
+      providerName,
+      endpoint,
+      supportedModels,
+      defaultModel,
+      type
+    };
   }
 
   /**
    * Get provider information
    * 获取提供者信息
    */
-  public getProviderInfo() {
+  public getProviderInfo(): ProviderInfo {
     return {
       name: this.pipelineConfig.providerName || this.pipelineConfig.name,
       endpoint: this.pipelineConfig.endpoint,
@@ -202,22 +299,23 @@ export class PipelineBaseModule extends BaseModule {
   }
 
   /**
-   * Track pipeline operation with I/O tracking
-   * 跟踪流水线操作并记录I/O
+   * Track pipeline operation with I/O tracking and strict typing
+   * 跟踪流水线操作并记录I/O，具有严格类型
    */
-  public async trackPipelineOperation<T>(
+  public async trackPipelineOperation<T, I = unknown>(
     operationId: string,
     operation: () => Promise<T>,
-    inputData?: any,
+    inputData?: I,
     operationType: string = 'pipeline-operation'
   ): Promise<T> {
     const startTime = Date.now();
+    const trackingId = `${this.info.id}-${operationId}`;
 
     try {
       // Start I/O tracking if enabled
       if (this.pipelineConfig.enableIOTracking && this.debugCenter) {
         this.debugCenter.recordOperation(
-          `${this.info.id}-${operationId}`,
+          trackingId,
           this.info.id,
           operationId,
           inputData,
@@ -229,13 +327,17 @@ export class PipelineBaseModule extends BaseModule {
         );
       }
 
+      this.logDebug('Starting pipeline operation', { operationId, operationType }, 'trackPipelineOperation');
+
       // Execute the operation
       const result = await operation();
+
+      const duration = Date.now() - startTime;
 
       // End I/O tracking if enabled
       if (this.pipelineConfig.enableIOTracking && this.debugCenter) {
         this.debugCenter.recordOperation(
-          `${this.info.id}-${operationId}`,
+          trackingId,
           this.info.id,
           operationId,
           undefined,
@@ -250,18 +352,19 @@ export class PipelineBaseModule extends BaseModule {
       this.logInfo('Pipeline operation completed successfully', {
         operationId,
         operationType,
-        duration: Date.now() - startTime,
-        inputData: inputData ? { type: typeof inputData } : undefined,
-        outputData: result ? { type: typeof result } : undefined
+        duration,
+        inputDataType: inputData ? this.getDataType(inputData) : 'none'
       }, 'trackPipelineOperation');
 
       return result;
 
     } catch (error) {
+      const duration = Date.now() - startTime;
+
       // End I/O tracking with error if enabled
       if (this.pipelineConfig.enableIOTracking && this.debugCenter) {
         this.debugCenter.recordOperation(
-          `${this.info.id}-${operationId}`,
+          trackingId,
           this.info.id,
           operationId,
           undefined,
@@ -273,16 +376,69 @@ export class PipelineBaseModule extends BaseModule {
         );
       }
 
-      this.debug('error', 'Pipeline operation failed', {
-        operationId,
-        operationType,
-        duration: Date.now() - startTime,
-        inputData: inputData ? { type: typeof inputData } : undefined,
-        error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error)
-      }, 'trackPipelineOperation');
+      const errorInfo = this.createErrorInfo(error, operationId, operationType, duration, inputData);
+      this.logError('Pipeline operation failed', errorInfo, 'trackPipelineOperation');
 
       throw error;
     }
+  }
+
+  /**
+   * Get data type for logging
+   * 获取数据类型用于日志记录
+   */
+  private getDataType(data: unknown): string {
+    if (data === null) return 'null';
+    if (Array.isArray(data)) return 'array';
+    if (typeof data === 'object') return 'object';
+    return typeof data;
+  }
+
+  /**
+   * Create error information for logging
+   * 创建用于日志记录的错误信息
+   */
+  private createErrorInfo(
+    error: unknown,
+    operationId: string,
+    operationType: string,
+    duration: number,
+    inputData?: unknown
+  ): Record<string, unknown> {
+    const errorInfo: Record<string, unknown> = {
+      operationId,
+      operationType,
+      duration,
+      inputDataType: inputData ? this.getDataType(inputData) : 'none'
+    };
+
+    if (error instanceof Error) {
+      errorInfo.error = {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      };
+    } else {
+      errorInfo.error = String(error);
+    }
+
+    return errorInfo;
+  }
+
+  /**
+   * Log debug message with proper typing
+   * 记录调试消息，具有适当的类型
+   */
+  private logDebug(message: string, context?: Record<string, unknown>, operation?: string): void {
+    this.debug('debug', message, context ?? {}, operation ?? 'debug');
+  }
+
+  /**
+   * Log error message with proper typing
+   * 记录错误消息，具有适当的类型
+   */
+  private logError(message: string, context?: Record<string, unknown>, operation?: string): void {
+    this.debug('error', message, context ?? {}, operation ?? 'error');
   }
 
   /**
@@ -291,17 +447,25 @@ export class PipelineBaseModule extends BaseModule {
    */
   public recordPipelineStage(
     stageName: string,
-    stageData: any,
+    stageData?: unknown,
     status: 'started' | 'completed' | 'failed' = 'started'
   ): void {
     const timestamp = Date.now();
 
-    this.logInfo(`Pipeline stage ${status}`, {
+    const logData: PipelineStageData = {
       stageName,
-      stageData: stageData ? { type: typeof stageData } : undefined,
       status,
       timestamp
-    }, 'recordPipelineStage');
+    };
+
+    if (stageData !== undefined) {
+      logData.stageData = {
+        type: this.getDataType(stageData),
+        hasData: true
+      };
+    }
+
+    this.logInfo(`Pipeline stage ${status}`, logData, 'recordPipelineStage');
   }
 
   /**
@@ -310,12 +474,7 @@ export class PipelineBaseModule extends BaseModule {
    */
   public handlePipelineError(
     error: Error,
-    context: {
-      operation?: string;
-      stage?: string;
-      requestId?: string;
-      additionalData?: Record<string, any>;
-    }
+    context: PipelineOperationContext
   ): void {
     const errorContext = {
       ...context,
@@ -330,27 +489,29 @@ export class PipelineBaseModule extends BaseModule {
     };
 
     // Log the error
-    this.debug('error', 'Pipeline error occurred', errorContext, 'handlePipelineError');
+    this.logError('Pipeline error occurred', errorContext, 'handlePipelineError');
 
-    // Handle error with error handling center
-    this.errorHandler.handleError({
+    // Create error info for error handling center
+    const errorInfo: ErrorInfo = {
       error: error,
       source: this.info.id,
       severity: 'high',
-      timestamp: Date.now()
-    });
+      timestamp: Date.now(),
+      context: errorContext
+    };
+
+    // Handle error with error handling center
+    this.errorHandler.handleError(errorInfo);
   }
 
   /**
    * Format error response with detailed information
    * 格式化错误响应并提供详细信息
    */
-  public formatErrorResponse(error: Error, context?: {
-    operation?: string;
-    stage?: string;
-    requestId?: string;
-    additionalData?: Record<string, any>;
-  }): any {
+  public formatErrorResponse(
+    error: Error,
+    context?: PipelineOperationContext
+  ): Record<string, unknown> {
     const errorResponse = {
       error: {
         type: error.name,
@@ -368,7 +529,7 @@ export class PipelineBaseModule extends BaseModule {
         additionalData: context?.additionalData
       },
       system: {
-        status: 'error',
+        status: 'error' as const,
         provider: this.info.name,
         type: this.info.type
       }
@@ -382,13 +543,16 @@ export class PipelineBaseModule extends BaseModule {
    * 根据错误类型获取错误代码
    */
   private getErrorCode(error: Error): string {
-    if (error.message.includes('401')) return 'AUTHENTICATION_ERROR';
-    if (error.message.includes('403')) return 'AUTHORIZATION_ERROR';
-    if (error.message.includes('404')) return 'NOT_FOUND';
-    if (error.message.includes('429')) return 'RATE_LIMIT_ERROR';
-    if (error.message.includes('500')) return 'SERVER_ERROR';
-    if (error.message.includes('timeout')) return 'TIMEOUT_ERROR';
-    if (error.message.includes('network')) return 'NETWORK_ERROR';
+    const errorMessage = error.message.toLowerCase();
+
+    if (errorMessage.includes('401')) return 'AUTHENTICATION_ERROR';
+    if (errorMessage.includes('403')) return 'AUTHORIZATION_ERROR';
+    if (errorMessage.includes('404')) return 'NOT_FOUND';
+    if (errorMessage.includes('429')) return 'RATE_LIMIT_ERROR';
+    if (errorMessage.includes('500')) return 'SERVER_ERROR';
+    if (errorMessage.includes('timeout')) return 'TIMEOUT_ERROR';
+    if (errorMessage.includes('network')) return 'NETWORK_ERROR';
+
     return 'UNKNOWN_ERROR';
   }
 
@@ -396,27 +560,31 @@ export class PipelineBaseModule extends BaseModule {
    * Get detailed error information
    * 获取详细的错误信息
    */
-  private getErrorDetails(error: Error): any {
-    const details: any = {
+  private getErrorDetails(error: Error): Record<string, unknown> {
+    const details: Record<string, unknown> = {
       stack: error.stack,
       timestamp: Date.now()
     };
 
-    // Add HTTP response details if available
-    if ((error as any).response) {
+    // Add HTTP response details if available (typed as any for external libraries)
+    const errorWithResponse = error as Record<string, unknown>;
+
+    if (errorWithResponse.response && typeof errorWithResponse.response === 'object') {
+      const response = errorWithResponse.response as Record<string, unknown>;
       details.response = {
-        status: (error as any).response.status,
-        statusText: (error as any).response.statusText,
-        data: (error as any).response.data
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data
       };
     }
 
     // Add request details if available
-    if ((error as any).request) {
+    if (errorWithResponse.request && typeof errorWithResponse.request === 'object') {
+      const request = errorWithResponse.request as Record<string, unknown>;
       details.request = {
-        method: (error as any).request.method,
-        url: (error as any).request.url,
-        headers: (error as any).request.headers
+        method: request.method,
+        url: request.url,
+        headers: request.headers
       };
     }
 
@@ -424,28 +592,29 @@ export class PipelineBaseModule extends BaseModule {
   }
 
   /**
-   * Get pipeline metrics
-   * 获取流水线指标
+   * Get pipeline metrics with proper typing
+   * 获取流水线指标，具有适当的类型
    */
-  public getPipelineMetrics() {
-    if (this.debugCenter) {
+  public getPipelineMetrics(): PipelineMetrics {
+    const debugConfig = this.getDebugConfig();
+    const baseMetrics = {
+      debugEnabled: debugConfig?.enabled ?? false,
+      ioTrackingEnabled: this.pipelineConfig.enableIOTracking ?? false,
+      debugConfig: debugConfig ?? {}
+    };
+
+    if (this.debugCenter && this.debugCenter.getPipelineEntries) {
       return {
-        debugEnabled: true,
-        ioTrackingEnabled: this.pipelineConfig.enableIOTracking || false,
-        debugConfig: this.getDebugConfig(),
-        pipelineEntries: this.debugCenter.getPipelineEntries ? this.debugCenter.getPipelineEntries({
+        ...baseMetrics,
+        pipelineEntries: this.debugCenter.getPipelineEntries({
           pipelineId: this.info.id,
           limit: 100
-        }) : [],
-        stats: this.debugCenter.getStats ? this.debugCenter.getStats() : null
+        }) ?? [],
+        ioFiles: this.debugCenter.getIOFiles ? this.debugCenter.getIOFiles() : []
       };
     }
 
-    return {
-      debugEnabled: false,
-      ioTrackingEnabled: false,
-      debugConfig: this.getDebugConfig()
-    };
+    return baseMetrics;
   }
 
   /**
@@ -456,24 +625,51 @@ export class PipelineBaseModule extends BaseModule {
     try {
       this.logInfo('Destroying pipeline base module', { moduleId: this.info.id }, 'destroy');
 
-      // Perform any additional cleanup specific to pipeline modules
+      // Perform cleanup specific to pipeline modules
       if (this.errorHandler) {
-        // ErrorHandlingCenter cleanup if available
-        if (typeof this.errorHandler.destroy === 'function') {
-          await this.errorHandler.destroy();
-        }
+        await this.cleanupErrorHandler();
       }
 
       // Call parent destroy method
       await super.destroy();
 
     } catch (error) {
-      this.debug('error', 'Failed to destroy pipeline base module', {
+      const errorContext = {
         error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error),
         moduleId: this.info.id
-      }, 'destroy');
+      };
 
+      this.logError('Failed to destroy pipeline base module', errorContext, 'destroy');
       throw error;
     }
   }
+
+  /**
+   * Clean up error handler resources
+   * 清理错误处理器资源
+   */
+  private async cleanupErrorHandler(): Promise<void> {
+    try {
+      if (typeof this.errorHandler.destroy === 'function') {
+        await this.errorHandler.destroy();
+      }
+    } catch (error) {
+      this.logError('Error during error handler cleanup', {
+        error: error instanceof Error ? { message: error.message } : String(error)
+      }, 'cleanupErrorHandler');
+      // Don't throw - continue with cleanup
+    }
+  }
+}
+
+/**
+ * Pipeline metrics interface
+ * 流水线指标接口
+ */
+export interface PipelineMetrics {
+  debugEnabled: boolean;
+  ioTrackingEnabled: boolean;
+  debugConfig: Record<string, unknown>;
+  pipelineEntries?: ModuleIOEntry[];
+  ioFiles?: string[];
 }

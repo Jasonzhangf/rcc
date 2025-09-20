@@ -8,6 +8,10 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs';
 import { join, dirname } from 'path';
+import { UnderConstruction } from 'rcc-underconstruction';
+
+// Create UnderConstruction instance for unimplemented features
+const underConstruction = new UnderConstruction();
 
 /**
  * Circular recording component that manages request-response cycle recording
@@ -458,8 +462,16 @@ export class CycleRecorder {
   }
 
   private async applyCleanupPolicies(cycleId: string): Promise<void> {
-    // TODO: Implement cleanup policies based on maxCyclesRetained
-    // This would involve cleaning up old cycle directories
+    // Feature: Cycle cleanup policies
+    underConstruction.callUnderConstructionFeature('cycle-cleanup-policies', {
+      caller: 'CycleRecorder.applyCleanupPolicies',
+      parameters: {
+        cycleId,
+        maxCyclesRetained: this.config.maxCyclesRetained,
+        cleanupStrategy: 'lru-oldest-first'
+      },
+      purpose: 'Clean up old cycle directories based on retention policies'
+    });
   }
 
   private truncateFields(data: any): any {
@@ -467,8 +479,17 @@ export class CycleRecorder {
       return data;
     }
 
-    // TODO: Implement field truncation logic
-    // This would recursively traverse the data object and apply truncation rules
+    // Feature: Field truncation logic
+    underConstruction.callUnderConstructionFeature('field-truncation-logic', {
+      caller: 'CycleRecorder.truncateFields',
+      parameters: {
+        data,
+        truncationConfig: this.truncationConfig,
+        strategy: 'recursive-depth-traversal'
+      },
+      purpose: 'Recursively traverse data and apply truncation rules'
+    });
+
     return data;
   }
 }

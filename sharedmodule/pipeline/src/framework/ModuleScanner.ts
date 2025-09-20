@@ -3,7 +3,7 @@
  * 模块扫描器 - 发现并管理可用的provider
  */
 
-import BaseProvider from './BaseProvider';
+import { BaseProvider } from './BaseProvider';
 import { PipelineTarget } from './Pipeline';
 import { VirtualModelConfig } from '../types/virtual-model';
 import QwenProvider from '../providers/qwen';

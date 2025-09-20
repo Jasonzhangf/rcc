@@ -4,7 +4,7 @@
  */
 
 import { BaseModule } from 'rcc-basemodule';
-import BaseProvider from '../framework/BaseProvider';
+import { BaseProvider } from '../framework/BaseProvider';
 import { ErrorHandlingCenter } from 'rcc-errorhandling';
 import axios from 'axios';
 import * as crypto from 'crypto';
@@ -12,6 +12,7 @@ import open from 'open';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as readline from 'readline';
 
 // OpenAI Interface imports would be defined in separate TypeScript files
 interface OpenAIChatRequest {
@@ -497,7 +498,7 @@ class IFlowProvider extends BaseProvider {
    * 创建流式迭代器
    */
   private async* createStreamIterator(stream: any): AsyncIterable<OpenAIStreamChunk> {
-    const readline = require('readline');
+    // Using imported readline module
     const rl = readline.createInterface({
       input: stream,
       crlfDelay: Infinity

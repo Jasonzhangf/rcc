@@ -9,6 +9,13 @@ export { startCommand } from './commands/start';
 export { stopCommand } from './commands/stop';
 export { codeCommand } from './commands/code';
 
+import * as path from 'path';
+import * as url from 'url';
+
+// Get current directory for ES modules
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Default CLI engine configuration
 export const defaultCLIConfig = {
   name: 'rcc',
@@ -17,10 +24,10 @@ export const defaultCLIConfig = {
   commandDiscovery: {
     commandDirs: [
       // Built-in commands
-      __dirname + '/commands',
+      path.join(__dirname, 'commands'),
       // Project-specific commands
-      process.cwd() + '/commands',
-      process.cwd() + '/src/commands'
+      path.join(process.cwd(), 'commands'),
+      path.join(process.cwd(), 'src/commands')
     ],
     modulePatterns: [
       'rcc-command-*',

@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "providers": {
+    "test-provider": {
+      "name": "Test Provider",
+      "type": "api",
+      "endpoint": "https://api.example.com",
+      "models": {
+        "test-model": {
+          "name": "Test Model",
+          "contextLength": 4096,
+          "supportsFunctions": true
+        }
+      },
+      "auth": {
+        "type": "api-key",
+        "keys": [
+          "test-key-123"
+        ]
+      }
+    }
+  },
+  "virtualModels": {
+    "test-vm": {
+      "targets": [
+        {
+          "providerId": "test-provider",
+          "modelId": "test-model",
+          "keyIndex": 0
+        }
+      ],
+      "enabled": true,
+      "priority": 1
+    }
+  }
+}

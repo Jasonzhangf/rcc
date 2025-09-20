@@ -1,4 +1,4 @@
-import { ICommand, CommandContext, CommandOptionType } from '../../types';
+import { ICommand, CommandContext, CommandOptionType } from '../../types/index';
 
 export interface StartCommandOptions {
   port?: number;
@@ -87,17 +87,17 @@ export class StartCommand implements ICommand {
     context.logger.info('Note: Full startup system integration requires RCCStartupSystem module');
   }
 
-  private parseOptions(rawOptions: Record<string, any>): StartCommandOptions {
+  private parseOptions(rawOptions: Record<string, unknown>): StartCommandOptions {
     return {
-      port: rawOptions.port || 5506,
-      configPath: rawOptions.configPath || '~/.route-claudecode/config',
-      debugBasePath: rawOptions.debugBasePath || '~/.rcc/debug-logs',
-      enablePipelineTracking: rawOptions.enablePipelineTracking ?? true,
-      enableAutoRestart: rawOptions.enableAutoRestart ?? true,
-      autoRestartAttempts: rawOptions.autoRestartAttempts ?? 3,
-      autoRestartDelay: rawOptions.autoRestartDelay ?? 5000,
-      enableTwoPhaseDebug: rawOptions.enableTwoPhaseDebug ?? true,
-      verbose: rawOptions.verbose ?? false,
+      port: (rawOptions.port as number) || 5506,
+      configPath: (rawOptions.configPath as string) || '~/.route-claudecode/config',
+      debugBasePath: (rawOptions.debugBasePath as string) || '~/.rcc/debug-logs',
+      enablePipelineTracking: (rawOptions.enablePipelineTracking as boolean) ?? true,
+      enableAutoRestart: (rawOptions.enableAutoRestart as boolean) ?? true,
+      autoRestartAttempts: (rawOptions.autoRestartAttempts as number) ?? 3,
+      autoRestartDelay: (rawOptions.autoRestartDelay as number) ?? 5000,
+      enableTwoPhaseDebug: (rawOptions.enableTwoPhaseDebug as boolean) ?? true,
+      verbose: (rawOptions.verbose as boolean) ?? false,
     };
   }
 

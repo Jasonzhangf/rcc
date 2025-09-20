@@ -142,12 +142,7 @@ export class PipelineConfigGenerator extends BaseModule {
     };
 
     this.executionRecords.set(record.id, record);
-    this.logInfo('Pipeline execution record created', {
-      recordId: record.id,
-      virtualModelId,
-      providerId,
-      modelId
-    });
+    this.logInfo(`Pipeline execution record created - recordId: ${record.id}, virtualModelId: ${virtualModelId}, providerId: ${providerId}, modelId: ${modelId}`);
 
     return record;
   }
@@ -162,7 +157,7 @@ export class PipelineConfigGenerator extends BaseModule {
   ): void {
     const record = this.executionRecords.get(recordId);
     if (!record) {
-      this.warn('Execution record not found', { recordId });
+      this.warn(`Execution record not found - recordId: ${recordId}`);
       return;
     }
 
@@ -176,11 +171,7 @@ export class PipelineConfigGenerator extends BaseModule {
       record.performance.memoryUsage = process.memoryUsage().heapUsed;
     }
 
-    this.logInfo('Pipeline execution record completed', {
-      recordId,
-      status: record.status,
-      processingTime: record.performance?.processingTime
-    });
+    this.logInfo(`Pipeline execution record completed - recordId: ${recordId}, status: ${record.status}, processingTime: ${record.performance?.processingTime}`);
   }
 
   /**
@@ -213,10 +204,7 @@ export class PipelineConfigGenerator extends BaseModule {
     let record: PipelineExecutionRecord | undefined;
 
     try {
-      this.logInfo('Starting pipeline table generation', {
-        configVersion: config.version,
-        virtualModelCount: Object.keys(config.virtualModels).length
-      });
+      this.logInfo(`Starting pipeline table generation - configVersion: ${config.version}, virtualModelCount: ${Object.keys(config.virtualModels).length}`);
 
       // 创建执行记录
       record = this.createExecutionRecord(
@@ -261,7 +249,7 @@ export class PipelineConfigGenerator extends BaseModule {
       return table;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.warn('Failed to generate pipeline table', { error: errorMessage });
+      this.warn(`Failed to generate pipeline table - error: ${errorMessage}`);
 
       // 完成执行记录（失败状态）
       if (record) {
@@ -281,7 +269,7 @@ export class PipelineConfigGenerator extends BaseModule {
     // 清理执行记录
     this.clearExecutionRecords();
 
-    await super.destroy();
+    // Clean up resources
     this.logInfo('PipelineConfigGenerator destroyed successfully');
   }
 }

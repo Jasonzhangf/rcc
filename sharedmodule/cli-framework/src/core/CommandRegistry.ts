@@ -1,7 +1,7 @@
 import { ICommand, CommandDiscoveryOptions, ILogger } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as glob from 'glob';
+import { glob } from 'glob';
 
 export class CommandRegistry {
   private commands = new Map<string, ICommand>();
@@ -169,12 +169,15 @@ export class CommandRegistry {
     }
   }
 
-  private isCommand(obj: any): obj is ICommand {
-    return (
+  private isCommand(obj: unknown): obj is ICommand {
+    return !!(
       obj &&
       typeof obj === 'object' &&
+      'name' in obj &&
       typeof obj.name === 'string' &&
+      'description' in obj &&
       typeof obj.description === 'string' &&
+      'execute' in obj &&
       typeof obj.execute === 'function'
     );
   }

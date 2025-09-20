@@ -1,4 +1,4 @@
-import { BaseModule, AppError } from 'rcc-basemodule';
+import { BaseModule } from 'rcc-basemodule';
 
 export interface ICommand {
   name: string;
@@ -17,7 +17,7 @@ export interface CommandOption {
   type: CommandOptionType;
   description: string;
   required?: boolean;
-  default?: any;
+  default?: string | number | boolean | string[];
   alias?: string;
 }
 
@@ -31,7 +31,7 @@ export interface ILogger {
 
 export interface CommandContext {
   args: string[];
-  options: Record<string, any>;
+  options: Record<string, unknown>;
   logger: ILogger;
   cwd: string;
   command: ICommand;
@@ -55,5 +55,5 @@ export interface CLIEngineConfig {
 export interface ParsedCommand {
   command?: string;
   args: string[];
-  options: Record<string, any>;
+  options: Record<string, unknown>;
 }

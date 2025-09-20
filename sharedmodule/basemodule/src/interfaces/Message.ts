@@ -110,6 +110,11 @@ export interface MessageCenterStats {
   totalMessages: number;
 
   /**
+   * Total requests processed
+   */
+  totalRequests: number;
+
+  /**
    * Number of active requests waiting for responses
    */
   activeRequests: number;

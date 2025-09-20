@@ -9,6 +9,10 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs';
 import { join, dirname } from 'path';
+import { UnderConstruction } from 'rcc-underconstruction';
+
+// Create UnderConstruction instance for unimplemented features
+const underConstruction = new UnderConstruction();
 
 /**
  * Error recording component that manages error tracking and recovery
@@ -355,8 +359,15 @@ export class ErrorRecorder {
    * Load error records from files
    */
   async loadErrorRecords(): Promise<void> {
-    // TODO: Implement loading from persisted files
-    // This would scan the error directory and load existing error records
+    // Feature: Error record persistence loading
+    underConstruction.callUnderConstructionFeature('error-record-persistence-loading', {
+      caller: 'ErrorRecorder.loadErrorRecords',
+      parameters: {
+        errorDirectory: this.config.basePath,
+        loadStrategy: 'file-scan'
+      },
+      purpose: 'Load persisted error records from file system'
+    });
   }
 
   /**

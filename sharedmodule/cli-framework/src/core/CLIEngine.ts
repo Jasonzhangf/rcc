@@ -13,6 +13,11 @@ import { ICommand, CLIEngineConfig, CommandDiscoveryOptions, ILogger } from '../
 import { CommandRegistry } from './CommandRegistry';
 import { ArgumentParser } from './ArgumentParser';
 import * as path from 'path';
+import * as url from 'url';
+
+// Get current directory for ES modules
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class SimpleLogger implements ILogger {
   info(message: string, ...args: any[]): void {
@@ -44,7 +49,7 @@ export class CLIEngine {
   private parser: ArgumentParser;
   protected config: CLIEngineConfig;
   private logger: ILogger;
-  private baseModule: any;
+  private baseModule: any | null;
 
   constructor(config: CLIEngineConfig) {
     this.config = config;
@@ -113,7 +118,7 @@ export class CLIEngine {
     await this.executeCommand(parsed.command, parsed.args, parsed.options);
   }
 
-  async executeCommand(commandName: string, args: string[] = [], options: Record<string, any> = {}): Promise<void> {
+  async executeCommand(commandName: string, args: string[] = [], options: Record<string, unknown> = {}): Promise<void> {
     const command = this.registry.getCommand(commandName);
     
     if (!command) {

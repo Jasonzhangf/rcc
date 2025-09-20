@@ -89,10 +89,7 @@ export class ConfigLoader extends BaseModule {
       // 读取文件内容
       const content = await fs.readFile(filePath, 'utf-8');
 
-      this.logInfo('File content read successfully', {
-        filePath,
-        fileSize: content.length
-      });
+      this.logInfo(`File content read successfully - filePath: ${filePath}, fileSize: ${content.length}`);
       
       // 解析配置
       let data: any;
@@ -123,7 +120,7 @@ export class ConfigLoader extends BaseModule {
       return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.warn(`Failed to load configuration from ${filePath}`, { error: errorMessage });
+      this.warn(`Failed to load configuration from ${filePath} - error: ${errorMessage}`);
       throw error;
     }
   }
@@ -153,7 +150,7 @@ export class ConfigLoader extends BaseModule {
       this.logInfo(`Configuration saved to: ${filePath}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.warn(`Failed to save configuration to ${filePath}`, { error: errorMessage });
+      this.warn(`Failed to save configuration to ${filePath} - error: ${errorMessage}`);
       throw error;
     }
   }
@@ -178,7 +175,7 @@ export class ConfigLoader extends BaseModule {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.warn(`Failed to create backup for ${filePath}`, { error: errorMessage });
+      this.warn(`Failed to create backup for ${filePath} - error: ${errorMessage}`);
       throw error;
     }
   }
@@ -200,6 +197,6 @@ export class ConfigLoader extends BaseModule {
     this.cache.clear();
 
     this.logInfo('ConfigLoader destroyed successfully');
-    await super.destroy();
+    // Clean up resources
   }
 }

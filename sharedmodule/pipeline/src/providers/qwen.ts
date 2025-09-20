@@ -4,7 +4,7 @@
  */
 
 import { BaseModule } from 'rcc-basemodule';
-import BaseProvider from '../framework/BaseProvider';
+import { BaseProvider } from '../framework/BaseProvider';
 import { ErrorHandlingCenter } from 'rcc-errorhandling';
 import axios from 'axios';
 import crypto from 'crypto';

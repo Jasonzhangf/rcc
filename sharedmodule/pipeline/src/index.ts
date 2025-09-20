@@ -59,7 +59,7 @@ export { AnthropicToOpenAITransformer } from './transformers/AnthropicToOpenAITr
 export { OpenAIPassthroughTransformer } from './modules/LLMSwitchModule';
 
 // Framework classes
-export { default as BaseProvider } from './framework/BaseProvider';
+export { BaseProvider } from './framework/BaseProvider';
 
 // Module discovery and assembly
 export { ModuleScanner, ProviderDiscoveryOptions } from './framework/ModuleScanner';

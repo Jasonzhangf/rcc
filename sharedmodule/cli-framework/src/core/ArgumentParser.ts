@@ -3,7 +3,7 @@ import { ICommand, CommandOption } from '../types';
 export interface ParsedArguments {
   command: string;
   args: string[];
-  options: Record<string, any>;
+  options: Record<string, unknown>;
 }
 
 export class ArgumentParser {
@@ -14,14 +14,14 @@ export class ArgumentParser {
       return {
         command: '',
         args: [],
-        options: {}
+        options: {} as Record<string, unknown>
       };
     }
 
     const result: ParsedArguments = {
       command: args[0],
       args: [],
-      options: {}
+      options: {} as Record<string, unknown>
     };
 
     let i = 1;
@@ -90,7 +90,7 @@ export class ArgumentParser {
     return result;
   }
 
-  private parseOptionValue(value: string): any {
+  private parseOptionValue(value: string): string | number | boolean {
     // Try to parse as number
     if (!isNaN(Number(value)) && value.trim() !== '') {
       return Number(value);
@@ -104,7 +104,7 @@ export class ArgumentParser {
     return value;
   }
 
-  private validateOptions(options: Record<string, any>, commandOptions: CommandOption[]): void {
+  private validateOptions(options: Record<string, unknown>, commandOptions: CommandOption[]): void {
     for (const option of commandOptions) {
       if (option.required && !(option.name in options)) {
         throw new Error(`Option --${option.name} is required`);
@@ -127,7 +127,7 @@ export class ArgumentParser {
     }
   }
 
-  private applyOptionDefaults(options: Record<string, any>, commandOptions: CommandOption[]): void {
+  private applyOptionDefaults(options: Record<string, unknown>, commandOptions: CommandOption[]): void {
     for (const option of commandOptions) {
       if (option.default !== undefined && !(option.name in options)) {
         options[option.name] = option.default;

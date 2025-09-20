@@ -491,6 +491,120 @@ bootstrap.setRequestTracker(requestTracker);
 bootstrap.setModuleLogger(moduleLogger);
 ```
 
+## 已知问题和待改进项
+
+### 🚨 需要UnderConstruction模块替换的TODO项目
+
+#### 1. 配置系统导入问题
+**位置**: `src/BootstrapService.ts.backup`
+**状态**: 需要使用UnderConstruction模块显式声明
+```typescript
+// 当前代码:
+// TODO: Fix rcc-configuration import issues
+
+// 标准替换方式:
+import { underConstruction } from 'rcc-underconstruction';
+underConstruction.callUnderConstructionFeature('config-system-import', {
+  caller: 'BootstrapService.loadConfig',
+  parameters: { configPath },
+  purpose: '配置系统模块导入和初始化'
+});
+```
+
+#### 2. 服务实例化错误处理增强
+**位置**: `BootstrapService.ts` 服务初始化流程
+**状态**: 需要更完善的服务实例化和错误恢复机制
+```typescript
+// 当前简化错误处理:
+try {
+  await serverModule.start();
+} catch (error: any) {
+  console.error('Failed to initialize ServerModule:', error);
+  // 不抛出错误，继续其他服务初始化
+}
+
+// 应该使用UnderConstruction声明:
+underConstruction.callUnderConstructionFeature('service-error-recovery', {
+  caller: 'BootstrapService.initializeServices',
+  parameters: { serviceId, error },
+  purpose: '服务启动失败后的智能恢复和重试机制'
+});
+```
+
+### 📋 已弃用功能警告
+
+#### 1. 日志方法弃用
+**位置**: `BootstrapService.ts`
+**状态**: 已弃用，使用BaseModule内置方法替代
+```typescript
+/**
+ * @deprecated 使用BaseModule的logInfo, logError等方法代替
+ */
+setModuleLogger(moduleLogger: any): void {
+  underConstruction.callUnderConstructionFeature('deprecated-logger-method', {
+    caller: 'BootstrapService.setModuleLogger',
+    purpose: '已弃用的日志器设置方法，应该使用BaseModule内置日志功能'
+  });
+}
+```
+
+#### 2. 请求跟踪器弃用
+**位置**: `BootstrapService.ts`
+**状态**: 已弃用，使用BaseModule IO跟踪替代
+```typescript
+/**
+ * @deprecated 使用BaseModule的recordIO, startOperation, endOperation等方法代替
+ */
+setRequestTracker(requestTracker: any): void {
+  underConstruction.callUnderConstructionFeature('deprecated-request-tracker', {
+    caller: 'BootstrapService.setRequestTracker',
+    purpose: '已弃用的请求跟踪器设置方法，应该使用BaseModule内置IO跟踪功能'
+  });
+}
+```
+
+### ⚠️ 潜在架构改进点
+
+#### 1. 动态导入策略优化
+当前实现使用简单的try-catch进行模块导入，可以改进为更智能的模块发现和加载机制。
+
+#### 2. 服务健康检查增强
+健康检查机制相对基础，可以添加更详细的诊断信息和自动恢复策略。
+
+#### 3. 配置热重载支持
+当前系统启动后配置变更需要重启，可以支持运行时配置热重载。
+
+## 开发标准合规性
+
+### ✅ 已符合的开发标准
+
+1. **模块化架构**: 严格遵循RCC模块化架构原则
+2. **类型安全**: 完整的TypeScript类型定义
+3. **错误处理**: 多层错误处理和恢复机制
+4. **生命周期管理**: 完整的服务生命周期管理
+5. **依赖注入**: 灵活的组件注入系统
+
+### 🔄 需要改进的方面
+
+1. **UnderConstruction模块集成**: 需要替换所有TODO注释
+2. **弃用方法清理**: 需要标记并计划移除已弃用的方法
+3. **测试覆盖率**: 需要增加集成测试覆盖边缘情况
+
+### 📝 UnderConstruction使用标准
+
+所有未完成功能必须使用UnderConstruction模块显式声明：
+
+```typescript
+import { underConstruction } from 'rcc-underconstruction';
+
+// 标准使用模式
+underConstruction.callUnderConstructionFeature('feature-identifier', {
+  caller: 'ClassName.methodName',
+  parameters: { /* 相关参数 */ },
+  purpose: '功能的具体目的和预期行为'
+});
+```
+
 ## 开发指南
 
 ### 添加新的服务类型

@@ -1,4 +1,4 @@
-import { ICommand, CommandContext, CommandOptionType } from '../../types';
+import { ICommand, CommandContext, CommandOptionType } from '../../types/index';
 
 export class CodeCommand implements ICommand {
   name = 'code';
@@ -89,13 +89,13 @@ export class CodeCommand implements ICommand {
     context.logger.info('  rcc code --help            - Show this help message');
   }
 
-  private parseOptions(rawOptions: Record<string, any>): any {
+  private parseOptions(rawOptions: Record<string, unknown>): any {
     return {
-      generate: rawOptions.generate,
-      build: rawOptions.build || false,
-      watch: rawOptions.watch || false,
-      clean: rawOptions.clean || false,
-      verbose: rawOptions.verbose || false,
+      generate: rawOptions.generate as string,
+      build: (rawOptions.build as boolean) || false,
+      watch: (rawOptions.watch as boolean) || false,
+      clean: (rawOptions.clean as boolean) || false,
+      verbose: (rawOptions.verbose as boolean) || false,
     };
   }
 

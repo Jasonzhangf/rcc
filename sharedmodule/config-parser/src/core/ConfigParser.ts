@@ -58,11 +58,7 @@ export class ConfigParser extends BaseModule {
    */
   public async parseConfig(rawData: any): Promise<ConfigData> {
     try {
-      this.logInfo('Starting configuration parsing', {
-        dataSize: JSON.stringify(rawData).length,
-        hasProviders: !!rawData.providers,
-        hasVirtualModels: !!rawData.virtualModels
-      });
+      this.logInfo(`Starting configuration parsing - dataSize: ${JSON.stringify(rawData).length}, hasProviders: ${!!rawData.providers}, hasVirtualModels: ${!!rawData.virtualModels}`);
 
       // 解析基本配置信息
       const config: ConfigData = {
@@ -76,17 +72,13 @@ export class ConfigParser extends BaseModule {
       // 解析供应商配置
       if (rawData.providers) {
         config.providers = this.parseProviders(rawData.providers);
-        this.logInfo('Providers parsed successfully', {
-          providerCount: Object.keys(rawData.providers).length
-        });
+        this.logInfo(`Providers parsed successfully - providerCount: ${Object.keys(rawData.providers).length}`);
       }
 
       // 解析虚拟模型配置
       if (rawData.virtualModels) {
         config.virtualModels = this.parseVirtualModels(rawData.virtualModels);
-        this.logInfo('Virtual models parsed successfully', {
-          vmCount: Object.keys(rawData.virtualModels).length
-        });
+        this.logInfo(`Virtual models parsed successfully - vmCount: ${Object.keys(rawData.virtualModels).length}`);
       }
 
       // 更新时间戳
@@ -96,7 +88,7 @@ export class ConfigParser extends BaseModule {
       return config;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.warn('Failed to parse configuration', { error: errorMessage });
+      this.warn(`Failed to parse configuration - error: ${errorMessage}`);
       throw error;
     }
   }
@@ -242,10 +234,7 @@ export class ConfigParser extends BaseModule {
    */
   public async parseConfigFromFile(configPath: string, options?: PreprocessingOptions): Promise<ConfigData> {
     try {
-      this.logInfo('Starting configuration file parsing', {
-        configPath,
-        options: options || {}
-      });
+      this.logInfo(`Starting configuration file parsing - configPath: ${configPath}, options: ${JSON.stringify(options || {})}`);
 
       // 设置默认选项
       const opts: PreprocessingOptions = {
@@ -261,10 +250,7 @@ export class ConfigParser extends BaseModule {
 
       // 步骤2: 预处理数据
       rawData = await this.preprocessConfig(rawData, opts);
-      this.logInfo('Configuration preprocessed successfully', {
-        configPath,
-        options: opts
-      });
+      this.logInfo(`Configuration preprocessed successfully - configPath: ${configPath}, options: ${JSON.stringify(opts)}`);
 
       // 步骤3: 解析配置（使用现有逻辑）
       const config = await this.parseConfig(rawData);
@@ -273,7 +259,7 @@ export class ConfigParser extends BaseModule {
       return config;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.warn(`Failed to parse configuration from ${configPath}`, { error: errorMessage });
+      this.warn(`Failed to parse configuration from ${configPath} - error: ${errorMessage}`);
       throw error;
     }
   }
@@ -344,10 +330,7 @@ export class ConfigParser extends BaseModule {
    */
   private async readFile(configPath: string): Promise<any> {
     try {
-      this.logInfo('Reading configuration file', {
-        configPath,
-        fileSize: (await fs.stat(configPath)).size
-      });
+      this.logInfo(`Reading configuration file - configPath: ${configPath}, fileSize: ${(await fs.stat(configPath)).size}`);
 
       // 检查文件是否存在
       await fs.access(configPath);
@@ -367,18 +350,12 @@ export class ConfigParser extends BaseModule {
         parsedData = JSON.parse(content);
       }
 
-      this.logInfo('File read successfully', {
-        configPath,
-        dataType: typeof parsedData
-      });
+      this.logInfo(`File read successfully - configPath: ${configPath}, dataType: ${typeof parsedData}`);
 
       return parsedData;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.warn('Failed to read configuration file', {
-        configPath,
-        error: errorMessage
-      });
+      this.warn(`Failed to read configuration file - configPath: ${configPath}, error: ${errorMessage}`);
 
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`Configuration file not found: ${configPath}`);
@@ -548,7 +525,7 @@ export class ConfigParser extends BaseModule {
    */
   public async destroy(): Promise<void> {
     this.logInfo('Destroying ConfigParser');
-    await super.destroy();
+    // Clean up resources
     this.logInfo('ConfigParser destroyed successfully');
   }
 }

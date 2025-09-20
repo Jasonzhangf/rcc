@@ -23,6 +23,7 @@ import {
 
 import os from 'os';
 import path from 'path';
+import fs from 'fs';
 
 export interface AssemblerConfig {
   providerDiscoveryOptions?: ProviderDiscoveryOptions;
@@ -47,6 +48,9 @@ export interface PipelinePool {
     averageResponseTime: number;
   };
 }
+
+// 导出所有核心接口以支持外部类型安全
+export type { AssemblerConfig, AssemblyResult, PipelinePool };
 
 export interface AssemblyResult {
   success: boolean;
@@ -209,7 +213,6 @@ export class PipelineAssembler {
 
     for (const configPath of possiblePaths) {
       try {
-        const fs = require('fs');
         if (fs.existsSync(configPath)) {
           return configPath;
         }

@@ -1,4 +1,4 @@
-import { ICommand, CommandContext, CommandOptionType } from '../../types';
+import { ICommand, CommandContext, CommandOptionType } from '../../types/index';
 
 export interface StopCommandOptions {
   force?: boolean;
@@ -105,11 +105,11 @@ export class StopCommand implements ICommand {
     context.logger.info('RCC system force stopped successfully');
   }
 
-  private parseOptions(rawOptions: Record<string, any>): StopCommandOptions {
+  private parseOptions(rawOptions: Record<string, unknown>): StopCommandOptions {
     return {
-      force: rawOptions.force ?? false,
-      timeout: rawOptions.timeout ?? 5000,
-      verbose: rawOptions.verbose ?? false,
+      force: (rawOptions.force as boolean) ?? false,
+      timeout: (rawOptions.timeout as number) ?? 5000,
+      verbose: (rawOptions.verbose as boolean) ?? false,
     };
   }
 

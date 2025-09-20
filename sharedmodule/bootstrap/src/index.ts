@@ -1,6 +1,6 @@
 // Main entry point for RCC Bootstrap Service
 
-export { BootstrapService } from './BootstrapService.js';
+export { BootstrapService } from './core/BootstrapService.js';
 export type { IBootstrapService } from './interfaces/IBootstrapService.js';
 export type { IServiceCoordinator } from './interfaces/IBootstrapService.js';
 export type { IConfigManager } from './interfaces/IBootstrapService.js';

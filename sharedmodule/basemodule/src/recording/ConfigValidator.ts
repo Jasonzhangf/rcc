@@ -7,22 +7,119 @@ import {
   FileManagementConfig,
   GlobalRecordingConfig,
   ChainConfigValidationResult,
-  GlobalConsistencyResult
+  GlobalConsistencyResult,
+  ConsistencyValidationResult
 } from '../interfaces/Recording';
+import { UnderConstruction } from 'rcc-underconstruction';
+const underConstruction = new UnderConstruction();
 
 /**
  * Configuration validator that ensures all recording configurations are valid
  */
 export class ConfigValidator {
   private validationRules: Map<string, (config: any) => string[]> = new Map();
+  private currentConfig: BaseModuleRecordingConfig;
 
-  constructor() {
+  constructor(config?: BaseModuleRecordingConfig) {
+    this.currentConfig = config || {};
     this.initializeValidationRules();
   }
 
   // ========================================
   // Main Validation Methods
   // ========================================
+
+  /**
+   * Validate configuration with defaults (legacy method for backward compatibility)
+   */
+  validateConfig(config: BaseModuleRecordingConfig): BaseModuleRecordingConfig {
+    const defaultBasePath = './recording-logs';
+
+    // Basic validation with defaults
+    const validatedConfig: BaseModuleRecordingConfig = {
+      enabled: config.enabled ?? false,
+      basePath: config.basePath || defaultBasePath,
+      port: config.port,
+      cycle: {
+        enabled: config.cycle?.enabled ?? false,
+        mode: config.cycle?.mode || 'single',
+        basePath: config.cycle?.basePath || config.basePath || defaultBasePath,
+        cycleDirTemplate: config.cycle?.cycleDirTemplate || 'cycles/${cycleId}',
+        mainFileTemplate: config.cycle?.mainFileTemplate || 'main.${format}',
+        summaryFileTemplate: config.cycle?.summaryFileTemplate || 'summary.json',
+        format: config.cycle?.format || 'json',
+        includeIndex: config.cycle?.includeIndex ?? true,
+        includeTimestamp: config.cycle?.includeTimestamp ?? true,
+        autoCreateDirectory: config.cycle?.autoCreateDirectory ?? true,
+        autoCloseOnComplete: config.cycle?.autoCloseOnComplete ?? true,
+        maxCyclesRetained: config.cycle?.maxCyclesRetained || 100
+      },
+      error: {
+        enabled: config.error?.enabled ?? false,
+        levels: config.error?.levels || ['error', 'fatal'],
+        categories: config.error?.categories || ['system', 'processing'],
+        basePath: config.error?.basePath || config.basePath || defaultBasePath,
+        indexFileTemplate: config.error?.indexFileTemplate || 'errors/index.jsonl',
+        detailFileTemplate: config.error?.detailFileTemplate || 'errors/${errorId}.json',
+        summaryFileTemplate: config.error?.summaryFileTemplate || 'errors/summary.json',
+        dailyDirTemplate: config.error?.dailyDirTemplate || 'errors/${date}',
+        indexFormat: config.error?.indexFormat || 'jsonl',
+        detailFormat: config.error?.detailFormat || 'json',
+        autoRecoveryTracking: config.error?.autoRecoveryTracking ?? true,
+        maxErrorsRetained: config.error?.maxErrorsRetained || 1000,
+        enableStatistics: config.error?.enableStatistics ?? true
+      },
+      truncation: config.truncation,
+      file: {
+        autoCleanup: config.file?.autoCleanup ?? true,
+        maxFileAge: config.file?.maxFileAge || 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxFileSize: config.file?.maxFileSize || 10 * 1024 * 1024, // 10MB
+        atomicWrites: config.file?.atomicWrites ?? true,
+        backupOnWrite: config.file?.backupOnWrite ?? true,
+        compressionEnabled: config.file?.compressionEnabled ?? false
+      }
+    };
+
+    // Validate configuration dependencies
+    const validationResult = this.validateConfiguration(validatedConfig);
+    if (validationResult) {
+      throw new Error(validationResult);
+    }
+
+    return validatedConfig;
+  }
+
+  /**
+   * Validate configuration and return first error (legacy method for backward compatibility)
+   */
+  validateConfiguration(config: BaseModuleRecordingConfig): string | null {
+    const errors = this.validateTopLevelConfig(config);
+    if (errors.length > 0) {
+      return errors[0];
+    }
+    return null;
+  }
+
+  /**
+   * Validate configuration consistency (legacy method for backward compatibility)
+   */
+  validateConfigurationConsistency(): ConsistencyValidationResult {
+    // Feature: Configuration consistency validation
+    underConstruction.callUnderConstructionFeature('configuration-consistency-validation', {
+      caller: 'ConfigValidator.validateConfigurationConsistency',
+      parameters: {
+        validationScope: 'all-components',
+        strictMode: true
+      },
+      purpose: 'Validate consistency across all recording configuration components'
+    });
+    return {
+      valid: true,
+      errors: [],
+      warnings: [],
+      details: {}
+    };
+  }
 
   /**
    * Validate complete recording configuration

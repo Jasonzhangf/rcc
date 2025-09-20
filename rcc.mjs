@@ -409,13 +409,11 @@ program
           console.log(`🔧 Initializing Pipeline module integration...`);
           let schedulerManager = null;
           try {
-            // Import Pipeline module
-            const pipelinePath = path.join(__dirname, 'sharedmodule/pipeline/dist/index.esm.js');
-            if (fs.existsSync(pipelinePath)) {
-              const pipelineModule = await import(pipelinePath);
-              const { Pipeline, VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } = pipelineModule;
+            // Import Pipeline module from npm package
+            const pipelineModule = await import('rcc-pipeline');
+            const { Pipeline, VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } = pipelineModule;
 
-              if (Pipeline && VirtualModelSchedulerManager && PipelineAssembler && PipelineTracker) {
+            if (Pipeline && VirtualModelSchedulerManager && PipelineAssembler && PipelineTracker) {
                 console.log(`✅ Pipeline module loaded successfully`);
 
                 // Create PipelineTracker for request tracking
@@ -429,40 +427,222 @@ program
                 await pipelineTracker.initialize();
                 console.log(`✅ PipelineTracker initialized`);
 
-                // Create PipelineAssembler with proper configuration
-                const pipelineAssembler = new PipelineAssembler({
-                  providerDiscoveryOptions: {
-                    scanPaths: ['./sharedmodule'],
-                    providerPatterns: ['*Provider.js', '*Provider.ts'],
-                    recursive: true,
-                    providerConfigs: config.providers || {}
-                  },
-                  pipelineFactoryConfig: {
-                    defaultTimeout: 30000,
-                    defaultHealthCheckInterval: 60000,
-                    defaultMaxRetries: 3,
-                    defaultLoadBalancingStrategy: 'round-robin',
-                    enableHealthChecks: false, // Disabled as per requirements
-                    metricsEnabled: true
-                  },
+                // Create PipelineAssembler with detailed configuration logging
+                console.log(`🔧 Creating PipelineAssembler with configuration:`);
+
+                // Enhanced diagnostic logging for configuration validation
+                console.log(`🔍 ENHANCED DIAGNOSTIC - Configuration Analysis:`);
+                console.log(`   - Raw config object keys: ${Object.keys(config || {})}`);
+                console.log(`   - Providers in config: ${Object.keys(config.providers || {}).join(', ')}`);
+                console.log(`   - Virtual models in config: ${Object.keys(config.virtualModels || {}).join(', ')}`);
+                console.log(`   - Pipeline config exists: ${!!config.pipeline}`);
+
+                // Validate configuration structure before proceeding
+                if (!config.providers || Object.keys(config.providers).length === 0) {
+                  console.log(`❌ CRITICAL ERROR - No providers found in configuration`);
+                  throw new Error('Configuration validation failed: No providers configured');
+                }
+
+                if (!config.virtualModels || Object.keys(config.virtualModels).length === 0) {
+                  console.log(`❌ CRITICAL ERROR - No virtual models found in configuration`);
+                  throw new Error('Configuration validation failed: No virtual models configured');
+                }
+
+                const providerDiscoveryOptions = {
+                  scanPaths: ['./sharedmodule'],
+                  providerPatterns: ['*Provider.js', '*Provider.ts'],
+                  recursive: true,
+                  providerConfigs: config.providers || {}
+                };
+
+                console.log(`📋 Provider Discovery Options:`);
+                console.log(`   - Scan paths: ${providerDiscoveryOptions.scanPaths.join(', ')}`);
+                console.log(`   - Provider patterns: ${providerDiscoveryOptions.providerPatterns.join(', ')}`);
+                console.log(`   - Recursive: ${providerDiscoveryOptions.recursive}`);
+                console.log(`   - Provider configs count: ${Object.keys(providerDiscoveryOptions.providerConfigs).length}`);
+
+                // Log available providers in config
+                if (providerDiscoveryOptions.providerConfigs) {
+                  Object.keys(providerDiscoveryOptions.providerConfigs).forEach((providerId, index) => {
+                    const provider = providerDiscoveryOptions.providerConfigs[providerId];
+                    console.log(`   ${index + 1}. Provider "${providerId}":`);
+                    console.log(`      - Type: ${provider.type || 'unknown'}`);
+                    console.log(`      - Endpoint: ${provider.endpoint || 'not specified'}`);
+                    console.log(`      - Models: ${Object.keys(provider.models || {}).join(', ')}`);
+                    console.log(`      - Auth type: ${provider.auth?.type || 'none'}`);
+                    console.log(`      - API keys count: ${provider.auth?.keys?.length || 0}`);
+                  });
+                }
+
+                const pipelineFactoryConfig = {
+                  defaultTimeout: 30000,
+                  defaultHealthCheckInterval: 60000,
+                  defaultMaxRetries: 3,
+                  defaultLoadBalancingStrategy: 'round-robin',
+                  enableHealthChecks: false, // Disabled as per requirements
+                  metricsEnabled: true
+                };
+
+                console.log(`📋 Pipeline Factory Configuration:`);
+                console.log(`   - Default timeout: ${pipelineFactoryConfig.defaultTimeout}ms`);
+                console.log(`   - Health check interval: ${pipelineFactoryConfig.defaultHealthCheckInterval}ms`);
+                console.log(`   - Max retries: ${pipelineFactoryConfig.defaultMaxRetries}`);
+                console.log(`   - Load balancing: ${pipelineFactoryConfig.defaultLoadBalancingStrategy}`);
+                console.log(`   - Health checks: ${pipelineFactoryConfig.enableHealthChecks}`);
+                console.log(`   - Metrics enabled: ${pipelineFactoryConfig.metricsEnabled}`);
+
+                const assemblerConfig = {
+                  providerDiscoveryOptions,
+                  pipelineFactoryConfig,
                   enableAutoDiscovery: true,
                   fallbackStrategy: 'first-available'
-                }, pipelineTracker);
-                console.log(`✅ PipelineAssembler created`);
+                };
+
+                console.log(`🔧 Final assembler config: ${JSON.stringify(assemblerConfig, null, 2)}`);
+
+                // Convert virtual models object to array for pipeline assembler
+                const virtualModelConfigs = Object.values(config.virtualModels || {});
+                console.log(`📋 Virtual model configurations count: ${virtualModelConfigs.length}`);
+
+                const pipelineAssembler = new PipelineAssembler(assemblerConfig, pipelineTracker);
+                console.log(`✅ PipelineAssembler created successfully`);
 
                 // Assemble pipelines from configuration
                 console.log(`🔧 Assembling pipelines from configuration...`);
-                const virtualModelConfigs = Object.entries(config.virtualModels || {}).map(([id, config]) => ({
-                  id,
-                  ...config
-                }));
+
+                // Enhanced diagnostic logging for virtual model processing
+                console.log(`🔍 ENHANCED DIAGNOSTIC - Virtual Model Processing:`);
+                let enabledVirtualModels = 0;
+                let validVirtualModels = 0;
+
+                // Detailed logging of each virtual model configuration
+                virtualModelConfigs.forEach((vmConfig, index) => {
+                  console.log(`   ${index + 1}. Virtual Model "${vmConfig.id}":`);
+                  console.log(`      - Enabled: ${vmConfig.enabled}`);
+                  console.log(`      - Targets count: ${vmConfig.targets ? vmConfig.targets.length : 0}`);
+
+                  if (vmConfig.enabled) {
+                    enabledVirtualModels++;
+                  }
+
+                  if (vmConfig.targets && vmConfig.targets.length > 0) {
+                    validVirtualModels++;
+                    vmConfig.targets.forEach((target, targetIndex) => {
+                      console.log(`         ${targetIndex + 1}. Provider: ${target.providerId}, Model: ${target.modelId}, KeyIndex: ${target.keyIndex || 0}`);
+                      // Validate target configuration
+                      if (!target.providerId || !target.modelId) {
+                        console.log(`            ❌ INVALID TARGET - Missing providerId or modelId`);
+                      } else {
+                        console.log(`            ✅ Valid target configuration`);
+                      }
+                    });
+                  } else {
+                    console.log(`         ⚠️  No targets configured for this virtual model`);
+                    if (vmConfig.enabled) {
+                      console.log(`         ❌ CRITICAL - Enabled virtual model has no targets!`);
+                    }
+                  }
+                });
+
+                console.log(`📊 Virtual Model Summary:`);
+                console.log(`   - Total virtual models: ${virtualModelConfigs.length}`);
+                console.log(`   - Enabled virtual models: ${enabledVirtualModels}`);
+                console.log(`   - Valid virtual models (with targets): ${validVirtualModels}`);
+                console.log(`   - Invalid virtual models: ${virtualModelConfigs.length - validVirtualModels}`);
+
+                if (validVirtualModels === 0) {
+                  console.log(`❌ CRITICAL ERROR - No valid virtual models found (all have no targets)`);
+                  throw new Error('Pipeline assembly failed: No valid virtual models with targets configured');
+                }
+
                 if (virtualModelConfigs.length > 0) {
+                  console.log(`🔄 Starting pipeline assembly process...`);
                   const assemblyResult = await pipelineAssembler.assemblePipelines(virtualModelConfigs);
 
-                  if (assemblyResult.success && assemblyResult.pipelinePools.size > 0) {
+                  console.log(`📊 Pipeline assembly result:`);
+                  console.log(`   - Success: ${assemblyResult.success}`);
+                  console.log(`   - Pipeline pools created: ${assemblyResult.pipelinePools ? assemblyResult.pipelinePools.size : 0}`);
+                  console.log(`   - Errors: ${assemblyResult.errors ? assemblyResult.errors.length : 0}`);
+                  console.log(`   - Warnings: ${assemblyResult.warnings ? assemblyResult.warnings.length : 0}`);
+
+                  // Enhanced diagnostic logging for assembly result analysis
+                  console.log(`🔍 ENHANCED DIAGNOSTIC - Assembly Result Analysis:`);
+                  console.log(`   - Assembly result object keys: ${Object.keys(assemblyResult || {})}`);
+                  console.log(`   - PipelinePools is Map: ${assemblyResult.pipelinePools instanceof Map}`);
+                  console.log(`   - PipelinePools size: ${assemblyResult.pipelinePools?.size || 0}`);
+                  console.log(`   - Assembly success: ${assemblyResult.success}`);
+                  console.log(`   - Assembly errors array: ${Array.isArray(assemblyResult.errors)}`);
+                  console.log(`   - Assembly warnings array: ${Array.isArray(assemblyResult.warnings)}`);
+
+                  if (assemblyResult.errors && assemblyResult.errors.length > 0) {
+                    console.log(`❌ Pipeline assembly errors:`);
+                    assemblyResult.errors.forEach((error, index) => {
+                      console.log(`   ${index + 1}. ${error}`);
+                      // Analyze error type
+                      if (error.includes('provider') || error.includes('Provider')) {
+                        console.log(`      → Provider-related error`);
+                      } else if (error.includes('target') || error.includes('Target')) {
+                        console.log(`      → Target configuration error`);
+                      } else if (error.includes('module') || error.includes('Module')) {
+                        console.log(`      → Module loading error`);
+                      } else if (error.includes('config') || error.includes('Config')) {
+                        console.log(`      → Configuration error`);
+                      } else {
+                        console.log(`      → Unknown error type`);
+                      }
+                    });
+                  }
+
+                  if (assemblyResult.warnings && assemblyResult.warnings.length > 0) {
+                    console.log(`⚠️  Pipeline assembly warnings:`);
+                    assemblyResult.warnings.forEach((warning, index) => {
+                      console.log(`   ${index + 1}. ${warning}`);
+                    });
+                  }
+
+                  if (assemblyResult.success && assemblyResult.pipelinePools && assemblyResult.pipelinePools.size > 0) {
                     console.log(`✅ Successfully assembled ${assemblyResult.pipelinePools.size} pipeline pools`);
 
+                    // Detailed logging of each pipeline pool
+                    console.log(`📋 Detailed pipeline pool information:`);
+                    for (const [vmId, pool] of assemblyResult.pipelinePools.entries()) {
+                      console.log(`   🏊 Pool "${vmId}":`);
+                      console.log(`      - Health status: ${pool.healthStatus}`);
+                      console.log(`      - Pipelines count: ${pool.pipelines ? pool.pipelines.size : 0}`);
+                      console.log(`      - Available pipelines: ${pool.getAvailablePipelines ? pool.getAvailablePipelines().length : 'unknown'}`);
+
+                      if (pool.pipelines && pool.pipelines.size > 0) {
+                        console.log(`      - Pipeline details:`);
+                        let pipelineIndex = 1;
+                        for (const pipeline of pool.pipelines.values()) {
+                          console.log(`         ${pipelineIndex}. ID: ${pipeline.id || 'unknown'}, Status: ${pipeline.status || 'unknown'}`);
+                          if (pipeline.providerInfo) {
+                            console.log(`            Provider: ${pipeline.providerInfo.id || 'unknown'}, Model: ${pipeline.providerInfo.model || 'unknown'}`);
+                          }
+                          pipelineIndex++;
+                        }
+                      } else {
+                        console.log(`      - ⚠️  No pipelines in this pool`);
+                      }
+                    }
+
                     // Create VirtualModelSchedulerManager with pipeline pools
+                    console.log(`🔧 Creating VirtualModelSchedulerManager...`);
+
+                    // Enhanced diagnostic logging for scheduler creation
+                    console.log(`🔍 ENHANCED DIAGNOSTIC - Scheduler Creation Analysis:`);
+                    console.log(`   - Pipeline pools available: ${assemblyResult.pipelinePools.size}`);
+                    console.log(`   - Pipeline pools type: ${typeof assemblyResult.pipelinePools}`);
+                    console.log(`   - Pipeline pools is Map: ${assemblyResult.pipelinePools instanceof Map}`);
+                    console.log(`   - PipelineTracker available: ${!!pipelineTracker}`);
+                    console.log(`   - PipelineTracker type: ${typeof pipelineTracker}`);
+
+                    // Validate pipeline pools before creating scheduler
+                    if (assemblyResult.pipelinePools.size === 0) {
+                      console.log(`❌ CRITICAL ERROR - Cannot create scheduler with empty pipeline pools`);
+                      throw new Error('Scheduler creation failed: No pipeline pools available');
+                    }
+
                     const managerConfig = {
                       maxSchedulers: 10,
                       defaultSchedulerConfig: {
@@ -483,32 +663,74 @@ program
                       enableMetricsExport: true
                     };
 
-                    schedulerManager = new VirtualModelSchedulerManager(
-                      assemblyResult.pipelinePools,
-                      managerConfig,
-                      pipelineTracker
-                    );
-                    console.log(`✅ VirtualModelSchedulerManager created with pipeline pools`);
+                    console.log(`📋 Scheduler Manager Configuration:`);
+                    console.log(`   - Max schedulers: ${managerConfig.maxSchedulers}`);
+                    console.log(`   - Request timeout: ${managerConfig.defaultSchedulerConfig.requestTimeout}ms`);
+                    console.log(`   - Health check interval: ${managerConfig.defaultSchedulerConfig.healthCheckInterval}ms`);
+                    console.log(`   - Max retries: ${managerConfig.defaultSchedulerConfig.retryStrategy.maxRetries}`);
 
-                    // Log assembled virtual models
-                    console.log(`📋 Assembled virtual models:`);
+                    // Detailed logging of pipeline pools being passed to scheduler
+                    console.log(`📋 Pipeline pools being passed to scheduler:`);
+                    let poolIndex = 1;
                     for (const [vmId, pool] of assemblyResult.pipelinePools.entries()) {
-                      console.log(`   - ${vmId}: ${pool.pipelines.size} pipelines, status: ${pool.healthStatus}`);
+                      console.log(`   ${poolIndex}. Pool "${vmId}":`);
+                      console.log(`      - Pool type: ${typeof pool}`);
+                      console.log(`      - Pool has pipelines: ${!!pool.pipelines}`);
+                      console.log(`      - Pipelines count: ${pool.pipelines?.size || 0}`);
+                      console.log(`      - Pool health: ${pool.healthStatus || 'unknown'}`);
+                      console.log(`      - Pool available method: ${typeof pool.getAvailablePipelines}`);
+                      if (pool.getAvailablePipelines) {
+                        const availablePipelines = pool.getAvailablePipelines();
+                        console.log(`      - Available pipelines count: ${availablePipelines.length}`);
+                      }
+                      poolIndex++;
                     }
+
+                    // Use the corrected constructor with proper parameter order
+                    try {
+                      schedulerManager = new VirtualModelSchedulerManager(
+                        assemblyResult.pipelinePools,
+                        managerConfig,
+                        pipelineTracker
+                      );
+                      console.log(`✅ VirtualModelSchedulerManager created successfully`);
+                      console.log(`   - Scheduler manager type: ${typeof schedulerManager}`);
+                      console.log(`   - Scheduler has required methods: ${typeof schedulerManager.registerVirtualModel === 'function' && typeof schedulerManager.getScheduler === 'function'}`);
+                    } catch (schedulerError) {
+                      console.log(`❌ CRITICAL ERROR - Failed to create VirtualModelSchedulerManager:`);
+                      console.log(`   - Error: ${schedulerError.message}`);
+                      console.log(`   - Stack: ${schedulerError.stack}`);
+                      throw schedulerError;
+                    }
+
+                    // Test scheduler manager initialization
+                    if (schedulerManager && schedulerManager.getVirtualModelMappings) {
+                      try {
+                        const virtualModelMappings = schedulerManager.getVirtualModelMappings();
+                        console.log(`📋 Virtual model mappings after scheduler creation:`);
+                        console.log(`   - Total mappings: ${virtualModelMappings.length}`);
+                        virtualModelMappings.forEach((mapping, index) => {
+                          console.log(`   ${index + 1}. ${mapping.virtualModelId}: enabled=${mapping.enabled}, schedulerId=${mapping.schedulerId}`);
+                        });
+                      } catch (mappingError) {
+                        console.log(`⚠️  Failed to get virtual model mappings: ${mappingError.message}`);
+                      }
+                    } else {
+                      console.log(`⚠️  Scheduler manager methods not available`);
+                    }
+
                   } else {
-                    console.log(`⚠️  Pipeline assembly failed or produced no pools`);
-                    console.log(`   Errors: ${assemblyResult.errors.length}`);
-                    console.log(`   Warnings: ${assemblyResult.warnings.length}`);
+                    console.log(`❌ Pipeline assembly failed - no valid pipeline pools created`);
+                    console.log(`   - Assembly success: ${assemblyResult.success}`);
+                    console.log(`   - Pipeline pools available: ${assemblyResult.pipelinePools ? assemblyResult.pipelinePools.size : 0}`);
+                    throw new Error('Pipeline assembly failed: No valid pipeline pools created');
                   }
                 } else {
-                  console.log(`⚠️  No virtual model configurations found`);
+                  console.log(`⚠️  No virtual model configurations found - nothing to assemble`);
                 }
               } else {
                 console.log(`⚠️  Pipeline module interfaces not available`);
               }
-            } else {
-              console.log(`⚠️  Pipeline module not found at ${pipelinePath}`);
-            }
           } catch (pipelineError) {
             console.log(`⚠️  Pipeline module initialization failed: ${pipelineError.message}`);
             console.log(`   Stack: ${pipelineError.stack}`);

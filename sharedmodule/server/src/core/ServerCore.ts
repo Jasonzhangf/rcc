@@ -47,11 +47,6 @@ export class ServerCore {
 
   public getStatus(): ServerStatus {
     const status = this.getServerStatus();
-    const virtualModels = {
-      total: 0,
-      active: 0,
-      inactive: 0
-    };
 
     return {
       status,
@@ -59,25 +54,7 @@ export class ServerCore {
       port: this.config?.port || 5506,
       host: this.config?.host || 'localhost',
       connections: this.connections.size,
-      requestsHandled: this.totalRequests,
-      errors: this.errorCount,
-      lastHeartbeat: Date.now(),
-      virtualModels,
-      pipelineIntegration: {
-        enabled: false,
-        schedulerAvailable: false,
-        processingMethod: 'direct',
-        fallbackEnabled: false,
-        unifiedErrorHandling: false,
-        unifiedMonitoring: false,
-        errorMapping: {}
-      },
-      monitoring: {
-        enabled: false,
-        detailedMetrics: false,
-        requestTracing: false,
-        performanceMonitoring: false
-      }
+      forwardingReady: this.isRunning
     };
   }
 
@@ -131,6 +108,10 @@ export class ServerCore {
 
   public removeMiddleware(middlewareId: string): void {
     this.middlewares.delete(middlewareId);
+  }
+
+  public getMiddlewares(): any[] {
+    return Array.from(this.middlewares.values());
   }
 
   public async recordRequestMetrics(metrics: RequestMetrics): Promise<void> {

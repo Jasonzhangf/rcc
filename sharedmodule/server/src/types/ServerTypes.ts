@@ -1,4 +1,5 @@
-// Server module types
+// Server module types - 纯转发架构 (v3.0)
+// 简化配置: 只保留HTTP基础类型，移除所有虚拟模型路由相关类型
 
 export interface ServerConfig {
   port: number;
@@ -15,6 +16,7 @@ export interface ServerConfig {
   };
   timeout: number;
   bodyLimit: string;
+  // 移除: virtualModels配置、路由规则、provider相关配置等
 }
 
 export interface ClientRequest {
@@ -26,7 +28,7 @@ export interface ClientRequest {
   query?: Record<string, string>;
   timestamp: number;
   clientId: string | undefined;
-  virtualModel: string | undefined;
+  // 移除: virtualModel, 调度器决策字段等
 }
 
 export interface ClientResponse {
@@ -40,189 +42,71 @@ export interface ClientResponse {
   requestId: string;
 }
 
-export interface VirtualModelConfig {
-  id: string;
-  name: string;
-  provider: string;
-  endpoint?: string; // 现在是可选的
-  apiKey?: string;
-  model?: string; // 从配置生成，现在也是可选的
-  capabilities: string[]; // 可以从配置推断
-  maxTokens?: number; // 现在是可选的，有默认值
-  temperature?: number; // 现在是可选的，有默认值
-  topP?: number; // 现在是可选的，有默认值
-  enabled?: boolean; // 现在是可选的，有默认值
-  routingRules?: RoutingRule[]; // 现在是可选的
-  targets?: TargetConfig[]; // 从配置转换的目标数组
-  priority?: number; // 路由优先级
-}
-
-// 目标配置（从配置文件格式转换）
-export interface TargetConfig {
-  providerId: string;
-  modelId: string;
-  keyIndex?: number;
-  weight?: number;
-  enabled?: boolean;
-}
-
-export interface RoutingRule {
-  id: string;
-  name: string;
-  condition: string;
-  weight: number;
-  enabled: boolean;
-  priority: number;
-  modelId: string;
-}
-
+// 基础HTTP路由配置（路径路由，不是模型路由）
 export interface RouteConfig {
   id: string;
+  method: string;
   path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  handler: string;
+  handler: (request: any, response: any) => void;
   middleware?: string[];
-  virtualModel?: string;
-  authRequired?: boolean;
+  enabled: boolean;
 }
 
+// 中间件配置（保持不变）
+export interface MiddlewareConfig {
+  id: string;
+  name: string;
+  type: 'pre' | 'post';
+  handler: (requestOrResponse: any) => Promise<any>;
+  enabled: boolean;
+  priority: number;
+  description?: string;
+}
+
+// 连接信息（不变）
+export interface ConnectionInfo {
+  id: string;
+  ip: string;
+  userAgent?: string;
+  connectedAt: number;
+  lastActivity: number;
+  status: 'connected' | 'disconnected';
+  metadata?: Record<string, any>;
+}
+
+// 服务器状态（简化版）
 export interface ServerStatus {
-  status: 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
+  status: 'running' | 'stopped' | 'error';
   uptime: number;
   port: number;
   host: string;
   connections: number;
-  requestsHandled: number;
-  errors: number;
-  lastHeartbeat: number;
-  virtualModels: {
-    total: number;
-    active: number;
-    inactive: number;
-  };
-  pipelineIntegration?: {
-    enabled: boolean;
-    schedulerAvailable: boolean;
-    processingMethod: 'pipeline' | 'direct' | 'underconstruction';
-    fallbackEnabled: boolean;
-    unifiedErrorHandling?: boolean;
-    unifiedMonitoring?: boolean;
-    errorMapping?: Record<string, number>;
-  };
-  monitoring?: {
-    enabled: boolean;
-    detailedMetrics: boolean;
-    requestTracing: boolean;
-    performanceMonitoring: boolean;
-  };
+  forwardingReady: boolean;  // 新增: 转发准备状态
+  // 移除: virtualModels状态等
 }
 
+// 请求监控指标（简化版）
 export interface RequestMetrics {
-  requestId: string;
+  id: string;
   timestamp: number;
-  processingTime: number;
   method: string;
   path: string;
   status: number;
-  virtualModel?: string;
+  processingTime: number;
+  clientId?: string;
   error?: string;
-  bytesSent: number;
-  bytesReceived: number;
+  // 移除: virtualModel, provider, 调度器状态等
 }
 
-export interface ConnectionInfo {
-  id: string;
-  clientId?: string;
-  remoteAddress: string;
-  userAgent: string;
-  connectedAt: number;
-  lastActivity: number;
-  requestsCount: number;
-  isActive: boolean;
-  on?(event: string, callback: (...args: any[]) => void): void;
-}
-
-export interface MiddlewareConfig {
-  name: string;
-  type: 'pre' | 'post' | 'error';
-  priority: number;
-  enabled: boolean;
-  config?: Record<string, any>;
-}
-
-// Pipeline integration types (replaced with UnderConstruction)
-export interface PipelineRequestContext {
-  requestId: string;
-  method: string;
-  path: string;
-  headers: Record<string, string>;
-  body?: any;
-  query?: Record<string, string>;
-  timestamp: number;
-  clientId?: string;
-  virtualModelId: string;
-  metadata?: Record<string, any>;
-}
-
-export interface PipelineResponseContext {
-  executionId: string;
-  pipelineId: string;
-  instanceId: string;
-  status: 'completed' | 'failed' | 'timeout';
-  startTime: number;
-  endTime: number;
-  duration: number;
-  result?: any;
-  error?: {
-    code: string;
-    message: string;
-    category: string;
-    severity: string;
-  };
-  metadata?: Record<string, any>;
-}
-
-// Pipeline execution types (marked as under construction)
-export interface PipelineExecutionResult {
-  pipelineId: string;
-  instanceId: string;
-  executionId: string;
-  status: string;
-  duration: number;
-  result?: any;
-  error?: any;
-  retryCount: number;
-}
-
-export interface PipelineExecutionStatus {
-  COMPLETED: 'completed';
-  FAILED: 'failed';
-  TIMEOUT: 'timeout';
-  CANCELLED: 'cancelled';
-}
-
+// 管道集成配置（保持不变）
 export interface PipelineIntegrationConfig {
   enabled: boolean;
-  defaultTimeout: number;
-  maxRetries: number;
-  retryDelay: number;
-  fallbackToDirect: boolean;
-  enableMetrics: boolean;
-  enableHealthCheck: boolean;
-  pipelineSelectionStrategy: 'round-robin' | 'weighted' | 'least-connections' | 'custom';
-  customHeaders?: Record<string, string>;
-  errorMapping?: Record<string, number>;
-  unifiedErrorHandling?: boolean;
-  unifiedMonitoring?: boolean;
-  enableLoadBalancing?: boolean;
-  enableCaching?: boolean;
-  enableThrottling?: boolean;
-  enableCircuitBreaking?: boolean;
+  unifiedErrorHandling: boolean;
+  unifiedMonitoring: boolean;
+  errorMapping: Record<string, string>;
   monitoringConfig?: {
-    metricsInterval?: number;
-    healthCheckInterval?: number;
-    enableDetailedMetrics?: boolean;
-    enableRequestTracing?: boolean;
-    enablePerformanceMonitoring?: boolean;
+    enableDetailedMetrics: boolean;
+    enableRequestTracing: boolean;
+    enablePerformanceMonitoring: boolean;
   };
 }

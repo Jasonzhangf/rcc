@@ -14,7 +14,9 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   private app: ExpressApplication;
   private server: HttpServer | null = null;
   private serverConfig: ServerConfig | null = null;
-  private isRunning: boolean = false;
+  public isRunning(): boolean {
+    return this.server !== null && this.server.listening;
+  }
 
   constructor() {
     const moduleInfo: ModuleInfo & { capabilities: string[], dependencies: string[], config: any } = {
@@ -85,10 +87,20 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   }
 
   /**
+   * Start the HTTP server (alias for listen)
+   */
+  public async start(): Promise<void> {
+    if (!this.serverConfig) {
+      throw new Error('HTTP server not configured');
+    }
+    return this.listen(this.serverConfig.port || 3000, this.serverConfig.host || 'localhost');
+  }
+
+  /**
    * Start the HTTP server
    */
   public async listen(port: number, host: string = 'localhost'): Promise<void> {
-    if (this.isRunning) {
+    if (this.isRunning()) {
       this.warn('HTTP server is already running', { method: 'listen' });
       return;
     }
@@ -99,7 +111,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       this.server = createServer(this.app);
 
       this.server.listen(port, host, () => {
-        this.isRunning = true;
+        // 运行状态通过server监听状态检查
         this.logInfo(`HTTP server successfully listening on ${host}:${port}`, { method: 'listen' });
         console.log(`✅ HTTP server listening on ${host}:${port}`);
         resolve();
@@ -134,17 +146,17 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Stop the HTTP server
    */
-  public async close(): Promise<void> {
-    if (!this.isRunning || !this.server) {
-      this.warn('HTTP server is not running', { method: 'close' });
+  public async stop(): Promise<void> {
+    if (!this.isRunning()) {
+      this.warn('HTTP server is not running', { method: 'stop' });
       return;
     }
 
     return new Promise((resolve) => {
       this.server!.close(() => {
-        this.isRunning = false;
+        // 运行状态通过server监听状态检查
         this.server = null;
-        this.log('HTTP server stopped', { method: 'close' });
+        this.log('HTTP server stopped', { method: 'stop' });
         resolve();
       });
     });
@@ -187,10 +199,17 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   }
 
   /**
+   * Get the Express application instance (alias for getApp)
+   */
+  public getExpressApp(): ExpressApplication {
+    return this.getApp();
+  }
+
+  /**
    * Check if server is running
    */
   public isServerRunning(): boolean {
-    return this.isRunning;
+    return this.isRunning()
   }
 
   /**
@@ -237,7 +256,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
    */
   private healthCheck(_req: express.Request, res: express.Response): void {
     const health = {
-      status: this.isRunning ? 'healthy' : 'unhealthy',
+      status: this.isRunning() ? 'healthy' : 'unhealthy',
       timestamp: Date.now(),
       uptime: process.uptime(),
       version: process.env.npm_package_version || 'unknown',
@@ -265,7 +284,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       cpu: process.cpuUsage(),
-      isRunning: this.isRunning,
+      isRunning: this.isRunning(),
       connections: 0
     };
 
@@ -292,7 +311,6 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       query: req.query as Record<string, string>,
       timestamp: Date.now(),
       clientId: req.get('X-Client-ID') || undefined,
-      virtualModel: req.get('X-Virtual-Model') || undefined
     };
   }
 
@@ -358,7 +376,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
     this.log('Cleaning up HTTP server component', { method: 'destroy' });
     
     if (this.server) {
-      await this.close();
+      await this.stop();
     }
     
     this.app = express();

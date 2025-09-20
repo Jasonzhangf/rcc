@@ -1,11 +1,9 @@
-// Server module interfaces
+// 服务器模块接口 - 纯HTTP服务和调度器连接
 
 import {
   ServerConfig,
   ClientRequest,
   ClientResponse,
-  VirtualModelConfig,
-  RouteConfig,
   ServerStatus,
   RequestMetrics,
   ConnectionInfo,
@@ -16,93 +14,99 @@ import {
 import { UnderConstruction } from 'rcc-underconstruction';
 import { Application } from 'express';
 
-// Pipeline types are replaced with UnderConstruction
-// import { 
-//   IPipelineScheduler, 
-//   PipelineExecutionContext, 
-//   PipelineExecutionResult,
-//   PipelineExecutionStatus,
-//   ExecutionOptions 
-// } from '../../../pipeline/src/PipelineScheduler';
+// 纯转发架构 - 移除所有虚拟模型相关内容
+
+// HTTP服务器接口
+export interface IHttpServer {
+  configure(config: ServerConfig): void;
+  initialize(): Promise<void>;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  getExpressApp(): Application;
+  isRunning(): boolean;
+}
+
+// 请求处理器接口
+export interface IRequestProcessor {
+  configure(config: any): Promise<void>;
+  initialize(): Promise<void>;
+  process(request: ClientRequest): Promise<ClientResponse>;
+  destroy(): Promise<void>;
+}
+
+// 服务端指标接口
+export interface IServerMetrics {
+  getMetrics(): RequestMetrics[];
+  getConnections(): ConnectionInfo[];
+  getErrors(): any[];
+}
 
 export interface IServerModule {
-  // Lifecycle methods
+  // 生命周期方法
   initialize(): Promise<void>;
   start(): Promise<void>;
   stop(): Promise<void>;
   restart(): Promise<void>;
-  
-  // Request handling
+
+  // 请求处理 - 纯转发给调度器
   handleRequest(request: ClientRequest): Promise<ClientResponse>;
   handleWebSocket(connection: ConnectionInfo): Promise<void>;
-  
-  // Route management
+
+  // 基础路由管理（HTTP路径，不是虚拟模型）
   registerRoute(route: RouteConfig): Promise<void>;
   unregisterRoute(routeId: string): Promise<void>;
   getRoutes(): RouteConfig[];
-  
-  // Virtual model management
-  registerVirtualModel(model: VirtualModelConfig): Promise<void>;
-  unregisterVirtualModel(modelId: string): Promise<void>;
-  getVirtualModel(modelId: string): VirtualModelConfig | undefined;
-  getVirtualModels(): VirtualModelConfig[];
-  
-  // Middleware management
+
+  // 中间件管理
   registerMiddleware(middleware: MiddlewareConfig): Promise<void>;
   unregisterMiddleware(middlewareId: string): Promise<void>;
-  
-  // Monitoring and metrics
-  getStatus(): ServerStatus;
+  getMiddlewares(): MiddlewareConfig[];
+
+  // 服务器状态
+  getServerStatus(): ServerStatus;
   getMetrics(): RequestMetrics[];
   getConnections(): ConnectionInfo[];
-  getHealth(): Promise<{
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    checks: Record<string, boolean>;
-    timestamp: number;
-  }>;
-  
-  // Configuration
-  updateConfig(config: Partial<ServerConfig>): Promise<void>;
+
+  // 基础HTTP配置
   getConfig(): ServerConfig;
-  
-  // Pipeline integration (replaced with UnderConstruction)
-  setUnderConstructionModule(underConstruction: UnderConstruction): Promise<void>;
-  processVirtualModelRequest(request: ClientRequest, model: VirtualModelConfig): Promise<ClientResponse>;
-  getPipelineIntegrationConfig(): PipelineIntegrationConfig;
-}
+  updateConfig(config: Partial<ServerConfig>): void;
 
-export interface IHttpServer {
-  listen(port: number, host?: string): Promise<void>;
-  close(): Promise<void>;
-  on(event: string, callback: (...args: any[]) => void): void;
-  off(event: string, callback: (...args: any[]) => void): void;
-  getConnections(callback: (err: Error | null, count: number) => void): void;
+  // 与调度器的纯转发连接
+  setSchedulerManager(schedulerManager: any): void;
+  getSchedulerManager(): any | null;
+
+  // Express应用访问
+  getExpressApp(): Application;
+
+  // 健康检查
+  isHealthy(): boolean;
+  getHeathStatus(): Record<string, any>;
+
+  // 生命周期管理
   destroy(): Promise<void>;
-  getApp(): Application;
-  isServerRunning(): boolean;
-  configure(config: ServerConfig): void;
-  initialize(): Promise<void>;
 }
 
-export interface IRequestProcessor {
-  process(request: ClientRequest): Promise<ClientResponse>;
-  validate(request: ClientRequest): Promise<boolean>;
-  sanitize(request: ClientRequest): ClientRequest;
-  enrich(request: ClientRequest): ClientRequest;
+// 路由配置（基础HTTP路由，不是虚拟模型路由）
+export interface RouteConfig {
+  id: string;
+  method: string;
+  path: string;
+  handler: (request: any, response: any) => void;
+  middleware?: string[];
+  enabled: boolean;
 }
 
-export interface IVirtualModelRouter {
-  routeRequest(request: ClientRequest): Promise<VirtualModelConfig>;
-  registerModel(model: VirtualModelConfig): Promise<void>;
-  unregisterModel(modelId: string): Promise<void>;
-  updateRoutingRules(modelId: string, rules: any[]): Promise<void>;
-  getModelMetrics(modelId: string): Promise<any>;
+// Express中间件接口保持不变
+export interface IMiddlewareManager {
+  registerMiddleware(middleware: MiddlewareConfig): Promise<void>;
+  unregisterMiddleware(middlewareId: string): Promise<void>;
+  executePreMiddleware(request: ClientRequest): Promise<ClientRequest>;
+  executePostMiddleware(response: ClientResponse): Promise<ClientResponse>;
+  getMiddlewares(): MiddlewareConfig[];
   destroy(): Promise<void>;
-  getModels(): VirtualModelConfig[];
-  getModel(modelId: string): VirtualModelConfig | undefined;
-  getEnabledModels(): VirtualModelConfig[];
 }
 
+// 客户端管理接口保持不变
 export interface IClientManager {
   addConnection(connection: ConnectionInfo): Promise<void>;
   removeConnection(connectionId: string): Promise<void>;
@@ -110,25 +114,5 @@ export interface IClientManager {
   getConnections(): ConnectionInfo[];
   broadcast(message: any): Promise<void>;
   sendToClient(connectionId: string, message: any): Promise<void>;
-}
-
-export interface IMiddlewareManager {
-  registerMiddleware(middleware: MiddlewareConfig): Promise<void>;
-  unregisterMiddleware(middlewareId: string): Promise<void>;
-  executePreMiddleware(request: ClientRequest): Promise<ClientRequest>;
-  executePostMiddleware(request: ClientRequest, response: ClientResponse): Promise<ClientResponse>;
-  executeErrorMiddleware(error: Error, request: ClientRequest): Promise<ClientResponse>;
-}
-
-export interface IServerMetrics {
-  recordRequest(metrics: RequestMetrics): Promise<void>;
-  getMetrics(timeRange?: { start: number; end: number }): Promise<RequestMetrics[]>;
-  getAggregatedMetrics(timeRange?: { start: number; end: number }): Promise<{
-    totalRequests: number;
-    averageResponseTime: number;
-    errorRate: number;
-    requestsPerSecond: number;
-    bandwidth: number;
-  }>;
-  resetMetrics(): Promise<void>;
+  destroy(): Promise<void>;
 }

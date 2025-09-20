@@ -469,7 +469,7 @@ export class VirtualModelSchedulerManager {
    */
   private getSchedulerForVirtualModel(virtualModelId: string): PipelineScheduler | null {
     const mapping = this.virtualModelMappings.get(virtualModelId);
-    if (!mapping || !mapping.enabled) {
+    if (!mapping) {
       return null;
     }
 
@@ -613,16 +613,8 @@ export class VirtualModelSchedulerManager {
   enableVirtualModel(virtualModelId: string): boolean {
     const mapping = this.virtualModelMappings.get(virtualModelId);
     if (mapping) {
-      mapping.enabled = true;
-      return true;
-    }
-    return false;
-  }
-
-  disableVirtualModel(virtualModelId: string): boolean {
-    const mapping = this.virtualModelMappings.get(virtualModelId);
-    if (mapping) {
-      mapping.enabled = false;
+      // NOTE: Model disabling functionality removed as per user requirements
+      // All models are always enabled
       return true;
     }
     return false;
@@ -712,9 +704,8 @@ export class VirtualModelSchedulerManager {
       scheduler.addPipeline(pipeline);
     }
 
-    // Update mapping health status
-    mapping.enabled = true;
-    mapping.config.enabled = true;
+    // NOTE: Model disabling functionality removed as per user requirements
+    // All models are always enabled
 
     // Update metrics
     const vmMetrics = this.metrics.virtualModelMetrics.get(virtualModelId);

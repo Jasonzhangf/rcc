@@ -1341,8 +1341,9 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     for (const [modelId, model] of this.virtualModels.entries()) {
       const metrics = this.modelMetrics.get(modelId);
 
-      // Simplified: all registered models are considered healthy unless explicitly disabled
-      const healthStatus = model.enabled !== false ? 'healthy' : 'disabled';
+      // NOTE: Model disabling functionality removed as per user requirements
+      // All models are always considered healthy
+      const healthStatus = 'healthy';
 
       this.log(`Health check for model ${modelId}: ${healthStatus}`, {
         method: 'performHealthCheck',
@@ -1352,17 +1353,8 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
         totalRequests: metrics?.totalRequests || 0
       });
 
-      // Only disable models if explicitly requested or in critical error conditions
-      if (metrics && metrics.errorRate > 0.8 && metrics.totalRequests > 20) {
-        this.warn(`Disabling model ${modelId} due to critical error rate`, {
-          method: 'performHealthCheck',
-          modelId,
-          errorRate: metrics.errorRate,
-          totalRequests: metrics.totalRequests
-        });
-
-        model.enabled = false;
-      }
+      // NOTE: Model disabling functionality removed as per user requirements
+      // Schedulers should not have disable functionality - they should always be available
     }
 
     this.log('Simplified health check completed', { method: 'performHealthCheck' });

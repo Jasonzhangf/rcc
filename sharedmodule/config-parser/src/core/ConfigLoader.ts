@@ -7,7 +7,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ConfigData } from './ConfigData';
-import { BaseModule, IOTrackingConfig, ModuleInfo } from 'rcc-basemodule';
+import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import os from 'os';
 
 /**
@@ -59,22 +59,6 @@ export class ConfigLoader extends BaseModule {
    */
   public async initialize(): Promise<void> {
     await super.initialize();
-
-    // 启用两阶段调试
-    this.enableTwoPhaseDebug(
-      true,
-      path.join(os.homedir(), '.rcc', 'debug-logs', this.info.id),
-      {
-        enabled: true,
-        autoRecord: true,
-        saveIndividualFiles: true,
-        saveSessionFiles: true,
-        ioDirectory: path.join(os.homedir(), '.rcc', 'debug-logs', this.info.id),
-        includeTimestamp: true,
-        includeDuration: true,
-        maxEntriesPerFile: 1000
-      }
-    );
 
     this.logInfo('ConfigLoader initialized successfully');
   }

@@ -4,7 +4,7 @@
   "description": "RCC - Modular TypeScript Framework",
   "private": false,
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "bin": {

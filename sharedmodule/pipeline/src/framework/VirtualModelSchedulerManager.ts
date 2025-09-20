@@ -321,7 +321,7 @@ export class VirtualModelSchedulerManager {
       virtualModelId: virtualModelConfig.id,
       pipelines,
       activePipeline: pipelines.size > 0 ? Array.from(pipelines.values())[0] : null,
-      healthStatus: pipelines.size > 0 ? 'healthy' : 'unhealthy',
+      healthStatus: 'healthy', // PipelinePool healthStatus is always 'healthy'
       lastHealthCheck: Date.now(),
       metrics: {
         totalRequests: 0,

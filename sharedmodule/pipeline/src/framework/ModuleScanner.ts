@@ -13,6 +13,7 @@ export interface ProviderDiscoveryOptions {
   enabledProviders?: string[]; // Specific providers to enable, if empty enable all
   excludeProviders?: string[]; // Providers to exclude
   includeTestProviders?: boolean; // Whether to include test providers
+  providerConfigs?: { [providerId: string]: any }; // Provider configurations from config file
 }
 
 export interface ProviderInfo {
@@ -97,8 +98,11 @@ export class ModuleScanner {
       }
 
       try {
+        // Get provider configuration from options
+        const providerConfig = options.providerConfigs?.[providerId];
+
         // Attempt to load the provider
-        const provider = await this.loadProvider(providerInfo);
+        const provider = await this.loadProvider(providerInfo, providerConfig);
 
         discovered.push({
           info: providerInfo,
@@ -125,10 +129,51 @@ export class ModuleScanner {
   }
 
   /**
+   * Transform configuration from rcc-config format to provider format
+   * 将rcc-config格式的配置转换为provider格式
+   */
+  private transformProviderConfig(providerId: string, config: any): any {
+    // Handle the correct rcc-config format
+    if (!config) {
+      throw new Error(`Provider config not found for ${providerId}`);
+    }
+
+    const supportedModels = config.models ? Object.keys(config.models) : [];
+    const firstModel = supportedModels.length > 0 ? supportedModels[0] : 'unknown';
+
+    switch (providerId) {
+      case 'qwen':
+        return {
+          name: config.name || 'Qwen Provider',
+          endpoint: config.endpoint,  // Use endpoint from config
+          supportedModels: supportedModels,
+          defaultModel: firstModel,
+          apiKey: config.auth?.keys?.[0] || 'qwen-auth-1'
+        };
+      case 'iflow':
+        return {
+          name: config.name || 'iFlow Provider',
+          endpoint: config.endpoint,  // Use endpoint from config
+          supportedModels: supportedModels,
+          defaultModel: firstModel,
+          apiKey: config.auth?.keys?.[0] || 'iflow-auth-1'
+        };
+      default:
+        return {
+          name: config.name || `${providerId} Provider`,
+          endpoint: config.endpoint,
+          supportedModels: supportedModels,
+          defaultModel: firstModel,
+          apiKey: config.auth?.keys?.[0]
+        };
+    }
+  }
+
+  /**
    * Load provider instance using imported classes
    * 使用导入的类加载provider实例
    */
-  private async loadProvider(providerInfo: ProviderInfo): Promise<BaseProvider | null> {
+  private async loadProvider(providerInfo: ProviderInfo, providerConfig?: any): Promise<BaseProvider | null> {
     try {
       let ProviderClass;
 
@@ -144,32 +189,16 @@ export class ModuleScanner {
           return null;
       }
 
-      // Instantiate provider with appropriate configuration
-      let providerConfig;
-
-      switch (providerInfo.id) {
-        case 'qwen':
-          providerConfig = {
-            name: providerInfo.name,
-            endpoint: 'https://chat.qwen.ai/api/v1/services/chat/',
-            supportedModels: ['qwen-turbo', 'qwen-plus', 'qwen-max'],
-            defaultModel: 'qwen-turbo'
-          };
-          break;
-        case 'iflow':
-          providerConfig = {
-            name: providerInfo.name,
-            endpoint: 'https://api.openai.com/v1/chat/completions',
-            supportedModels: ['gpt-3.5-turbo', 'gpt-4'],
-            defaultModel: 'gpt-3.5-turbo'
-          };
-          break;
-        default:
-          console.warn(`Unknown provider ${providerInfo.id}`);
-          return null;
+      // Configuration must be provided from config file - no hardcoded defaults
+      if (!providerConfig) {
+        console.error(`Provider ${providerInfo.id} requires configuration from config file`);
+        return null;
       }
 
-      const provider = new ProviderClass(providerConfig);
+      // Transform rcc-config format to provider format
+      const config = this.transformProviderConfig(providerInfo.id, providerConfig);
+
+      const provider = new ProviderClass(config);
 
       return provider as BaseProvider;
     } catch (error) {

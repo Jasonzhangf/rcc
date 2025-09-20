@@ -24,7 +24,6 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
     private routingRules;
     private modelMetrics;
     private schedulerManager;
-    private isSchedulerEnabled;
     private providers;
     constructor();
     /**
@@ -64,7 +63,7 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
      */
     getModels(): VirtualModelConfig[];
     /**
-     * Get enabled models only
+     * Get enabled models only - direct pass-through, all models are enabled
      */
     getEnabledModels(): VirtualModelConfig[];
     /**
@@ -116,7 +115,7 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
      */
     private recordRequestMetrics;
     /**
-     * Validate model configuration
+     * Validate model configuration - direct pass-through, no validation
      */
     private validateModelConfig;
     /**
@@ -140,7 +139,7 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
         }>;
     };
     /**
-     * Perform health check on all models
+     * Perform health check on all models - simplified, models are healthy by default
      */
     performHealthCheck(): Promise<void>;
     /**
@@ -181,10 +180,6 @@ export declare class VirtualModelRouter extends BaseModule implements IVirtualMo
      * Get scheduler health
      */
     getSchedulerHealth(): any;
-    /**
-     * Enable/disable scheduler
-     */
-    setSchedulerEnabled(enabled: boolean): void;
     /**
      * Get virtual model scheduler
      */

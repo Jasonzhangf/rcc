@@ -12,7 +12,7 @@ export * from './constants/ConfigurationConstants';
 // 导出核心功能类
 export { ConfigParser } from './core/ConfigParser';
 export { ConfigLoader } from './core/ConfigLoader';
-export { PipelineConfigGenerator, PipelineTable } from './core/PipelineConfigGenerator';
+export { PipelineConfigGenerator, PipelineTable, PipelineTableEntry } from './core/PipelineConfigGenerator';
 
 // 导出接口
 export * from './interfaces/IConfigLoaderModule';

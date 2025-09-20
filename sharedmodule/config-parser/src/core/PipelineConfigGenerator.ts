@@ -5,7 +5,7 @@
  */
 
 import { ConfigData, VirtualModelConfig } from './ConfigData';
-import { BaseModule, IOTrackingConfig, ModuleInfo } from 'rcc-basemodule';
+import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { PipelineExecutionRecord } from '../types';
 import os from 'os';
 import path from 'path';
@@ -114,22 +114,6 @@ export class PipelineConfigGenerator extends BaseModule {
    */
   public async initialize(): Promise<void> {
     await super.initialize();
-
-    // 启用两阶段调试
-    this.enableTwoPhaseDebug(
-      true,
-      path.join(os.homedir(), '.rcc', 'debug-logs', this.info.id),
-      {
-        enabled: true,
-        autoRecord: true,
-        saveIndividualFiles: true,
-        saveSessionFiles: true,
-        ioDirectory: path.join(os.homedir(), '.rcc', 'debug-logs', this.info.id),
-        includeTimestamp: true,
-        includeDuration: true,
-        maxEntriesPerFile: 1000
-      }
-    );
 
     this.logInfo('PipelineConfigGenerator initialized successfully');
   }

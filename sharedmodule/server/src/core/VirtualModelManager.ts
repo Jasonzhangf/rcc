@@ -25,7 +25,7 @@ export class VirtualModelManager {
         const virtualModelMappings = this.pipelineScheduler.getVirtualModelMappings ?
           this.pipelineScheduler.getVirtualModelMappings() : [];
 
-        const existingMapping = virtualModelMappings.find(m => m.virtualModelId === model.id);
+        const existingMapping = virtualModelMappings.find((m: any) => m.virtualModelId === model.id);
 
         if (existingMapping) {
           console.log(`Virtual model ${model.id} verified in scheduler mappings (scheduler: ${existingMapping.schedulerId})`);

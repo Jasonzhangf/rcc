@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-09-19T16:13:14.695Z",
+  "traceId": "e2e-test-trace-123",
+  "type": "error",
+  "error": {
+    "protocol": "openai",
+    "error": {
+      "code": "transformation_error",
+      "message": "Failed to transform Anthropic request: Cannot read properties of undefined (reading 'forEach')",
+      "details": {
+        "traceId": "e2e-test-trace-123",
+        "sourceProtocol": "anthropic",
+        "targetProtocol": "openai",
+        "processingTime": 1
+      }
+    },
+    "metadata": {
+      "traceId": "e2e-test-trace-123",
+      "timestamp": 1758298394694,
+      "testType": "end-to-end",
+      "processingTime": 1
+    }
+  }
+}

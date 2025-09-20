@@ -95,7 +95,7 @@ interface OAuthTokens {
 }
 
 class QwenProvider extends BaseProvider {
-  protected endpoint: string;
+  protected endpoint: string = 'https://portal.qwen.ai/v1';  // 默认使用CLIProxyAPI的endpoint
   private tokenStoragePath: string;
   protected supportedModels: Array<any>;
   protected defaultModel: string;
@@ -149,49 +149,13 @@ class QwenProvider extends BaseProvider {
   private getDefaultModels(): Array<any> {
     return [
       {
-        id: 'qwen-turbo',
-        name: 'Qwen Turbo',
-        description: 'Fast and efficient general-purpose model',
-        maxTokens: 8192,
-        contextWindow: 32768,
-        supportsStreaming: true,
-        supportsTools: true
-      },
-      {
-        id: 'qwen-plus',
-        name: 'Qwen Plus',
-        description: 'Enhanced general-purpose model with better reasoning',
-        maxTokens: 8192,
-        contextWindow: 32768,
-        supportsStreaming: true,
-        supportsTools: true
-      },
-      {
-        id: 'qwen-max',
-        name: 'Qwen Max',
-        description: 'Most capable general-purpose model',
-        maxTokens: 8192,
-        contextWindow: 32768,
-        supportsStreaming: true,
-        supportsTools: true
-      },
-      {
         id: 'qwen3-coder-plus',
-        name: 'Qwen 3 Coder Plus',
-        description: 'Advanced coding model with enhanced reasoning',
-        maxTokens: 8192,
-        contextWindow: 32768,
+        name: 'Qwen3 Coder Plus',
+        description: 'Advanced coding model with enhanced programming capabilities',
+        maxTokens: 65536,
+        contextWindow: 262144,
         supportsStreaming: true,
         supportsTools: true
-      },
-      {
-        id: 'qwen3-coder-flash',
-        name: 'Qwen 3 Coder Flash', 
-        description: 'Fast coding model for quick iterations',
-        maxTokens: 4096,
-        contextWindow: 16384,
-        supportsStreaming: true,
-        supportsTools: false
       }
     ];
   }
@@ -210,34 +174,27 @@ class QwenProvider extends BaseProvider {
   // 保存tokens到文件
   private saveTokens(fullTokenData?: any): boolean {
     if (!this.accessToken) return false;
-    
-    const tokenData: TokenData = {
-      accessToken: this.accessToken!,
-      refreshToken: this.refreshToken!,
-      tokenExpiry: this.tokenExpiry!,
-      lastRefresh: Date.now(),
-      provider: this.getInfo().name
-    };
 
-    // 如果有完整的token数据，保存额外字段
-    if (fullTokenData) {
-      if (fullTokenData.resource_url) {
-        (tokenData as any).resource_url = fullTokenData.resource_url;
-      }
-      if (fullTokenData.email) {
-        (tokenData as any).email = fullTokenData.email;
-      }
-    }
+    // 使用CLIProxyAPI格式保存token
+    const tokenData = {
+      access_token: this.accessToken!,
+      refresh_token: this.refreshToken!,
+      expired: new Date(this.tokenExpiry!).toISOString(),
+      last_refresh: new Date().toISOString(),
+      resource_url: fullTokenData?.resource_url || 'portal.qwen.ai',
+      email: fullTokenData?.email || 'user@example.com',
+      type: 'qwen'
+    };
 
     try {
       const tokenPath = this.getTokenStoragePath();
       const authDir = path.dirname(tokenPath);
-      
+
       // 确保目录存在
       if (!fs.existsSync(authDir)) {
         fs.mkdirSync(authDir, { recursive: true });
       }
-      
+
       fs.writeFileSync(tokenPath, JSON.stringify(tokenData, null, 2));
       console.log('[QwenProvider] Tokens saved to: ' + tokenPath);
       return true;
@@ -252,24 +209,58 @@ class QwenProvider extends BaseProvider {
     }
   }
 
-  // 从文件加载tokens
+  // 从文件加载tokens - 支持多种token格式
   private loadTokens(): boolean {
     try {
       const tokenPath = this.getTokenStoragePath();
-      
+
       if (!fs.existsSync(tokenPath)) {
+        console.log('[QwenProvider] No token file found at:', tokenPath);
         return false;
       }
-      
-      const tokenData: TokenData = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
-      
-      this.accessToken = tokenData.accessToken;
-      this.refreshToken = tokenData.refreshToken;
-      this.tokenExpiry = tokenData.tokenExpiry;
-      
-      console.log('[QwenProvider] Tokens loaded from: ' + tokenPath);
+
+      const tokenFileContent = fs.readFileSync(tokenPath, 'utf8');
+      const tokenData = JSON.parse(tokenFileContent);
+
+      console.log('[QwenProvider] Loading tokens from:', tokenPath);
+      console.log('[QwenProvider] Token data keys:', Object.keys(tokenData));
+
+      // 支持多种token格式
+      if (tokenData.access_token && tokenData.refresh_token && tokenData.expired) {
+        // CLIProxyAPI格式 (OAuth标准)
+        this.accessToken = tokenData.access_token;
+        this.refreshToken = tokenData.refresh_token;
+        this.tokenExpiry = new Date(tokenData.expired).getTime();
+        console.log('[QwenProvider] Loaded CLIProxyAPI format');
+      } else if (tokenData.accessToken && tokenData.refreshToken && tokenData.tokenExpiry) {
+        // 旧的TokenData格式
+        this.accessToken = tokenData.accessToken;
+        this.refreshToken = tokenData.refreshToken;
+        this.tokenExpiry = tokenData.tokenExpiry;
+        console.log('[QwenProvider] Loaded legacy TokenData format');
+      } else if (tokenData.access_token && tokenData.refresh_token && tokenData.expiry_date) {
+        // 标准OAuth格式
+        this.accessToken = tokenData.access_token;
+        this.refreshToken = tokenData.refresh_token;
+        this.tokenExpiry = tokenData.expiry_date;
+        console.log('[QwenProvider] Loaded OAuth standard format');
+      } else {
+        console.log('[QwenProvider] Unknown token format:', tokenFileContent);
+        return false;
+      }
+
+      console.log('[QwenProvider] Tokens loaded successfully');
+      console.log('[QwenProvider] Access token exists:', !!this.accessToken);
+      console.log('[QwenProvider] Access token length:', this.accessToken ? this.accessToken.length : 0);
+      console.log('[QwenProvider] Refresh token exists:', !!this.refreshToken);
+      console.log('[QwenProvider] Token expiry:', this.tokenExpiry ? new Date(this.tokenExpiry).toISOString() : 'null');
+      console.log('[QwenProvider] Current time:', new Date().toISOString());
+      console.log('[QwenProvider] Token expired:', this.isTokenExpired());
+      console.log('[QwenProvider] Time until expiry:', this.tokenExpiry ? (this.tokenExpiry - Date.now()) / 1000 / 60 + ' minutes' : 'unknown');
+
       return true;
     } catch (error) {
+      console.log('[QwenProvider] Error loading tokens:', (error as Error).message);
       this.errorHandler.handleError({
         error: error as Error,
         source: 'QwenProvider.loadTokens',
@@ -316,9 +307,17 @@ class QwenProvider extends BaseProvider {
   // 确保有有效的access token
   private async ensureValidToken(): Promise<void> {
     if (this.isTokenExpired()) {
+      console.log('[QwenProvider] Token expired, attempting auto-refresh...');
       if (this.refreshToken) {
-        await this.refreshAccessToken();
+        try {
+          await this.refreshAccessToken();
+          console.log('[QwenProvider] Token auto-refresh successful');
+        } catch (refreshError) {
+          console.log('[QwenProvider] Token auto-refresh failed:', (refreshError as Error).message);
+          throw new Error('Token refresh failed. Please re-authenticate.');
+        }
       } else {
+        console.log('[QwenProvider] No refresh token available');
         throw new Error('No valid token available. Please authenticate first.');
       }
     }
@@ -519,98 +518,84 @@ class QwenProvider extends BaseProvider {
 
   // 主要的chat实现 - 增强版自动刷新和失败自动认证
   async executeChat(providerRequest: OpenAIChatRequest): Promise<OpenAIChatResponse> {
-    let retryCount = 0;
-    const maxRetries = 2;
-    
-    while (retryCount <= maxRetries) {
-      try {
-        // 确保有有效token（只有在认证失败时才强制刷新）
-        await this.ensureValidToken();
-        
-        // 转换OpenAI格式到Qwen格式
-        const qwenRequest = this.convertToQwenFormat(providerRequest);
-        
-        // 调试日志：检查转换后的请求内容
-        console.log(`Qwen request keys: ${Object.keys(qwenRequest).join(', ')}`);
-        if (qwenRequest.tools) {
-          console.log(`Tools included: ${qwenRequest.tools.length} tools`);
-        }
+    console.log('[QwenProvider] Starting executeChat request');
+    console.log('[QwenProvider] Initial token state:', {
+      hasAccessToken: !!this.accessToken,
+      hasRefreshToken: !!this.refreshToken,
+      tokenExpiry: this.tokenExpiry ? new Date(this.tokenExpiry).toISOString() : 'null',
+      isExpired: this.isTokenExpired()
+    });
 
-        const response = await axios.post(this.endpoint + '/chat/completions', qwenRequest, {
-          headers: {
-            'Authorization': 'Bearer ' + this.accessToken,
-            'Content-Type': 'application/json'
-          }
-        });
+    try {
+      // 确保有有效token（只有在认证失败时才强制刷新）
+      await this.ensureValidToken();
 
-        // 转换Qwen响应到标准格式
-        return this.convertQwenResponse(response.data);
-        
-      } catch (error: any) {
-        retryCount++;
-        
-        // 401错误且还有重试机会
-        if (error.response?.status === 401 && retryCount <= maxRetries) {
-          console.log(`[QwenProvider] Authentication failed (attempt ${retryCount}/${maxRetries + 1}), trying to refresh...`);
-          
-          if (retryCount === 1) {
-            // 第一次尝试：刷新token
-            try {
-              await this.refreshAccessToken();
-              console.log('[QwenProvider] Token refreshed successfully');
-              continue;
-            } catch (refreshError) {
-              console.log('[QwenProvider] Token refresh failed, attempting full re-authentication...');
-            }
-          }
-          
-          if (retryCount === 2) {
-            // 第二次尝试：完整重新认证
-            try {
-              console.log('[QwenProvider] Starting automatic re-authentication...');
-              const authResult = await this.authenticate(true, { 
-                interval: 10, 
-                maxAttempts: 30  // 5分钟
-              });
-              
-              if (authResult.success) {
-                console.log('[QwenProvider] Automatic re-authentication successful');
-                continue;
-              } else {
-                console.log('[QwenProvider] Automatic re-authentication failed');
-                throw new Error('Automatic re-authentication failed: ' + authResult.error);
-              }
-            } catch (authError) {
-              console.log('[QwenProvider] Automatic re-authentication error:', (authError as Error).message);
-              throw new Error('Re-authentication failed: ' + (authError as Error).message);
-            }
-          }
-        }
-        
-        // 其他错误或重试用完
-        this.errorHandler.handleError({
-          error: error as Error,
-          source: 'QwenProvider.executeChat',
-          severity: 'high',
-          timestamp: Date.now()
-        });
-        throw new Error('Qwen API error: ' + error.message);
+      // 检查token是否真的有效
+      if (!this.accessToken || this.isTokenExpired()) {
+        console.log('[QwenProvider] No valid access token available after ensureValidToken');
+        throw new Error('No valid access token available');
       }
+
+      console.log('[QwenProvider] Token is valid, proceeding with API call');
+
+      // 转换OpenAI格式到Qwen格式
+      const qwenRequest = this.convertToQwenFormat(providerRequest);
+
+      // 调试日志：检查转换后的请求内容
+      console.log(`Qwen request keys: ${Object.keys(qwenRequest).join(', ')}`);
+      if (qwenRequest.tools) {
+        console.log(`Tools included: ${qwenRequest.tools.length} tools`);
+      }
+
+      console.log('[QwenProvider] Making API call to:', this.endpoint + '/chat/completions');
+      console.log('[QwenProvider] Using token (first 10 chars):', this.accessToken ? this.accessToken.substring(0, 10) + '...' : 'null');
+
+      const authHeader = 'Bearer ' + this.accessToken;
+      console.log('[QwenProvider] Authorization header (first 20 chars):', authHeader.substring(0, 20) + '...');
+
+      const response = await axios.post(this.endpoint + '/chat/completions', qwenRequest, {
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('[QwenProvider] API call successful');
+
+      // 转换Qwen响应到标准格式
+      return this.convertQwenResponse(response.data);
+
+    } catch (error: any) {
+      console.log(`[QwenProvider] Error:`, error.message);
+      console.log(`[QwenProvider] Error response status:`, error.response?.status);
+      console.log(`[QwenProvider] Error response data:`, error.response?.data);
+
+      // 临时禁用自动认证，直接返回错误
+      this.errorHandler.handleError({
+        error: error as Error,
+        source: 'QwenProvider.executeChat',
+        severity: 'high',
+        timestamp: Date.now()
+      });
+      throw new Error('Qwen API error: ' + error.message);
     }
-    
-    throw new Error('Maximum retry attempts exceeded');
   }
 
   // 流式chat实现 - 增强版自动刷新和失败自动认证
   async *executeStreamChat(providerRequest: OpenAIChatRequest): AsyncGenerator<OpenAIChatResponse> {
     let retryCount = 0;
     const maxRetries = 2;
-    
+
     while (retryCount <= maxRetries) {
       try {
         // 确保有有效token（只有在认证失败时才强制刷新）
         await this.ensureValidToken();
-        
+
+        // 检查token是否真的有效
+        if (!this.accessToken || this.isTokenExpired()) {
+          throw new Error('No valid access token available');
+        }
+
         const qwenRequest = this.convertToQwenFormat({ ...providerRequest, stream: true });
 
         const response = await axios.post(this.endpoint + '/chat/completions', qwenRequest, {
@@ -635,7 +620,7 @@ class QwenProvider extends BaseProvider {
               if (data === '[DONE]') {
                 return;
               }
-              
+
               try {
                 const parsed = JSON.parse(data);
                 yield this.convertQwenResponse(parsed);
@@ -646,48 +631,29 @@ class QwenProvider extends BaseProvider {
           }
         }
         return; // 成功完成，退出重试循环
-        
+
       } catch (error: any) {
         retryCount++;
-        
-        // 401错误且还有重试机会
+
+        // 只有在真正的401错误时才尝试刷新token
         if (error.response?.status === 401 && retryCount <= maxRetries) {
           console.log(`[QwenProvider] Streaming authentication failed (attempt ${retryCount}/${maxRetries + 1})`);
-          
+
           if (retryCount === 1) {
             // 第一次尝试：刷新token
             try {
+              console.log('[QwenProvider] Stream attempting token refresh...');
               await this.refreshAccessToken();
               console.log('[QwenProvider] Stream token refreshed successfully');
               continue;
             } catch (refreshError) {
-              console.log('[QwenProvider] Stream token refresh failed, attempting full re-authentication...');
-            }
-          }
-          
-          if (retryCount === 2) {
-            // 第二次尝试：完整重新认证
-            try {
-              console.log('[QwenProvider] Starting stream automatic re-authentication...');
-              const authResult = await this.authenticate(true, { 
-                interval: 10, 
-                maxAttempts: 30  // 5分钟
-              });
-              
-              if (authResult.success) {
-                console.log('[QwenProvider] Stream automatic re-authentication successful');
-                continue;
-              } else {
-                console.log('[QwenProvider] Stream automatic re-authentication failed');
-                throw new Error('Stream re-authentication failed: ' + authResult.error);
-              }
-            } catch (authError) {
-              console.log('[QwenProvider] Stream automatic re-authentication error:', (authError as Error).message);
-              throw new Error('Stream re-authentication failed: ' + (authError as Error).message);
+              console.log('[QwenProvider] Stream token refresh failed:', (refreshError as Error).message);
+              // 如果刷新失败，直接抛出错误，不要重新认证
+              throw new Error('Stream token refresh failed: ' + (refreshError as Error).message);
             }
           }
         }
-        
+
         // 其他错误或重试用完
         this.errorHandler.handleError({
           error: error as Error,
@@ -698,14 +664,14 @@ class QwenProvider extends BaseProvider {
         throw new Error('Qwen streaming error: ' + error.message);
       }
     }
-    
+
     throw new Error('Maximum stream retry attempts exceeded');
   }
 
   // 转换OpenAI请求到Qwen格式
   private convertToQwenFormat(openaiRequest: OpenAIChatRequest): any {
     const qwenRequest: any = {
-      model: openaiRequest.model || this.defaultModel,
+      model: this.defaultModel, // 始终使用配置的模型，忽略请求中的虚拟模型名称
       messages: openaiRequest.messages.map(msg => ({
         role: msg.role,
         content: msg.content

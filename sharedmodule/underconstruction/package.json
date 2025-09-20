@@ -1,6 +1,6 @@
 {
   "name": "rcc-underconstruction",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "RCC UnderConstruction - Explicit feature marking for unfinished functionality",
   "type": "module",
   "main": "dist/index.js",

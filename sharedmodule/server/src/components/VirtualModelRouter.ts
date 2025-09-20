@@ -37,7 +37,6 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
 
   // Scheduler-related properties
   private schedulerManager: any = null;
-  private isSchedulerEnabled: boolean = false;
   private providers: Map<string, any> = new Map();
 
   // Note: VirtualModelRouter只负责路由，不负责调度
@@ -60,10 +59,9 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
 
     super(moduleInfo);
 
-    // Initialize with no scheduler by default
+    // Initialize scheduler - always available
     // The scheduler will be set by the ServerModule when it's available
     this.schedulerManager = null;
-    this.isSchedulerEnabled = false;
   }
 
   /**
@@ -83,7 +81,6 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     });
     console.log(`[${requestId}] Available virtual models:`, Array.from(this.virtualModels.keys()));
     console.log(`[${requestId}] Enabled virtual models:`, this.getEnabledModels().map(m => m.id));
-    console.log(`[${requestId}] Scheduler enabled:`, this.isSchedulerEnabled);
 
     this.log('Routing request', {
       method: 'routeRequest',
@@ -103,11 +100,11 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       clientId: request.clientId,
       availableModels: Array.from(this.virtualModels.keys()),
       enabledModels: this.getEnabledModels().map(m => m.id),
-      schedulerEnabled: this.isSchedulerEnabled
+      schedulerEnabled: true
     }, 'routeRequest');
 
     // Use scheduler if enabled and available
-    if (this.isSchedulerEnabled && request.virtualModel) {
+    if (request.virtualModel) {
       // Track scheduler routing attempt
       const schedulerOperationId = `scheduler_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -116,7 +113,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
 
         this.startIOTracking(schedulerOperationId, {
           virtualModel: request.virtualModel,
-          schedulerEnabled: this.isSchedulerEnabled,
+          schedulerEnabled: true,
           operation: request.path.includes('stream') ? 'streamChat' : 'chat'
         }, 'schedulerRouting');
 
@@ -132,7 +129,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
           // Note: This is a routing decision - actual execution happens elsewhere
           // For now, we'll return the model configuration and let the actual execution happen
           const model = this.virtualModels.get(request.virtualModel);
-          if (model && (model.enabled ?? true)) {
+          if (model) {
             console.log(`[${requestId}] Using scheduler-based routing for virtual model:`, request.virtualModel);
             await this.recordRequestMetrics(model.id, true);
 
@@ -196,7 +193,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
         capabilities: model.capabilities
       } : null);
 
-      if (model && (model.enabled ?? true)) {
+      if (model) {
         this.log('Using specified virtual model', {
           method: 'routeRequest',
           requestId,
@@ -359,7 +356,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
     // Start I/O tracking for model registration
     this.startIOTracking(registrationOperationId, {
       modelConfig: model,
-      schedulerEnabled: this.isSchedulerEnabled,
+      schedulerEnabled: true,
       existingModels: Array.from(this.virtualModels.keys())
     }, 'registerModel');
 
@@ -401,7 +398,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
 
       // Register with scheduler if enabled
       let schedulerRegistrationResult = null;
-      if (this.isSchedulerEnabled && processedModel.targets && processedModel.targets.length > 0) {
+      if (processedModel.targets && processedModel.targets.length > 0) {
         try {
           // Register virtual model with scheduler (providers are handled separately)
           const schedulerId = await this.schedulerManager.registerVirtualModel(
@@ -446,7 +443,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
           modelId: model.id,
           capabilities: processedModel.capabilities,
           targetsCount: processedModel.targets?.length || 0,
-          schedulerEnabled: this.isSchedulerEnabled
+          schedulerEnabled: true
         });
       }
 
@@ -630,20 +627,21 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   }
 
   /**
-   * Get enabled models only
+   * Get enabled models only - direct pass-through, all models are enabled
    */
   public getEnabledModels(): VirtualModelConfig[] {
-    const enabledModels = Array.from(this.virtualModels.values()).filter(model => model.enabled ?? true);
+    // Direct pass-through: all registered models are enabled and healthy
+    const enabledModels = Array.from(this.virtualModels.values());
 
     console.log('=== VirtualModelRouter.getEnabledModels called ===');
     console.log('Total models registered:', this.virtualModels.size);
-    console.log('Enabled models count:', enabledModels.length);
-    console.log('Enabled models details:', enabledModels.map(m => ({
+    console.log('All models are enabled by default - returning all registered models');
+    console.log('Models details:', enabledModels.map(m => ({
       id: m.id,
       name: m.name,
       provider: m.provider,
       capabilities: m.capabilities,
-      enabled: m.enabled,
+      enabled: m.enabled ?? true,
       targetsCount: m.targets?.length || 0
     })));
 
@@ -1014,17 +1012,13 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
         detailedScores.priority = 0;
       }
 
-      // 模型健康度
+      // 模型健康度 - simplified, all models are healthy by default
       const metrics = this.modelMetrics.get(model.id);
-      if (metrics) {
-        const healthScore = (1 - metrics.errorRate) * 100;
-        const healthContribution = healthScore * 0.1;
-        detailedScores.healthScore = healthContribution;
-        score += healthContribution;
-        reasons.push(`health-score: ${healthScore.toFixed(1)}`);
-      } else {
-        detailedScores.healthScore = 0;
-      }
+      const healthScore = metrics ? (1 - metrics.errorRate) * 100 : 100; // Default to 100% health
+      const healthContribution = healthScore * 0.1;
+      detailedScores.healthScore = healthContribution;
+      score += healthContribution;
+      reasons.push(`health-score: ${healthScore.toFixed(1)}`);
 
       // 特殊需求检查
       const hasSpecialRequirement = features.specialRequirements.some(req => {
@@ -1259,52 +1253,18 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   }
 
   /**
-   * Validate model configuration
+   * Validate model configuration - direct pass-through, no validation
    */
   private validateModelConfig(model: VirtualModelConfig): void {
-    // 只验证核心字段，使配置更加灵活
-    if (!model.id || !model.name || !model.provider) {
-      throw new Error('Model configuration missing required fields: id, name, provider');
-    }
-
-    // 虚拟模型是路由机制，端点和能力从targets动态生成，不需要警告
-    if (!model.endpoint) {
-      // 端点将在processTargets中从targets动态生成
-      model.endpoint = '';
-    }
-
-    if (!model.capabilities || model.capabilities.length === 0) {
-      // 能力将在processTargets中从targets动态推断
-      model.capabilities = [];
-    }
-
-    // 为数值字段提供默认值和验证
-    if (typeof model.maxTokens !== 'number' || model.maxTokens < 1) {
-      this.warn(`Model ${model.id} invalid maxTokens, using default`, { method: 'validateModelConfig' });
-      model.maxTokens = 4000;
-    }
-
-    if (typeof model.temperature !== 'number' || model.temperature < 0 || model.temperature > 2) {
-      this.warn(`Model ${model.id} invalid temperature, using default`, { method: 'validateModelConfig' });
-      model.temperature = 0.7;
-    }
-
-    if (typeof model.topP !== 'number' || model.topP < 0 || model.topP > 1) {
-      this.warn(`Model ${model.id} invalid topP, using default`, { method: 'validateModelConfig' });
-      model.topP = 0.9;
-    }
-
-    // 确保enabled字段存在
+    // Direct pass-through - no validation, all models are accepted
+    // Ensure model is enabled by default
     if (typeof model.enabled !== 'boolean') {
       model.enabled = true;
     }
 
-    // 确保routingRules字段存在
-    if (!model.routingRules) {
-      model.routingRules = [];
-    }
-
-    this.log(`Model ${model.id} validation completed`, { method: 'validateModelConfig' });
+    // Set minimal defaults only for critical missing fields
+    model.endpoint = model.endpoint || '';
+    model.capabilities = model.capabilities || ['chat']; // Default capability
   }
 
   /**
@@ -1373,40 +1333,39 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
   }
 
   /**
-   * Perform health check on all models
+   * Perform health check on all models - simplified, models are healthy by default
    */
   public async performHealthCheck(): Promise<void> {
-    this.log('Performing health check on all virtual models', { method: 'performHealthCheck' });
+    this.log('Performing simplified health check - all models are healthy by default', { method: 'performHealthCheck' });
 
     for (const [modelId, model] of this.virtualModels.entries()) {
       const metrics = this.modelMetrics.get(modelId);
-      if (!metrics) continue;
 
-      // 简单的健康检查逻辑
-      const isHealthy = metrics.errorRate < 0.1 && metrics.totalRequests > 0;
-      const healthStatus = isHealthy ? 'healthy' : 'unhealthy';
+      // Simplified: all registered models are considered healthy unless explicitly disabled
+      const healthStatus = model.enabled !== false ? 'healthy' : 'disabled';
 
       this.log(`Health check for model ${modelId}: ${healthStatus}`, {
         method: 'performHealthCheck',
         modelId,
         healthStatus,
-        errorRate: metrics.errorRate,
-        totalRequests: metrics.totalRequests
+        errorRate: metrics?.errorRate || 0,
+        totalRequests: metrics?.totalRequests || 0
       });
 
-      // 如果模型不健康，可以考虑禁用它
-      if (!isHealthy && metrics.errorRate > 0.5 && metrics.totalRequests > 10) {
-        this.warn(`Disabling model ${modelId} due to high error rate`, {
+      // Only disable models if explicitly requested or in critical error conditions
+      if (metrics && metrics.errorRate > 0.8 && metrics.totalRequests > 20) {
+        this.warn(`Disabling model ${modelId} due to critical error rate`, {
           method: 'performHealthCheck',
           modelId,
-          errorRate: metrics.errorRate
+          errorRate: metrics.errorRate,
+          totalRequests: metrics.totalRequests
         });
 
         model.enabled = false;
       }
     }
 
-    this.log('Health check completed', { method: 'performHealthCheck' });
+    this.log('Simplified health check completed', { method: 'performHealthCheck' });
   }
 
   /**
@@ -1486,7 +1445,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
       metadata?: Record<string, any>;
     }
   ): AsyncGenerator<any, void, unknown> {
-    if (!this.isSchedulerEnabled) {
+    if (!this.schedulerManager) {
       throw new Error('Scheduler is not enabled');
     }
 
@@ -1499,7 +1458,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
    * Get scheduler metrics
    */
   public getSchedulerMetrics(): any {
-    if (!this.isSchedulerEnabled) {
+    if (!this.schedulerManager) {
       return null;
     }
 
@@ -1510,29 +1469,19 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
    * Get scheduler health
    */
   public getSchedulerHealth(): any {
-    if (!this.isSchedulerEnabled) {
+    if (!this.schedulerManager) {
       return null;
     }
 
     return this.schedulerManager.getManagerHealth();
   }
 
-  /**
-   * Enable/disable scheduler
-   */
-  public setSchedulerEnabled(enabled: boolean): void {
-    this.isSchedulerEnabled = enabled;
-    this.log('Scheduler ' + (enabled ? 'enabled' : 'disabled'), {
-      method: 'setSchedulerEnabled',
-      enabled
-    });
-  }
-
+  
   /**
    * Get virtual model scheduler
    */
   public getVirtualModelScheduler(virtualModelId: string): any | null {
-    if (!this.isSchedulerEnabled) {
+    if (!this.schedulerManager) {
       return null;
     }
 
@@ -1543,7 +1492,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
    * Get all virtual model mappings
    */
   public getVirtualModelMappings(): any[] {
-    if (!this.isSchedulerEnabled || !this.schedulerManager) {
+    if (!this.schedulerManager) {
       return [];
     }
 
@@ -1555,6 +1504,7 @@ export class VirtualModelRouter extends BaseModule implements IVirtualModelRoute
    */
   public setSchedulerManager(schedulerManager: any): void {
     // 虚拟模型路由器只负责路由，调度由专门的调度器处理
-    this.log('Scheduler manager received (VirtualModelRouter只负责路由)');
+    this.schedulerManager = schedulerManager;
+    this.log('Scheduler manager received and set (VirtualModelRouter只负责路由)');
   }
 }

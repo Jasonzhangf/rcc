@@ -137,19 +137,43 @@ class IFlowProvider extends BaseProvider {
     };
 
     const finalConfig = { ...defaultConfig, ...config };
-    
+
     super({
       name: finalConfig.name || 'iflow',
       endpoint: finalConfig.endpoint,
       supportedModels: finalConfig.supportedModels,
       defaultModel: finalConfig.model
     });
-    
+
     this.authMode = finalConfig.authMode || 'oauth';
     this.credentialsPath = finalConfig.credentialsPath || path.join(os.homedir(), '.iflow', 'oauth_creds.json');
     this.apiKey = finalConfig.apiKey || '';
-    
+
     this.log(`iFlow Provider initialized (auth mode: ${this.authMode})`);
+
+    // 在初始化时预加载token，而不是等到第一次请求
+    this.preloadTokens();
+  }
+
+  /**
+   * 预加载token，在初始化时调用
+   */
+  private async preloadTokens(): Promise<void> {
+    if (this.authMode === 'oauth') {
+      try {
+        await this.loadAccessToken();
+        this.log(`IFlow tokens preloaded: access_token=${!!this.accessToken}, refresh_token=${!!this.refreshToken}, valid=${this.isTokenValid()}`);
+      } catch (error) {
+        this.log(`IFlow token preloading failed: ${error}`);
+      }
+    } else if (this.authMode === 'apikey') {
+      try {
+        await this.loadApiKey();
+        this.log(`IFlow API key preloaded: ${!!this.apiKey}`);
+      } catch (error) {
+        this.log(`IFlow API key preloading failed: ${error}`);
+      }
+    }
   }
 
   /**
@@ -751,11 +775,25 @@ class IFlowProvider extends BaseProvider {
     if (this.authMode !== 'oauth') {
       return;
     }
-    
+
     // 检查是否需要刷新
     const needsRefresh = forceRefresh || !this.isTokenValid();
-    
+
     if (needsRefresh) {
+      // 如果没有token，先尝试加载
+      if (!this.accessToken && !this.refreshToken) {
+        try {
+          await this.loadAccessToken();
+          if (this.isTokenValid()) {
+            this.log('Token loaded successfully from credentials file');
+            return;
+          }
+        } catch (error) {
+          this.log(`Failed to load token from credentials file: ${error}`);
+        }
+      }
+
+      // 如果有refresh token，尝试刷新
       if (this.refreshToken) {
         try {
           await this.refreshAccessToken();

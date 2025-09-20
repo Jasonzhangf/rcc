@@ -25,7 +25,7 @@ export declare class ServerModule extends BaseModule implements IServerModule {
     private requestMetrics;
     private connections;
     private startTime;
-    constructor();
+    constructor(schedulerManager?: any, initialConfig?: ServerConfig);
     /**
      * Configure the server module
      */

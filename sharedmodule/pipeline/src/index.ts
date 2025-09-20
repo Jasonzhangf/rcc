@@ -27,6 +27,37 @@ export {
   ExecutionStatistics
 } from './core/PipelineExecutionContext';
 
+// LLMSwitch Module - Standard Protocol Conversion Layer
+export {
+  LLMSwitchModule,
+  LLMSwitchConfig,
+  ProtocolTransformer,
+  TransformerRegistration,
+  ProtocolType
+} from './modules/LLMSwitchModule';
+
+// Field mapping interfaces and transformation system
+export {
+  MappingTable,
+  FieldMapping,
+  ProtocolMapping,
+  FieldTransformType,
+  TransformContext,
+  FieldTransformerRegistry,
+  TransformResult
+} from './interfaces/FieldMapping';
+
+// Standard request/response interfaces
+export {
+  StandardRequest,
+  StandardResponse,
+  StandardErrorResponse
+} from './interfaces/StandardInterfaces';
+
+// Built-in transformers
+export { AnthropicToOpenAITransformer } from './transformers/AnthropicToOpenAITransformer';
+export { OpenAIPassthroughTransformer } from './modules/LLMSwitchModule';
+
 // Framework classes
 export { default as BaseProvider } from './framework/BaseProvider';
 

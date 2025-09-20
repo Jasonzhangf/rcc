@@ -10,11 +10,28 @@ import { VirtualModelConfig } from '../types/virtual-model';
 import { Pipeline, PipelineConfig } from './Pipeline';
 import { BaseProvider } from './BaseProvider';
 
+// Import config-parser types and functions
+import {
+  ConfigLoader,
+  ConfigParser,
+  PipelineConfigGenerator,
+  PipelineTable,
+  PipelineTableEntry,
+  ConfigData,
+  parseConfigFile
+} from 'rcc-config-parser';
+
+import os from 'os';
+import path from 'path';
+
 export interface AssemblerConfig {
   providerDiscoveryOptions?: ProviderDiscoveryOptions;
   pipelineFactoryConfig?: PipelineFactoryConfig;
   enableAutoDiscovery?: boolean;
   fallbackStrategy?: 'first-available' | 'round-robin';
+  configFilePath?: string;
+  enableConfigModuleIntegration?: boolean;
+  pipelineTableOutputPath?: string;
 }
 
 export interface PipelinePool {
@@ -57,10 +74,18 @@ export class PipelineAssembler {
   private pipelinePools: Map<string, PipelinePool> = new Map();
   private discoveredProviders: Map<string, BaseProvider> = new Map();
 
+  // Configuration module integration
+  private configLoader?: ConfigLoader;
+  private configParser?: ConfigParser;
+  private pipelineConfigGenerator?: PipelineConfigGenerator;
+  private currentConfigData?: ConfigData;
+  private currentPipelineTable?: PipelineTable;
+
   constructor(config: AssemblerConfig, pipelineTracker: PipelineTracker) {
     this.config = {
       enableAutoDiscovery: true,
       fallbackStrategy: 'first-available',
+      enableConfigModuleIntegration: true,
       ...config
     };
 
@@ -78,13 +103,218 @@ export class PipelineAssembler {
     };
 
     this.pipelineFactory = new PipelineFactory(factoryConfig, pipelineTracker);
+
+    // Initialize configuration modules if enabled
+    if (this.config.enableConfigModuleIntegration) {
+      this.initializeConfigModules();
+    }
+  }
+
+  /**
+   * Initialize configuration modules
+   * 初始化配置模块
+   */
+  private initializeConfigModules(): void {
+    try {
+      console.log('🔧 Initializing configuration modules...');
+
+      // Create configuration module instances
+      this.configLoader = new ConfigLoader({
+        id: 'config-loader',
+        type: 'config-loader',
+        name: 'Config Loader Module',
+        version: '1.0.0',
+        description: 'RCC Configuration Loader Module'
+      });
+
+      this.configParser = new ConfigParser({
+        id: 'config-parser',
+        type: 'config-parser',
+        name: 'Config Parser Module',
+        version: '1.0.0',
+        description: 'RCC Configuration Parser Module'
+      });
+
+      this.pipelineConfigGenerator = new PipelineConfigGenerator({
+        id: 'pipeline-config-generator',
+        type: 'pipeline-config-generator',
+        name: 'Pipeline Config Generator Module',
+        version: '1.0.0',
+        description: 'RCC Pipeline Configuration Generator Module'
+      });
+
+      console.log('✅ Configuration modules initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize configuration modules:', error);
+      // Don't throw - allow fallback to traditional assembly
+    }
+  }
+
+  /**
+   * Load configuration from file and generate pipeline table
+   * 从文件加载配置并生成流水线表
+   */
+  private async loadConfigurationAndGeneratePipelineTable(): Promise<ConfigData | null> {
+    if (!this.config.enableConfigModuleIntegration || !this.configLoader || !this.configParser || !this.pipelineConfigGenerator) {
+      return null;
+    }
+
+    try {
+      console.log('📖 Loading configuration and generating pipeline table...');
+
+      // Find configuration file
+      const configPath = this.config.configFilePath || this.getDefaultConfigPath();
+      console.log('📁 Configuration file path:', configPath);
+
+      // Initialize config modules
+      await this.configLoader.initialize();
+      await this.configParser.initialize();
+      await this.pipelineConfigGenerator.initialize();
+
+      // Load configuration
+      const rawData = await this.configLoader.loadFromFile(configPath);
+      console.log('📋 Configuration file loaded successfully');
+
+      // Parse configuration
+      this.currentConfigData = await this.configParser.parseConfig(rawData);
+      console.log('🔍 Configuration parsed successfully');
+
+      // Generate pipeline table
+      this.currentPipelineTable = await this.pipelineConfigGenerator.generatePipelineTable(this.currentConfigData);
+      console.log(`🗂️  Pipeline table generated with ${this.currentPipelineTable.getEntries().length} entries`);
+
+      // Save pipeline table to file if output path specified
+      if (this.config.pipelineTableOutputPath) {
+        await this.savePipelineTableToFile(this.currentPipelineTable, this.config.pipelineTableOutputPath);
+      }
+
+      return this.currentConfigData;
+    } catch (error) {
+      console.error('❌ Failed to load configuration and generate pipeline table:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get default configuration file path
+   * 获取默认配置文件路径
+   */
+  private getDefaultConfigPath(): string {
+    // Try multiple possible locations in order of preference
+    const possiblePaths = [
+      path.join(os.homedir(), '.rcc', 'rcc-config.json'),
+      path.join(process.cwd(), '.rcc', 'rcc-config.json'),
+      path.join(process.cwd(), 'rcc-config.json')
+    ];
+
+    for (const configPath of possiblePaths) {
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(configPath)) {
+          return configPath;
+        }
+      } catch {
+        // File doesn't exist or can't be accessed
+      }
+    }
+
+    // Return default path
+    return path.join(os.homedir(), '.rcc', 'rcc-config.json');
+  }
+
+  /**
+   * Save pipeline table to file
+   * 保存流水线表到文件
+   */
+  private async savePipelineTableToFile(pipelineTable: PipelineTable, outputPath: string): Promise<void> {
+    try {
+      const fs = await import('fs');
+      const dir = path.dirname(outputPath);
+
+      // Ensure directory exists
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      const tableData = pipelineTable.toJSON();
+      await fs.promises.writeFile(outputPath, JSON.stringify(tableData, null, 2));
+
+      console.log(`💾 Pipeline table saved to: ${outputPath}`);
+    } catch (error) {
+      console.error('❌ Failed to save pipeline table:', error);
+    }
+  }
+
+  /**
+   * Convert pipeline table entries to VirtualModelConfig array
+   * 将流水线表条目转换为VirtualModelConfig数组
+   */
+  private convertPipelineTableToVirtualModelConfigs(pipelineTable: PipelineTable): VirtualModelConfig[] {
+    const entries = pipelineTable.getEntries();
+    const virtualModelConfigs: Map<string, VirtualModelConfig> = new Map();
+
+    for (const entry of entries) {
+      if (!virtualModelConfigs.has(entry.virtualModelId)) {
+        virtualModelConfigs.set(entry.virtualModelId, {
+          id: entry.virtualModelId,
+          name: entry.virtualModelId,
+          enabled: entry.enabled,
+          modelId: entry.modelId,
+          provider: entry.providerId,
+          targets: [],
+          capabilities: ['chat']
+        });
+      }
+
+      const vmConfig = virtualModelConfigs.get(entry.virtualModelId)!;
+      if (vmConfig.targets) {
+        vmConfig.targets.push({
+          providerId: entry.providerId,
+          modelId: entry.modelId,
+          weight: entry.weight || 1,
+          enabled: entry.enabled
+        });
+      }
+    }
+
+    return Array.from(virtualModelConfigs.values());
+  }
+
+  /**
+   * Load configuration from pipeline table
+   * 从流水线表加载配置
+   */
+  async loadFromPipelineTable(pipelineTable: PipelineTable): Promise<AssemblyResult> {
+    console.log('🚀 Starting pipeline assembly from pipeline table...');
+
+    try {
+      // Convert pipeline table to virtual model configs
+      const virtualModelConfigs = this.convertPipelineTableToVirtualModelConfigs(pipelineTable);
+      console.log(`📋 Converted pipeline table to ${virtualModelConfigs.length} virtual model configs`);
+
+      // Use existing assembly logic
+      return await this.assemblePipelines(virtualModelConfigs);
+
+    } catch (error) {
+      console.error('❌ Failed to load from pipeline table:', error);
+
+      return {
+        success: false,
+        pipelinePools: new Map(),
+        errors: [{
+          virtualModelId: 'pipeline-table',
+          error: `Failed to load from pipeline table: ${error instanceof Error ? error.message : String(error)}`
+        }],
+        warnings: []
+      };
+    }
   }
 
   /**
    * Assemble pipelines from virtual model configurations
    * 从虚拟模型配置组装流水线
    */
-  async assemblePipelines(virtualModelConfigs: VirtualModelConfig[]): Promise<AssemblyResult> {
+  async assemblePipelines(virtualModelConfigs?: VirtualModelConfig[]): Promise<AssemblyResult> {
     console.log('🚀 Starting pipeline assembly process...');
 
     const result: AssemblyResult = {
@@ -93,6 +323,35 @@ export class PipelineAssembler {
       errors: [],
       warnings: []
     };
+
+    // If config module integration is enabled and no explicit configs provided, load from config file
+    if (this.config.enableConfigModuleIntegration && (!virtualModelConfigs || virtualModelConfigs.length === 0)) {
+      console.log('📖 No explicit virtual model configs provided - loading from configuration file...');
+
+      const configData = await this.loadConfigurationAndGeneratePipelineTable();
+      if (configData && this.currentPipelineTable) {
+        // Convert pipeline table to virtual model configs and proceed
+        virtualModelConfigs = this.convertPipelineTableToVirtualModelConfigs(this.currentPipelineTable);
+        console.log(`✅ Loaded ${virtualModelConfigs.length} virtual model configurations from pipeline table`);
+      } else {
+        console.warn('⚠️  Failed to load configuration from file - falling back to empty configs');
+        virtualModelConfigs = [];
+      }
+    }
+
+    // Ensure we have virtual model configs to work with
+    if (!virtualModelConfigs || virtualModelConfigs.length === 0) {
+      console.warn('⚠️  No virtual model configurations available - creating empty assembly');
+      return {
+        success: false,
+        pipelinePools: new Map(),
+        errors: [{
+          virtualModelId: 'global',
+          error: 'No virtual model configurations available for assembly'
+        }],
+        warnings: []
+      };
+    }
 
     try {
       // Step 1: Discover available providers
@@ -456,6 +715,22 @@ export class PipelineAssembler {
   }
 
   /**
+   * Get current configuration data
+   * 获取当前配置数据
+   */
+  getCurrentConfigData(): ConfigData | undefined {
+    return this.currentConfigData;
+  }
+
+  /**
+   * Get current pipeline table
+   * 获取当前流水线表
+   */
+  getCurrentPipelineTable(): PipelineTable | undefined {
+    return this.currentPipelineTable;
+  }
+
+  /**
    * Get assembler status
    * 获取组装器状态
    */
@@ -466,6 +741,12 @@ export class PipelineAssembler {
     healthyPools: number;
     discoveredProviders: number;
     virtualModelIds: string[];
+    configModuleIntegration: {
+      enabled: boolean;
+      configLoaded: boolean;
+      pipelineTableGenerated: boolean;
+      configFilePath?: string;
+    };
   } {
     let totalPipelines = 0;
     // All pools are healthy
@@ -482,7 +763,13 @@ export class PipelineAssembler {
       totalPipelines,
       healthyPools,
       discoveredProviders: this.discoveredProviders.size,
-      virtualModelIds: Array.from(this.pipelinePools.keys())
+      virtualModelIds: Array.from(this.pipelinePools.keys()),
+      configModuleIntegration: {
+        enabled: this.config.enableConfigModuleIntegration || false,
+        configLoaded: !!this.currentConfigData,
+        pipelineTableGenerated: !!this.currentPipelineTable,
+        configFilePath: this.config.configFilePath
+      }
     };
   }
 

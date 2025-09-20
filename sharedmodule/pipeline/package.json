@@ -1,6 +1,6 @@
 {
   "name": "rcc-pipeline",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "RCC Pipeline Module - Pipeline system and workflow management based on pipeline-framework",
   "type": "module",
   "main": "dist/index.esm.js",
@@ -41,6 +41,7 @@
     "axios": "^1.12.2",
     "open": "^10.2.0",
     "rcc-basemodule": "^0.2.2",
+    "rcc-config-parser": "file:../config-parser",
     "rcc-debugcenter": "^0.1.0",
     "rcc-errorhandling": "^1.0.5"
   },

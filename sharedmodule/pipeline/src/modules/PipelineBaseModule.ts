@@ -342,6 +342,88 @@ export class PipelineBaseModule extends BaseModule {
   }
 
   /**
+   * Format error response with detailed information
+   * 格式化错误响应并提供详细信息
+   */
+  public formatErrorResponse(error: Error, context?: {
+    operation?: string;
+    stage?: string;
+    requestId?: string;
+    additionalData?: Record<string, any>;
+  }): any {
+    const errorResponse = {
+      error: {
+        type: error.name,
+        message: error.message,
+        code: this.getErrorCode(error),
+        details: this.getErrorDetails(error)
+      },
+      context: {
+        moduleId: this.info.id,
+        moduleName: this.info.name,
+        operation: context?.operation,
+        stage: context?.stage,
+        requestId: context?.requestId,
+        timestamp: Date.now(),
+        additionalData: context?.additionalData
+      },
+      system: {
+        status: 'error',
+        provider: this.info.name,
+        type: this.info.type
+      }
+    };
+
+    return errorResponse;
+  }
+
+  /**
+   * Get error code based on error type
+   * 根据错误类型获取错误代码
+   */
+  private getErrorCode(error: Error): string {
+    if (error.message.includes('401')) return 'AUTHENTICATION_ERROR';
+    if (error.message.includes('403')) return 'AUTHORIZATION_ERROR';
+    if (error.message.includes('404')) return 'NOT_FOUND';
+    if (error.message.includes('429')) return 'RATE_LIMIT_ERROR';
+    if (error.message.includes('500')) return 'SERVER_ERROR';
+    if (error.message.includes('timeout')) return 'TIMEOUT_ERROR';
+    if (error.message.includes('network')) return 'NETWORK_ERROR';
+    return 'UNKNOWN_ERROR';
+  }
+
+  /**
+   * Get detailed error information
+   * 获取详细的错误信息
+   */
+  private getErrorDetails(error: Error): any {
+    const details: any = {
+      stack: error.stack,
+      timestamp: Date.now()
+    };
+
+    // Add HTTP response details if available
+    if ((error as any).response) {
+      details.response = {
+        status: (error as any).response.status,
+        statusText: (error as any).response.statusText,
+        data: (error as any).response.data
+      };
+    }
+
+    // Add request details if available
+    if ((error as any).request) {
+      details.request = {
+        method: (error as any).request.method,
+        url: (error as any).request.url,
+        headers: (error as any).request.headers
+      };
+    }
+
+    return details;
+  }
+
+  /**
    * Get pipeline metrics
    * 获取流水线指标
    */

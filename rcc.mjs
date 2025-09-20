@@ -19,6 +19,33 @@ const __dirname = path.dirname(__filename);
 // Package configuration
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 
+/**
+ * Substitute environment variables with default values
+ * Supports ${VARIABLE:-default} syntax
+ */
+function substituteEnvironmentVariables(data) {
+  if (typeof data === 'string') {
+    return data.replace(/\$\{([^}]+)\}/g, (match, variableSpec) => {
+      // Check for default value syntax: ${VARIABLE:-default}
+      if (variableSpec.includes(':-')) {
+        const [variableName, defaultValue] = variableSpec.split(':-', 2);
+        return process.env[variableName] || defaultValue;
+      }
+      // Simple variable: ${VARIABLE}
+      return process.env[variableSpec] || match;
+    });
+  } else if (Array.isArray(data)) {
+    return data.map(item => substituteEnvironmentVariables(item));
+  } else if (typeof data === 'object' && data !== null) {
+    const result = {};
+    for (const [key, value] of Object.entries(data)) {
+      result[key] = substituteEnvironmentVariables(value);
+    }
+    return result;
+  }
+  return data;
+}
+
 // ServerModule integration - use local sharedmodule server
 let ServerModule = null;
 let DebugCenter = null;
@@ -161,7 +188,10 @@ program
       let config = { providers: {}, virtualModels: {}, pipeline: {} };
       try {
         if (fs.existsSync(configPath)) {
-          config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+          let configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+          // Apply environment variable substitution with default values
+          configData = substituteEnvironmentVariables(configData);
+          config = configData;
           console.log(`✅ Configuration loaded from: ${configPath}`);
           if (verbose) console.log('📋 Configuration content:', config);
         } else {
@@ -404,7 +434,8 @@ program
                   providerDiscoveryOptions: {
                     scanPaths: ['./sharedmodule'],
                     providerPatterns: ['*Provider.js', '*Provider.ts'],
-                    recursive: true
+                    recursive: true,
+                    providerConfigs: config.providers || {}
                   },
                   pipelineFactoryConfig: {
                     defaultTimeout: 30000,

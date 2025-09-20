@@ -1,3 +1,6 @@
+'use strict';
+
+var _documentCurrentScript = typeof document !== 'undefined' ? document.currentScript : null;
 const stopCommand = {
     name: 'stop',
     description: 'Stop RCC services',
@@ -220,7 +223,7 @@ const defaultCLIConfig = {
     commandDiscovery: {
         commandDirs: [
             // Built-in commands
-            import.meta.url + '/commands',
+            (typeof document === 'undefined' ? require('u' + 'rl').pathToFileURL(__filename).href : (_documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === 'SCRIPT' && _documentCurrentScript.src || new URL('index.esm.js', document.baseURI).href)) + '/commands',
             // Project-specific commands
             process.cwd() + '/commands',
             process.cwd() + '/src/commands',
@@ -232,5 +235,9 @@ const defaultCLIConfig = {
     defaultCommand: 'help',
 };
 
-export { cliTypes as CLI_TYPES, codeCommand, defaultCLIConfig, restartCommand, stopCommand };
+exports.CLI_TYPES = cliTypes;
+exports.codeCommand = codeCommand;
+exports.defaultCLIConfig = defaultCLIConfig;
+exports.restartCommand = restartCommand;
+exports.stopCommand = stopCommand;
 //# sourceMappingURL=index.esm.js.map

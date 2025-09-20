@@ -805,7 +805,7 @@ export class ServerModule extends BaseModule implements IServerModule {
                   const virtualModelMappings = this.pipelineScheduler.getVirtualModelMappings ?
                     this.pipelineScheduler.getVirtualModelMappings() : [];
 
-                  const existingMapping = virtualModelMappings.find(m => m.virtualModelId === modelId);
+                  const existingMapping = virtualModelMappings.find((m: any) => m.virtualModelId === modelId);
 
                   if (existingMapping) {
                     this.logInfo(`Virtual model verified in scheduler mappings: ${modelId}`, {

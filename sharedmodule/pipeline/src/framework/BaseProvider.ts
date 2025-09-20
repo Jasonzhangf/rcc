@@ -228,7 +228,7 @@ export abstract class BaseProvider extends PipelineBaseModule {
   
   // 基本方法实现
   public getInfo(): any {
-    return this.config;
+    return this.pipelineConfig;
   }
 
   public getConfig(): any {

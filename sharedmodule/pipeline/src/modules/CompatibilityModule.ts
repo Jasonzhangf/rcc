@@ -946,10 +946,10 @@ export class CompatibilityModule extends BasePipelineModule implements ICompatib
       } else {
         return {
           sourceField,
-          targetField: mapping.targetField,
-          type: mapping.transform ? 'transform' as const : 'direct' as const,
-          transformFunction: mapping.transform,
-          description: `Field mapping from ${sourceField} to ${mapping.targetField}`
+          targetField: (mapping as any).targetField,
+          type: (mapping as any).transform ? 'transform' as const : 'direct' as const,
+          transformFunction: (mapping as any).transform,
+          description: `Field mapping from ${sourceField} to ${(mapping as any).targetField}`
         };
       }
     });
@@ -972,7 +972,7 @@ export class CompatibilityModule extends BasePipelineModule implements ICompatib
 
     // 如果映射表中有特定配置，使用它
     if (this.mappingTable && this.mappingTable.formats) {
-      const formatConfig = this.mappingTable.formats[provider];
+      const formatConfig = (this.mappingTable as any).formats[provider];
       if (formatConfig) {
         return {
           ...defaultConfig,

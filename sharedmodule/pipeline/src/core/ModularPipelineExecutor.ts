@@ -292,6 +292,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
         virtualModelId,
         providerId,
         startTime: Date.now(),
+        ioRecords: [],
         metadata: context?.metadata || {},
         parentContext: context?.parentContext
       };

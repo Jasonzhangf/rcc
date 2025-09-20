@@ -385,7 +385,7 @@ export interface PipelineExecutionResult {
 export interface PipelineExecutionStep {
   moduleId: string;
   moduleName: string;
-  stepType: 'request' | 'response' | 'transformation';
+  stepType: 'request' | 'response' | 'transformation' | 'error';
   startTime: number;
   endTime: number;
   input?: any;

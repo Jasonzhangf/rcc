@@ -16,7 +16,6 @@ import {
 
 // 重新导出类型以便其他模块使用
 export type { ProtocolType } from '../interfaces/ModularInterfaces';
-export type { TransformContext } from '../interfaces/FieldMapping';
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -48,6 +48,27 @@ RCC is a comprehensive system designed to facilitate the development of AI appli
 - Recovery strategies and logging
 - Integration with debug systems
 
+### 6. rcc-llmswitch
+**Protocol conversion module**
+- Bidirectional protocol conversion between different AI providers
+- Anthropic to OpenAI request/response conversion
+- OpenAI to Anthropic request/response conversion
+- Dedicated protocol translation only - no additional functionality
+
+### 7. rcc-workflow
+**Stream processing module**
+- Converts streaming requests to non-streaming requests for downstream processing
+- Converts non-streaming responses back to streaming format for upstream delivery
+- Handles bidirectional stream/non-stream conversion only
+
+### 8. rcc-compatibility
+**Field mapping and compatibility layer**
+- Bidirectional field conversion within the same protocol family
+- JSON-based field mapping tables for compatibility
+- Supports qwen/iflow/lmstudio provider field mappings
+- Pass-through mode for fully OpenAI-compatible third-party services
+- Provider-specific field transformations
+
 ## ✨ Key Features
 
 ### Virtual Model Routing
@@ -77,6 +98,9 @@ npm install rcc-server
 npm install rcc-pipeline
 npm install rcc-bootstrap
 npm install rcc-errorhandling
+npm install rcc-llmswitch
+npm install rcc-workflow
+npm install rcc-compatibility
 ```
 
 ## 📖 Usage

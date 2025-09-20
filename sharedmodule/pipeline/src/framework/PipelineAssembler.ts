@@ -9,33 +9,29 @@ import { VirtualModelConfig } from '../types/virtual-model';
 import { Pipeline, PipelineConfig } from './Pipeline';
 import { BaseProvider } from './BaseProvider';
 import { VirtualModelSchedulerManager, ManagerConfig } from './VirtualModelSchedulerManager';
+import { EnhancedPipelineAssembler } from '../core/EnhancedPipelineAssembler';
+import { RoutingOptimizationConfig, DebugConfig } from '../interfaces/ModularInterfaces';
+// Import types from our interfaces module
+import {
+  PipelineWrapper,
+  ModuleConfig,
+  RoutingConfig
+} from '../interfaces/ModularInterfaces';
 
-// Type definitions for rcc-config-parser to resolve TypeScript errors
-// Since the module is untyped, we'll define the interfaces we need
+// Define types for config-parser integration
 interface ConfigData {
-  [key: string]: unknown;
+  [key: string]: any;
+}
+
+interface PipelineTable {
+  getEntries(): PipelineTableEntry[];
+  toJSON(): any;
 }
 
 interface PipelineTableEntry {
   id: string;
   name: string;
-  layer: string;
-  config: Record<string, unknown>;
-  virtualModelId: string;
-  enabled: boolean;
-  modelId: string;
-  providerId: string;
-  weight?: number;
-}
-
-interface PipelineTable {
-  entries: PipelineTableEntry[];
-  metadata: {
-    version: string;
-    created: string;
-  };
-  getEntries(): PipelineTableEntry[];
-  toJSON(): Record<string, unknown>;
+  config: any;
 }
 
 // Import config-parser types with proper type assertion
@@ -68,6 +64,9 @@ export interface AssemblerConfig {
   configFilePath?: string;
   enableConfigModuleIntegration?: boolean;
   pipelineTableOutputPath?: string;
+  // 新增：PipelineWrapper支持
+  pipelineWrapper?: PipelineWrapper;
+  enableModularPipeline?: boolean;
 }
 
 export interface PipelinePool {
@@ -120,16 +119,27 @@ export class PipelineAssembler {
   private currentConfigData?: ConfigData;
   private currentPipelineTable?: PipelineTable;
 
+  // Modular pipeline support
+  private pipelineWrapper?: PipelineWrapper;
+  private modularExecutor?: any; // IModularPipelineExecutor
+
   constructor(config: AssemblerConfig, pipelineTracker: PipelineTracker) {
     this.config = {
       enableAutoDiscovery: true,
       fallbackStrategy: 'first-available',
       enableConfigModuleIntegration: true,
+      enableModularPipeline: false,
       ...config
     };
 
     this.pipelineTracker = pipelineTracker;
     this.moduleScanner = new ModuleScanner();
+
+    // Initialize pipeline wrapper if provided
+    if (this.config.pipelineWrapper) {
+      this.pipelineWrapper = this.config.pipelineWrapper;
+      console.log('📦 PipelineWrapper provided for modular pipeline support');
+    }
 
     // Initialize configuration modules if enabled
     if (this.config.enableConfigModuleIntegration) {
@@ -284,14 +294,14 @@ export class PipelineAssembler {
     const virtualModelConfigs: Map<string, VirtualModelConfig> = new Map();
 
     for (const entry of entries) {
-      const virtualModelId = entry.virtualModelId || `vm-${entry.id}`;
+      const virtualModelId = `vm-${entry.id}`;
       if (!virtualModelConfigs.has(virtualModelId)) {
         virtualModelConfigs.set(virtualModelId, {
           id: virtualModelId,
           name: entry.name || virtualModelId,
-          enabled: entry.enabled !== false,
-          modelId: entry.modelId || 'default',
-          provider: entry.providerId || 'unknown',
+          enabled: entry.config?.enabled !== false,
+          modelId: entry.config?.modelId || 'default',
+          provider: entry.config?.providerId || 'unknown',
           targets: [],
           capabilities: ['chat']
         });
@@ -300,10 +310,10 @@ export class PipelineAssembler {
       const vmConfig = virtualModelConfigs.get(virtualModelId)!;
       if (vmConfig.targets) {
         vmConfig.targets.push({
-          providerId: entry.providerId || 'unknown',
-          modelId: entry.modelId || 'default',
-          weight: entry.weight || 1,
-          enabled: entry.enabled !== false
+          providerId: entry.config?.providerId || 'unknown',
+          modelId: entry.config?.modelId || 'default',
+          weight: entry.config?.weight || 1,
+          enabled: entry.config?.enabled !== false
         });
       }
     }
@@ -339,6 +349,424 @@ export class PipelineAssembler {
         warnings: []
       };
     }
+  }
+
+  /**
+   * Assemble pipelines from PipelineWrapper (modular approach)
+   * 从PipelineWrapper组装流水线（模块化方法）
+   */
+  async assemblePipelinesFromWrapper(wrapper: PipelineWrapper): Promise<AssemblyResult> {
+    console.log('🚀 Starting modular pipeline assembly from PipelineWrapper...');
+
+    if (!this.config.enableModularPipeline) {
+      throw new Error('Modular pipeline is not enabled. Set enableModularPipeline: true in config.');
+    }
+
+    const result: AssemblyResult = {
+      success: true,
+      pipelinePools: new Map(),
+      errors: [],
+      warnings: []
+    };
+
+    try {
+      // 验证PipelineWrapper配置
+      const validationResult = await this.validatePipelineWrapper(wrapper);
+      if (!validationResult.isValid) {
+        result.errors.push(...validationResult.errors.map(error => ({
+          virtualModelId: 'wrapper-validation',
+          error
+        })));
+        result.success = false;
+        return result;
+      }
+
+      // 使用模块化执行器组装流水线
+      const assemblyResult = await this.assembleModularPipelines(wrapper);
+
+      result.pipelinePools = assemblyResult.pipelinePools;
+      result.errors.push(...assemblyResult.errors);
+      result.warnings.push(...assemblyResult.warnings);
+      result.success = assemblyResult.success;
+
+      console.log(`🎯 Modular pipeline assembly completed. Success: ${result.success}`);
+      console.log(`📊 Results: ${result.pipelinePools.size} pools, ${result.errors.length} errors, ${result.warnings.length} warnings`);
+
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Modular assembly error:', errorMessage);
+
+      result.success = false;
+      result.errors.push({
+        virtualModelId: 'modular-assembly',
+        error: `Modular assembly error: ${errorMessage}`
+      });
+
+      return result;
+    }
+  }
+
+  /**
+   * Validate PipelineWrapper configuration
+   * 验证PipelineWrapper配置
+   */
+  private async validatePipelineWrapper(wrapper: PipelineWrapper): Promise<{
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+  }> {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // 验证虚拟模型配置
+    if (!wrapper.virtualModels || wrapper.virtualModels.length === 0) {
+      errors.push('PipelineWrapper.virtualModels不能为空');
+    }
+
+    // 验证模块配置
+    if (!wrapper.modules || wrapper.modules.length === 0) {
+      errors.push('PipelineWrapper.modules不能为空');
+    }
+
+    // 验证必需的模块类型
+    const requiredModuleTypes = ['llmswitch', 'workflow', 'compatibility', 'provider'];
+    const foundModuleTypes = new Set(wrapper.modules.map(m => m.type));
+
+    for (const requiredType of requiredModuleTypes) {
+      if (!foundModuleTypes.has(requiredType)) {
+        errors.push(`缺少必需的模块类型: ${requiredType}`);
+      }
+    }
+
+    // 验证路由配置
+    if (!wrapper.routing) {
+      errors.push('PipelineWrapper.routing不能为空');
+    } else {
+      if (!wrapper.routing.strategy) {
+        errors.push('PipelineWrapper.routing.strategy不能为空');
+      }
+      if (!wrapper.routing.fallbackStrategy) {
+        errors.push('PipelineWrapper.routing.fallbackStrategy不能为空');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+
+  /**
+   * Assemble modular pipelines using PipelineWrapper
+   * 使用PipelineWrapper组装模块化流水线
+   */
+  private async assembleModularPipelines(wrapper: PipelineWrapper): Promise<AssemblyResult> {
+    console.log('🏗️  Assembling modular pipelines from PipelineWrapper...');
+
+    const result: AssemblyResult = {
+      success: true,
+      pipelinePools: new Map(),
+      errors: [],
+      warnings: []
+    };
+
+    try {
+      // 为每个虚拟模型创建流水线池
+      for (const virtualModel of wrapper.virtualModels) {
+        try {
+          const pool = await this.assembleModularPipelinePool(virtualModel, wrapper);
+
+          if (pool.pipelines.size === 0) {
+            result.warnings.push({
+              virtualModelId: virtualModel.id,
+              warning: `No modular pipelines could be assembled for virtual model`
+            });
+          }
+
+          result.pipelinePools.set(virtualModel.id, pool);
+          console.log(`✅ Assembled modular pipeline pool for: ${virtualModel.id}`);
+
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          result.errors.push({
+            virtualModelId: virtualModel.id,
+            error: errorMessage
+          });
+          console.error(`❌ Failed to assemble modular pipeline for ${virtualModel.id}:`, errorMessage);
+        }
+      }
+
+      result.success = result.errors.length < wrapper.virtualModels.length;
+      return result;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Modular pipeline assembly failed:', errorMessage);
+
+      result.success = false;
+      result.errors.push({
+        virtualModelId: 'modular-assembly',
+        error: `Modular pipeline assembly failed: ${errorMessage}`
+      });
+
+      return result;
+    }
+  }
+
+  /**
+   * Assemble modular pipeline pool for a single virtual model
+   * 为单个虚拟模型组装模块化流水线池
+   */
+  private async assembleModularPipelinePool(virtualModel: any, wrapper: PipelineWrapper): Promise<PipelinePool> {
+    console.log(`🏗️  Assembling modular pipeline pool for: ${virtualModel.id}`);
+
+    const pipelines = new Map<string, Pipeline>();
+
+    try {
+      // 创建模块化流水线
+      const modularPipeline = await this.createModularPipeline(virtualModel, wrapper);
+      if (modularPipeline) {
+        const pipelineId = `modular_${virtualModel.id}`;
+        pipelines.set(pipelineId, modularPipeline);
+        console.log(`✅ Created modular pipeline: ${pipelineId}`);
+      }
+
+      const pool: PipelinePool = {
+        virtualModelId: virtualModel.id,
+        pipelines,
+        activePipeline: pipelines.size > 0 ? Array.from(pipelines.values())[0] : null,
+        healthStatus: 'healthy',
+        lastHealthCheck: Date.now(),
+        metrics: {
+          totalRequests: 0,
+          successfulRequests: 0,
+          failedRequests: 0,
+          averageResponseTime: 0
+        },
+        routingCapabilities: this.createModularRoutingCapabilities(virtualModel, wrapper)
+      };
+
+      console.log(`✅ Modular pipeline pool assembled for ${virtualModel.id}: ${pipelines.size} pipelines`);
+      return pool;
+
+    } catch (error) {
+      console.error(`❌ Failed to assemble modular pipeline pool for ${virtualModel.id}:`, error);
+
+      return {
+        virtualModelId: virtualModel.id,
+        pipelines: new Map(),
+        activePipeline: null,
+        healthStatus: 'healthy',
+        lastHealthCheck: Date.now(),
+        metrics: {
+          totalRequests: 0,
+          successfulRequests: 0,
+          failedRequests: 0,
+          averageResponseTime: 0
+        },
+        routingCapabilities: this.createDefaultModularRoutingCapabilities(virtualModel)
+      };
+    }
+  }
+
+  /**
+   * Create modular pipeline using wrapper configuration
+   * 使用wrapper配置创建模块化流水线
+   */
+  private async createModularPipeline(virtualModel: any, wrapper: PipelineWrapper): Promise<Pipeline | null> {
+    try {
+      console.log(`🔧 Creating modular pipeline for ${virtualModel.id}`);
+
+      // 初始化模块化执行器（如果尚未初始化）
+      if (!this.modularExecutor) {
+        await this.initializeModularExecutor(wrapper);
+      }
+
+      // 构建流水线配置
+      const pipelineConfig = this.buildModularPipelineConfig(virtualModel, wrapper);
+
+      // 创建模块化流水线实例
+      const pipeline = new Pipeline(pipelineConfig, this.pipelineTracker);
+
+      console.log(`✅ Created modular pipeline for ${virtualModel.id}`);
+      return pipeline;
+
+    } catch (error) {
+      console.error(`❌ Failed to create modular pipeline for ${virtualModel.id}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Initialize modular executor
+   * 初始化模块化执行器
+   */
+  private async initializeModularExecutor(wrapper: PipelineWrapper): Promise<void> {
+    try {
+      // 动态导入模块化执行器相关组件
+      const { ModularPipelineExecutor } = await import('../core/ModularPipelineExecutor');
+      const { ModuleFactory } = await import('../core/ModuleFactory');
+      const { ConfigurationValidator } = await import('../core/ConfigurationValidator');
+
+      // 创建模块工厂和配置验证器
+      const moduleFactory = new ModuleFactory();
+      const configValidator = new ConfigurationValidator();
+
+      // 创建模块化执行器
+      this.modularExecutor = new ModularPipelineExecutor(moduleFactory, configValidator);
+
+      // 初始化执行器
+      await this.modularExecutor.initialize(wrapper);
+
+      console.log('✅ Modular executor initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize modular executor:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Build modular pipeline configuration
+   * 构建模块化流水线配置
+   */
+  private buildModularPipelineConfig(virtualModel: any, wrapper: PipelineWrapper): any {
+    // 从wrapper配置中提取模块配置
+    const llmswitchModule = wrapper.modules.find(m => m.type === 'llmswitch');
+    const workflowModule = wrapper.modules.find(m => m.type === 'workflow');
+    const compatibilityModule = wrapper.modules.find(m => m.type === 'compatibility');
+    const providerModule = wrapper.modules.find(m => m.type === 'provider');
+
+    // 确定目标提供商和模型
+    const target = virtualModel.targets[0] || { providerId: 'default', modelId: 'default' };
+
+    return {
+      id: `modular_pipeline_${virtualModel.id}_${Date.now()}`,
+      name: `Modular Pipeline for ${virtualModel.name || virtualModel.id}`,
+      virtualModelId: virtualModel.id,
+      description: `Modular pipeline using LLM Switch → Workflow → Compatibility → Provider architecture`,
+      type: 'modular',
+
+      // 模块配置
+      modules: {
+        llmswitch: llmswitchModule,
+        workflow: workflowModule,
+        compatibility: compatibilityModule,
+        provider: providerModule
+      },
+
+      // 目标配置
+      targets: [{
+        id: `${virtualModel.id}_${target.providerId}_${target.modelId}`,
+        providerId: target.providerId,
+        modelId: target.modelId,
+        weight: target.weight || 1,
+        enabled: target.enabled !== false,
+        healthStatus: 'healthy',
+        lastHealthCheck: Date.now(),
+        requestCount: 0,
+        errorCount: 0,
+        metadata: {
+          virtualModelId: virtualModel.id,
+          providerId: target.providerId,
+          modelId: target.modelId,
+          modularPipeline: true
+        }
+      }],
+
+      // 流水线配置
+      loadBalancingStrategy: 'round-robin',
+      healthCheckInterval: 60000,
+      maxRetries: 3,
+      timeout: 30000,
+
+      // 模块化执行配置
+      modularConfig: {
+        enableModularExecution: true,
+        executionOrder: ['llmswitch', 'workflow', 'compatibility', 'provider'],
+        responseOrder: ['provider', 'compatibility', 'workflow', 'llmswitch'],
+        enableStreaming: true,
+        enableProtocolConversion: true,
+        enableFieldMapping: true
+      },
+
+      // 元数据
+      metadata: {
+        virtualModelName: virtualModel.name || virtualModel.id,
+        virtualModelProvider: target.providerId,
+        capabilities: virtualModel.capabilities || ['chat'],
+        targetProvider: target.providerId,
+        targetModel: target.modelId,
+        wrapperVersion: wrapper.metadata?.version || '1.0.0',
+        architecture: 'modular'
+      }
+    };
+  }
+
+  /**
+   * Create modular routing capabilities
+   * 创建模块化路由能力
+   */
+  private createModularRoutingCapabilities(virtualModel: any, wrapper: PipelineWrapper): any {
+    // 从wrapper的路由配置创建路由能力
+    return {
+      supportedModels: [virtualModel.modelId || 'default'],
+      maxTokens: 4000,
+      supportsStreaming: true,
+      supportsTools: true,
+      supportsImages: false,
+      supportsFunctionCalling: true,
+      supportsMultimodal: false,
+      supportedModalities: ['text'],
+      priority: 50,
+      availability: 0.9,
+      loadWeight: 1.0,
+      costScore: 0.5,
+      performanceScore: 0.7,
+      routingTags: ['modular', 'pipeline-wrapper'],
+      extendedCapabilities: {
+        supportsVision: false,
+        supportsAudio: false,
+        supportsCodeExecution: false,
+        supportsWebSearch: false,
+        maxContextLength: 4000,
+        temperatureRange: [0, 1],
+        topPRange: [0, 1]
+      }
+    };
+  }
+
+  /**
+   * Create default modular routing capabilities
+   * 创建默认模块化路由能力
+   */
+  private createDefaultModularRoutingCapabilities(virtualModel: any): any {
+    return {
+      supportedModels: [virtualModel.modelId || 'default'],
+      maxTokens: 4000,
+      supportsStreaming: true,
+      supportsTools: true,
+      supportsImages: false,
+      supportsFunctionCalling: true,
+      supportsMultimodal: false,
+      supportedModalities: ['text'],
+      priority: 30,
+      availability: 0.5,
+      loadWeight: 1.0,
+      costScore: 0.5,
+      performanceScore: 0.5,
+      routingTags: ['modular', 'fallback'],
+      extendedCapabilities: {
+        supportsVision: false,
+        supportsAudio: false,
+        supportsCodeExecution: false,
+        supportsWebSearch: false,
+        maxContextLength: 4000,
+        temperatureRange: [0, 1],
+        topPRange: [0, 1]
+      }
+    };
   }
 
   /**

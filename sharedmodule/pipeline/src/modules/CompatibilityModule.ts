@@ -1,5 +1,12 @@
 import { ModuleInfo, ValidationRule } from 'rcc-basemodule';
 import { BasePipelineModule } from './BasePipelineModule';
+import {
+  ICompatibilityModule,
+  IPipelineModule,
+  FieldMapping,
+  PipelineExecutionContext,
+  ModuleConfig
+} from '../interfaces/ModularInterfaces';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -27,9 +34,9 @@ export interface CompatibilityConfig {
 }
 
 /**
- * Field Mapping Configuration
+ * Compatibility Field Mapping Configuration - extends the base FieldMapping interface
  */
-export interface FieldMapping {
+export interface CompatibilityFieldMapping {
   /** Target field name */
   targetField: string;
   /** Transform function */
@@ -66,7 +73,7 @@ export interface MappingTable {
   /** Table description */
   description: string;
   /** Field mappings */
-  fieldMappings: Record<string, string | FieldMapping>;
+  fieldMappings: Record<string, string | CompatibilityFieldMapping>;
   /** Validation rules */
   validationRules?: {
     /** Global required fields */
@@ -94,7 +101,7 @@ export interface ValidationContext {
   /** Validation mode */
   mode: 'request' | 'response';
   /** Mapping rules */
-  mapping: Record<string, FieldMapping>;
+  mapping: Record<string, CompatibilityFieldMapping>;
   /** Validation configuration */
   validation: CompatibilityConfig['validation'];
 }
@@ -113,14 +120,33 @@ export interface ValidationResult {
   transformedData: any;
 }
 
-export class CompatibilityModule extends BasePipelineModule {
-  protected config: CompatibilityConfig = {} as CompatibilityConfig;
+export class CompatibilityModule extends BasePipelineModule implements ICompatibilityModule {
+  protected config!: CompatibilityConfig;
+  public readonly moduleId: string;
+  public readonly moduleName: string;
+  public readonly moduleVersion: string;
   private mappingTable: MappingTable | null = null;
-  private fieldMappings: Record<string, FieldMapping> = {};
+  private compatibilityFieldMappings: Record<string, CompatibilityFieldMapping> = {};
   private mappingValidationRules: MappingTable['validationRules'] = {};
+  private isInitialized: boolean = false;
 
-  constructor(info: ModuleInfo) {
-    super(info);
+  constructor(config: ModuleConfig) {
+    // 创建符合BaseModule要求的ModuleInfo
+    const moduleInfo: ModuleInfo = {
+      id: config.id,
+      name: config.name || 'Compatibility Module',
+      version: config.version || '1.0.0',
+      type: 'compatibility',
+      description: 'Handles field mapping and provider compatibility'
+    };
+    super(moduleInfo);
+    this.moduleId = config.id;
+    this.moduleName = config.name || 'Compatibility Module';
+    this.moduleVersion = config.version || '1.0.0';
+
+    // 设置配置
+    this.config = config.config as CompatibilityConfig;
+
     this.logInfo('CompatibilityModule initialized', { module: this.moduleName }, 'constructor');
   }
 
@@ -128,22 +154,29 @@ export class CompatibilityModule extends BasePipelineModule {
    * Configure the Compatibility module
    * @param config - Configuration object
    */
-  async configure(config: CompatibilityConfig): Promise<void> {
-    this.logInfo('Configuring CompatibilityModule', config, 'configure');
-    
-    this.config = config;
-    
+  /**
+   * 初始化模块 (实现IPipelineModule接口)
+   */
+  async initialize(config?: ModuleConfig): Promise<void> {
+    // 如果有传入配置，更新配置
+    if (config) {
+      this.config = config.config as CompatibilityConfig;
+    }
+
+    this.logInfo('Configuring CompatibilityModule', this.config, 'initialize');
+
     // Validate configuration
-    this.validateConfig(config);
-    
+    this.validateConfig();
+
     // Load mapping table
-    await this.loadMappingTable(config.mappingTable);
-    
+    await this.loadMappingTable(this.config.mappingTable);
+
     // Process field mappings
     this.processFieldMappings();
-    
-    await super.configure(config);
-    this.logInfo('CompatibilityModule configured successfully', config, 'configure');
+
+    await super.configure(this.config);
+    this.isInitialized = true;
+    this.logInfo('CompatibilityModule configured successfully', this.config, 'initialize');
   }
 
   /**
@@ -238,13 +271,13 @@ export class CompatibilityModule extends BasePipelineModule {
    * Validate configuration
    * @param config - Configuration to validate
    */
-  private validateConfig(config: CompatibilityConfig): void {
-    if (!config.mappingTable) {
+  private validateConfig(): void {
+    if (!this.config.mappingTable) {
       throw new Error('Mapping table name is required');
     }
-    
-    if (config.validation?.enabled && !config.validation.required?.length) {
-      this.logInfo('Validation enabled but no required fields specified', config.validation, 'validateConfig');
+
+    if (this.config.validation?.enabled && !this.config.validation.required?.length) {
+      this.logInfo('Validation enabled but no required fields specified', this.config.validation, 'validateConfig');
     }
   }
 
@@ -314,25 +347,25 @@ export class CompatibilityModule extends BasePipelineModule {
       return;
     }
     
-    this.fieldMappings = {};
+    this.compatibilityFieldMappings = {};
     
     for (const [sourceField, mapping] of Object.entries(this.mappingTable.fieldMappings)) {
       if (typeof mapping === 'string') {
         // Simple field rename
-        this.fieldMappings[sourceField] = {
+        this.compatibilityFieldMappings[sourceField] = {
           targetField: mapping,
           required: false
         };
       } else {
         // Complex field mapping
-        this.fieldMappings[sourceField] = mapping;
+        this.compatibilityFieldMappings[sourceField] = mapping;
       }
     }
     
     this.logInfo('Processed field mappings', {
-      totalCount: Object.keys(this.fieldMappings).length,
-      requiredCount: Object.values(this.fieldMappings).filter(m => m.required).length,
-      transformCount: Object.values(this.fieldMappings).filter(m => m.transform).length
+      totalCount: Object.keys(this.compatibilityFieldMappings).length,
+      requiredCount: Object.values(this.compatibilityFieldMappings).filter(m => m.required).length,
+      transformCount: Object.values(this.compatibilityFieldMappings).filter(m => m.transform).length
     }, 'processFieldMappings');
   }
 
@@ -347,7 +380,7 @@ export class CompatibilityModule extends BasePipelineModule {
     }
     
     this.logInfo('Applying field mapping', {
-      fieldCount: Object.keys(this.fieldMappings).length,
+      fieldCount: Object.keys(this.compatibilityFieldMappings).length,
       dataFieldCount: Object.keys(data).length
     }, 'applyFieldMapping');
     
@@ -355,7 +388,7 @@ export class CompatibilityModule extends BasePipelineModule {
     const unmappedFields: string[] = [];
     
     // Apply mapped fields
-    for (const [sourceField, mapping] of Object.entries(this.fieldMappings)) {
+    for (const [sourceField, mapping] of Object.entries(this.compatibilityFieldMappings)) {
       const sourceValue = data[sourceField];
       
       if (sourceValue !== undefined) {
@@ -396,7 +429,7 @@ export class CompatibilityModule extends BasePipelineModule {
     // Handle unknown fields
     if (this.config?.preserveUnknownFields) {
       for (const field of Object.keys(data)) {
-        if (!(field in this.fieldMappings)) {
+        if (!(field in this.compatibilityFieldMappings)) {
           mappedData[field] = data[field];
           unmappedFields.push(field);
         }
@@ -424,7 +457,7 @@ export class CompatibilityModule extends BasePipelineModule {
    * @param validation - Validation constraints
    * @param field - Field name
    */
-  private validateFieldValue(value: any, validation: FieldMapping['validation'], field: string): void {
+  private validateFieldValue(value: any, validation: CompatibilityFieldMapping['validation'], field: string): void {
     if (!validation || !this.config?.validation?.enabled) {
       return;
     }
@@ -505,7 +538,7 @@ export class CompatibilityModule extends BasePipelineModule {
     const context: ValidationContext = {
       data,
       mode,
-      mapping: this.fieldMappings,
+      mapping: this.compatibilityFieldMappings,
       validation: this.config.validation
     };
     
@@ -837,12 +870,156 @@ export class CompatibilityModule extends BasePipelineModule {
   private async applyFinalTransformations(data: any): Promise<any> {
     // Additional post-processing can be added here
     // For example, data normalization, format adjustments, etc.
-    
+
     this.debug('debug', 'Applying final transformations', {
       fieldCount: Object.keys(data).length,
       dataType: typeof data
     }, 'applyFinalTransformations');
-    
+
     return data;
+  }
+
+  /**
+   * 映射请求字段 (实现ICompatibilityModule接口)
+   */
+  async mapRequest(request: any, provider: string, context: PipelineExecutionContext): Promise<any> {
+    if (!this.isInitialized) {
+      throw new Error('Compatibility module not initialized');
+    }
+
+    try {
+      this.logInfo('Mapping request for provider', {
+        provider,
+        requestId: context.requestId,
+        fieldCount: Object.keys(request).length
+      }, 'mapRequest');
+
+      // 使用现有的process方法处理请求
+      return await this.process(request);
+    } catch (error) {
+      this.error('Request mapping failed', error, 'mapRequest');
+      throw error;
+    }
+  }
+
+  /**
+   * 映射响应字段 (实现ICompatibilityModule接口)
+   */
+  async mapResponse(response: any, provider: string, context: PipelineExecutionContext): Promise<any> {
+    if (!this.isInitialized) {
+      throw new Error('Compatibility module not initialized');
+    }
+
+    try {
+      this.logInfo('Mapping response for provider', {
+        provider,
+        requestId: context.requestId
+      }, 'mapResponse');
+
+      // 使用现有的processResponse方法处理响应
+      return await this.processResponse(response);
+    } catch (error) {
+      this.error('Response mapping failed', error, 'mapResponse');
+      throw error;
+    }
+  }
+
+  /**
+   * 获取字段映射配置 (实现ICompatibilityModule接口)
+   */
+  getFieldMappings(provider: string): FieldMapping[] {
+    if (!this.mappingTable) {
+      return [];
+    }
+
+    // 获取特定提供商的映射配置
+    const providerMappings = this.mappingTable.fieldMappings[provider] || {};
+
+    // 转换为FieldMapping数组
+    return Object.entries(providerMappings).map(([sourceField, mapping]) => {
+      if (typeof mapping === 'string') {
+        return {
+          sourceField,
+          targetField: mapping,
+          type: 'direct' as const
+        };
+      } else {
+        return {
+          sourceField,
+          targetField: mapping.targetField,
+          type: mapping.transform ? 'transform' as const : 'direct' as const,
+          transformFunction: mapping.transform,
+          description: `Field mapping from ${sourceField} to ${mapping.targetField}`
+        };
+      }
+    });
+  }
+
+  /**
+   * 获取特定提供商的兼容性配置 (实现ICompatibilityModule接口)
+   */
+  getCompatibilityConfig(provider: string): {
+    supportsStreaming: boolean;
+    supportedModels: string[];
+    specialHandling: Record<string, any>;
+  } {
+    // 这里可以根据映射表中的信息推断配置
+    const defaultConfig = {
+      supportsStreaming: false,
+      supportedModels: ['*'],
+      specialHandling: {}
+    };
+
+    // 如果映射表中有特定配置，使用它
+    if (this.mappingTable && this.mappingTable.formats) {
+      const formatConfig = this.mappingTable.formats[provider];
+      if (formatConfig) {
+        return {
+          ...defaultConfig,
+          supportsStreaming: formatConfig.supportsStreaming || false,
+          supportedModels: formatConfig.supportedModels || ['*'],
+          specialHandling: formatConfig.specialHandling || {}
+        };
+      }
+    }
+
+    return defaultConfig;
+  }
+
+  /**
+   * 获取模块状态 (实现IPipelineModule接口)
+   */
+  async getStatus(): Promise<{
+    isInitialized: boolean;
+    isRunning: boolean;
+    lastError?: Error;
+    statistics: {
+      requestsProcessed: number;
+      averageResponseTime: number;
+      errorRate: number;
+    };
+  }> {
+    return {
+      isInitialized: this.isInitialized,
+      isRunning: this.isInitialized,
+      lastError: undefined,
+      statistics: {
+        requestsProcessed: 0, // 简化实现
+        averageResponseTime: 0,
+        errorRate: 0
+      }
+    };
+  }
+
+  /**
+   * 销毁模块 (实现IPipelineModule接口)
+   */
+  async destroy(): Promise<void> {
+    await super.destroy();
+    this.mappingTable = null;
+    this.compatibilityFieldMappings = {};
+    this.mappingValidationRules = {};
+    this.isInitialized = false;
+    this.logInfo('CompatibilityModule destroyed', {}, 'destroy');
   }
 }

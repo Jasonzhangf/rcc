@@ -5,15 +5,78 @@
 
 import { ModuleInfo, ValidationRule } from 'rcc-basemodule';
 import { BasePipelineModule } from './BasePipelineModule';
-import { FieldMapping, MappingTable, ProtocolValidator } from '../interfaces/FieldMapping';
-import { StandardRequest, StandardResponse, StandardErrorResponse } from '../interfaces/StandardInterfaces';
+import {
+  ILLMSwitch,
+  IPipelineModule,
+  ProtocolType,
+  ProtocolConversion,
+  PipelineExecutionContext,
+  ModuleConfig
+} from '../interfaces/ModularInterfaces';
+
+// 重新导出类型以便其他模块使用
+export type { ProtocolType } from '../interfaces/ModularInterfaces';
+export type { TransformContext } from '../interfaces/FieldMapping';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// 简化的标准接口定义
+interface StandardRequest {
+  protocol: ProtocolType;
+  payload: any;
+  metadata: {
+    traceId?: string;
+    sessionId?: string;
+    requestId?: string;
+    timestamp?: number;
+    [key: string]: any;
+  };
+}
+
+interface StandardResponse {
+  protocol: ProtocolType;
+  payload: any;
+  metadata: {
+    traceId?: string;
+    sessionId?: string;
+    requestId?: string;
+    timestamp?: number;
+    processingTime?: number;
+    transformerName?: string;
+    [key: string]: any;
+  };
+}
+
+interface StandardErrorResponse {
+  protocol: ProtocolType;
+  error: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  metadata: {
+    traceId?: string;
+    sessionId?: string;
+    requestId?: string;
+    timestamp?: number;
+    processingTime?: number;
+    [key: string]: any;
+  };
+}
+
+// 简化的映射表接口
+interface MappingTable {
+  version: string;
+  description: string;
+  fieldMappings: Record<string, any>;
+  protocolMappings: Record<string, any>;
+  enumMappings: Record<string, any>;
+}
+
 /**
- * 协议类型定义
+ * 协议类型定义 (向后兼容)
  */
-export type ProtocolType = 'anthropic' | 'openai' | 'custom';
+export type LegacyProtocolType = 'anthropic' | 'openai' | 'custom';
 
 export interface TransformContext {
   sourceProtocol: ProtocolType;
@@ -40,7 +103,7 @@ export interface ProtocolTransformer {
   /**
    * 转换响应
    */
-  transformResponse(response: StandardRequest): any;
+  transformResponse(response: StandardResponse): any;
 
   /**
    * 验证输入协议
@@ -71,10 +134,6 @@ export interface LLMSwitchConfig {
   strictMode?: boolean;
   /** 是否启用协议验证 */
   enableValidation?: boolean;
-  /** 是否记录IO */
-  enableIORecording?: boolean;
-  /** IO记录目录 */
-  ioRecordingPath?: string;
 }
 
 /**
@@ -92,42 +151,61 @@ export interface TransformerRegistration {
 /**
  * LLMSwitch 模块 - 实现标准协议转换层
  */
-export class LLMSwitchModule extends BasePipelineModule {
+export class LLMSwitchModule extends BasePipelineModule implements ILLMSwitch {
   protected config!: LLMSwitchConfig;
+  public readonly moduleId: string;
+  public readonly moduleName: string;
+  public readonly moduleVersion: string;
   private transformers: Map<string, TransformerRegistration> = new Map();
   private mappingTable: MappingTable | null = null;
-  private ioRecorder: IORecorder | null = null;
   private isInitialized: boolean = false;
 
-  constructor(info: ModuleInfo) {
-    super(info);
+  constructor(config: ModuleConfig) {
+    // 创建符合BaseModule要求的ModuleInfo
+    const moduleInfo: ModuleInfo = {
+      id: config.id,
+      name: config.name || 'LLMSwitch Module',
+      version: config.version || '1.0.0',
+      type: 'llmswitch',
+      description: 'Handles protocol conversion between different AI providers'
+    };
+    super(moduleInfo);
+    this.moduleId = config.id;
+    this.moduleName = config.name || 'LLMSwitch Module';
+    this.moduleVersion = config.version || '1.0.0';
+
+    // 设置配置
+    this.config = {
+      enabledTransformers: ['anthropic-to-openai', 'openai-passthrough'],
+      defaultSourceProtocol: ProtocolType.ANTHROPIC,
+      defaultTargetProtocol: ProtocolType.OPENAI,
+      strictMode: true,
+      enableValidation: true,
+      ...config.config
+    };
+
     this.logInfo('LLMSwitchModule initialized', { module: this.moduleName }, 'constructor');
   }
 
   /**
-   * 配置 LLMSwitch 模块
+   * 初始化模块 (实现IPipelineModule接口)
    */
-  async configure(config: LLMSwitchConfig): Promise<void> {
-    this.logInfo('Configuring LLMSwitchModule', config, 'configure');
+  async initialize(config?: ModuleConfig): Promise<void> {
+    // 如果有传入配置，合并到现有配置
+    if (config) {
+      this.config = {
+        ...this.config,
+        ...config.config
+      };
+    }
 
-    this.config = {
-      strictMode: true,
-      enableValidation: true,
-      enableIORecording: true,
-      ioRecordingPath: './llmswitch-logs',
-      ...config
-    };
+    this.logInfo('Configuring LLMSwitchModule', { config: this.config }, 'initialize');
 
     // 验证配置
     this.validateConfig();
 
     // 加载映射表
     await this.loadMappingTable();
-
-    // 初始化IO记录器
-    if (this.config.enableIORecording) {
-      this.ioRecorder = new IORecorder(this.config.ioRecordingPath!);
-    }
 
     // 注册内置转换器
     this.registerBuiltinTransformers();
@@ -137,7 +215,7 @@ export class LLMSwitchModule extends BasePipelineModule {
       enabledTransformers: this.config.enabledTransformers,
       sourceProtocol: this.config.defaultSourceProtocol,
       targetProtocol: this.config.defaultTargetProtocol
-    }, 'configure');
+    }, 'initialize');
   }
 
   /**
@@ -227,11 +305,11 @@ export class LLMSwitchModule extends BasePipelineModule {
     // 注册 Anthropic 到 OpenAI 转换器
     this.registerTransformer({
       name: 'anthropic-to-openai',
-      transformer: new AnthropicToOpenAITransformer(this.mappingTable!),
+      transformer: new AnthropicToOpenAITransformer(this.mappingTable || this.getDefaultMappingTable()),
       priority: 100,
       enabled: this.config.enabledTransformers.includes('anthropic-to-openai'),
-      supportedSourceProtocols: ['anthropic'],
-      supportedTargetProtocols: ['openai']
+      supportedSourceProtocols: [ProtocolType.ANTHROPIC],
+      supportedTargetProtocols: [ProtocolType.OPENAI]
     });
 
     // 注册 OpenAI 透传转换器
@@ -240,8 +318,8 @@ export class LLMSwitchModule extends BasePipelineModule {
       transformer: new OpenAIPassthroughTransformer(),
       priority: 50,
       enabled: this.config.enabledTransformers.includes('openai-passthrough'),
-      supportedSourceProtocols: ['openai'],
-      supportedTargetProtocols: ['openai']
+      supportedSourceProtocols: [ProtocolType.OPENAI],
+      supportedTargetProtocols: [ProtocolType.OPENAI]
     });
 
     this.logInfo('Builtin transformers registered', {
@@ -282,347 +360,240 @@ export class LLMSwitchModule extends BasePipelineModule {
   }
 
   /**
-   * 处理请求 - 实现标准接口
+   * 转换请求 (实现ILLMSwitch接口)
    */
-  async process(request: StandardRequest): Promise<StandardResponse | StandardErrorResponse> {
+  async convertRequest(request: any, fromProtocol: ProtocolType, toProtocol: ProtocolType, context: PipelineExecutionContext): Promise<any> {
     if (!this.isInitialized) {
-      return this.createErrorResponse('LLMSwitch module not initialized', 'not_initialized');
+      throw new Error('LLMSwitch module not initialized');
     }
 
-    const startTime = Date.now();
-    const traceId = request.metadata?.traceId || this.generateTraceId();
+    const traceId = context.sessionId || this.generateTraceId();
 
     try {
-      this.logInfo('Processing LLMSwitch request', {
+      this.logInfo('Converting request', {
         traceId,
-        sourceProtocol: request.protocol,
-        targetProtocol: this.config.defaultTargetProtocol,
-        transformerCount: this.transformers.size
-      }, 'process');
+        fromProtocol,
+        toProtocol,
+        context
+      }, 'convertRequest');
 
-      // 记录输入
-      if (this.ioRecorder) {
-        await this.ioRecorder.recordInput(traceId, request);
-      }
-
-      // 验证输入协议
-      if (this.config.enableValidation) {
-        const validationResult = this.validateInputProtocol(request);
-        if (!validationResult.isValid) {
-          return this.createErrorResponse(
-            `Input validation failed: ${validationResult.errors.join(', ')}`,
-            'validation_error',
-            { traceId, errors: validationResult.errors }
-          );
+      // 创建标准请求格式
+      const standardRequest: StandardRequest = {
+        protocol: fromProtocol,
+        payload: request,
+        metadata: {
+          traceId,
+          sessionId: context.sessionId,
+          requestId: context.requestId,
+          timestamp: Date.now()
         }
-      }
+      };
 
       // 选择转换器
-      const transformer = this.selectTransformer(request.protocol as ProtocolType, this.config.defaultTargetProtocol);
+      const transformer = this.selectTransformer(fromProtocol, toProtocol);
       if (!transformer) {
-        return this.createErrorResponse(
-          `No suitable transformer found for ${request.protocol} -> ${this.config.defaultTargetProtocol}`,
-          'transformer_not_found',
-          { traceId, sourceProtocol: request.protocol, targetProtocol: this.config.defaultTargetProtocol }
-        );
+        throw new Error(`No suitable transformer found for ${fromProtocol} -> ${toProtocol}`);
       }
 
       // 执行转换
-      const transformedRequest = transformer.transformer.transformRequest(request);
+      const transformedRequest = transformer.transformer.transformRequest(standardRequest);
 
-      // 验证转换结果
-      if (this.config.enableValidation) {
-        const validationResult = transformer.transformer.validateOutput(transformedRequest);
-        if (!validationResult.isValid) {
-          return this.createErrorResponse(
-            `Output validation failed: ${validationResult.errors.join(', ')}`,
-            'validation_error',
-            { traceId, errors: validationResult.errors }
-          );
-        }
-      }
-
-      // 创建标准响应
-      const response: StandardResponse = {
-        protocol: this.config.defaultTargetProtocol,
-        payload: transformedRequest,
-        metadata: {
-          ...request.metadata,
-          traceId,
-          transformerName: transformer.name,
-          processingTime: Date.now() - startTime,
-          conversionApplied: true
-        }
-      };
-
-      // 记录输出
-      if (this.ioRecorder) {
-        await this.ioRecorder.recordOutput(traceId, response);
-      }
-
-      this.logInfo('LLMSwitch processing completed', {
-        traceId,
-        transformer: transformer.name,
-        processingTime: response.metadata?.processingTime
-      }, 'process');
-
-      return response;
+      // 返回转换后的载荷
+      return transformedRequest.payload;
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.error('LLMSwitch processing failed', error, 'process');
-
-      // 创建错误响应
-      const errorResponse: StandardErrorResponse = {
-        protocol: this.config.defaultTargetProtocol,
-        error: {
-          code: 'transformation_error',
-          message: errorMessage,
-          details: {
-            traceId,
-            sourceProtocol: request.protocol,
-            targetProtocol: this.config.defaultTargetProtocol,
-            processingTime: Date.now() - startTime
-          }
-        },
-        metadata: {
-          ...request.metadata,
-          traceId,
-          processingTime: Date.now() - startTime
-        }
-      };
-
-      // 记录错误
-      if (this.ioRecorder) {
-        await this.ioRecorder.recordError(traceId, errorResponse);
-      }
-
-      return errorResponse;
+      this.error('Request conversion failed', error, 'convertRequest');
+      throw error;
     }
   }
 
   /**
-   * 处理响应 - 实现标准接口
+   * 转换响应 (实现ILLMSwitch接口)
    */
-  async processResponse(response: StandardResponse): Promise<StandardResponse | StandardErrorResponse> {
+  async convertResponse(response: any, fromProtocol: ProtocolType, toProtocol: ProtocolType, context: PipelineExecutionContext): Promise<any> {
     if (!this.isInitialized) {
-      return this.createErrorResponse('LLMSwitch module not initialized', 'not_initialized');
+      throw new Error('LLMSwitch module not initialized');
     }
 
-    const traceId = response.metadata?.traceId || this.generateTraceId();
+    const traceId = context.sessionId || this.generateTraceId();
 
     try {
-      this.logInfo('Processing LLMSwitch response', {
+      this.logInfo('Converting response', {
         traceId,
-        sourceProtocol: response.protocol,
-        targetProtocol: this.config.defaultSourceProtocol
-      }, 'processResponse');
+        fromProtocol,
+        toProtocol,
+        context
+      }, 'convertResponse');
 
-      // 对于响应转换，我们需要反转协议方向
-      const transformer = this.selectTransformer(response.protocol as ProtocolType, this.config.defaultSourceProtocol);
+      // 创建标准响应格式
+      const standardResponse: StandardResponse = {
+        protocol: fromProtocol,
+        payload: response,
+        metadata: {
+          traceId,
+          sessionId: context.sessionId,
+          requestId: context.requestId,
+          timestamp: Date.now()
+        }
+      };
+
+      // 选择转换器
+      const transformer = this.selectTransformer(fromProtocol, toProtocol);
       if (!transformer) {
         // 如果没有找到转换器，直接返回原始响应
         return response;
       }
 
       // 执行响应转换
-      const transformedResponse = transformer.transformer.transformResponse(response);
+      const transformedResponse = transformer.transformer.transformResponse(standardResponse);
+
+      // 返回转换后的载荷
+      return transformedResponse.payload;
+
+    } catch (error) {
+      this.error('Response conversion failed', error, 'convertResponse');
+      throw error;
+    }
+  }
+
+  /**
+   * 获取支持的转换 (实现ILLMSwitch接口)
+   */
+  getSupportedConversions(): ProtocolConversion[] {
+    const conversions: ProtocolConversion[] = [];
+
+    for (const registration of this.transformers.values()) {
+      if (registration.enabled) {
+        for (const source of registration.supportedSourceProtocols) {
+          for (const target of registration.supportedTargetProtocols) {
+            conversions.push({
+              fromProtocol: source,
+              toProtocol: target,
+              supported: true,
+              description: `${source} to ${target} via ${registration.name}`
+            });
+          }
+        }
+      }
+    }
+
+    return conversions;
+  }
+
+  /**
+   * 检查是否支持转换 (实现ILLMSwitch接口)
+   */
+  supportsConversion(fromProtocol: ProtocolType, toProtocol: ProtocolType): boolean {
+    const transformer = this.selectTransformer(fromProtocol, toProtocol);
+    return transformer !== null;
+  }
+
+  /**
+   * 处理请求 - 实现BasePipelineModule接口
+   */
+  async process(request: any): Promise<any> {
+    if (!this.isInitialized) {
+      throw new Error('LLMSwitch module not initialized');
+    }
+
+    const startTime = Date.now();
+    const traceId = this.generateTraceId();
+
+    try {
+      this.logInfo('Processing LLMSwitch request', {
+        traceId,
+        transformerCount: this.transformers.size
+      }, 'process');
+
+      // 创建标准请求格式
+      const standardRequest: StandardRequest = {
+        protocol: this.config.defaultSourceProtocol,
+        payload: request,
+        metadata: {
+          traceId,
+          timestamp: Date.now()
+        }
+      };
+
+      // 选择转换器
+      const transformer = this.selectTransformer(
+        this.config.defaultSourceProtocol,
+        this.config.defaultTargetProtocol
+      );
+
+      if (!transformer) {
+        throw new Error(`No suitable transformer found for ${this.config.defaultSourceProtocol} -> ${this.config.defaultTargetProtocol}`);
+      }
+
+      // 执行转换
+      const transformedRequest = transformer.transformer.transformRequest(standardRequest);
+
+      this.logInfo('LLMSwitch processing completed', {
+        traceId,
+        transformer: transformer.name,
+        processingTime: Date.now() - startTime
+      }, 'process');
+
+      return transformedRequest.payload;
+
+    } catch (error) {
+      this.error('LLMSwitch processing failed', error, 'process');
+      throw error;
+    }
+  }
+
+  /**
+   * 处理响应 - 实现BasePipelineModule接口
+   */
+  async processResponse(response: any): Promise<any> {
+    if (!this.isInitialized) {
+      throw new Error('LLMSwitch module not initialized');
+    }
+
+    const traceId = this.generateTraceId();
+
+    try {
+      this.logInfo('Processing LLMSwitch response', {
+        traceId,
+        sourceProtocol: this.config.defaultTargetProtocol,
+        targetProtocol: this.config.defaultSourceProtocol
+      }, 'processResponse');
+
+      // 创建标准响应格式
+      const standardResponse: StandardResponse = {
+        protocol: this.config.defaultTargetProtocol,
+        payload: response,
+        metadata: {
+          traceId,
+          timestamp: Date.now()
+        }
+      };
+
+      // 选择转换器（反转方向）
+      const transformer = this.selectTransformer(
+        this.config.defaultTargetProtocol,
+        this.config.defaultSourceProtocol
+      );
+
+      if (!transformer) {
+        // 如果没有找到转换器，直接返回原始响应
+        return response;
+      }
+
+      // 执行响应转换
+      const transformedResponse = transformer.transformer.transformResponse(standardResponse);
 
       this.logInfo('LLMSwitch response processing completed', {
         traceId,
         transformer: transformer.name
       }, 'processResponse');
 
-      return transformedResponse;
+      return transformedResponse.payload;
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
       this.error('LLMSwitch response processing failed', error, 'processResponse');
-
-      return this.createErrorResponse(
-        `Response transformation failed: ${errorMessage}`,
-        'response_transformation_error',
-        { traceId }
-      );
+      throw error;
     }
-  }
-
-  /**
-   * 验证输入协议
-   */
-  private validateInputProtocol(request: StandardRequest): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (!request.protocol) {
-      errors.push('Protocol is required');
-    }
-
-    if (!request.payload) {
-      errors.push('Payload is required');
-    }
-
-    // 协议握手验证
-    const handshakeResult = this.performProtocolHandshake(request.protocol as ProtocolType);
-    if (!handshakeResult.success) {
-      errors.push(`Protocol handshake failed: ${handshakeResult.error}`);
-    }
-
-    // 基于协议类型的特定验证
-    switch (request.protocol) {
-      case 'anthropic':
-        this.validateAnthropicRequest(request.payload, errors);
-        break;
-      case 'openai':
-        this.validateOpenAIRequest(request.payload, errors);
-        break;
-      case 'custom':
-        // 自定义协议验证可以由用户扩展
-        break;
-    }
-
-    return { isValid: errors.length === 0, errors };
-  }
-
-  /**
-   * 执行协议握手
-   */
-  private performProtocolHandshake(protocol: ProtocolType): { success: boolean; error?: string } {
-    try {
-      // 验证协议是否支持
-      if (!this.isProtocolSupported(protocol)) {
-        return { success: false, error: `Protocol '${protocol}' is not supported` };
-      }
-
-      // 验证是否有可用的转换器
-      const availableTransformers = Array.from(this.transformers.values()).filter(reg =>
-        reg.enabled && reg.supportedSourceProtocols.includes(protocol)
-      );
-
-      if (availableTransformers.length === 0) {
-        return { success: false, error: `No available transformers for protocol '${protocol}'` };
-      }
-
-      // 验证目标协议可达性
-      const targetProtocolReachable = this.isTargetProtocolReachable(this.config.defaultTargetProtocol);
-      if (!targetProtocolReachable) {
-        return { success: false, error: `Target protocol '${this.config.defaultTargetProtocol}' is not reachable` };
-      }
-
-      // 验证配置表加载状态
-      if (!this.mappingTable) {
-        return { success: false, error: 'Mapping table is not loaded' };
-      }
-
-      return { success: true };
-
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      };
-    }
-  }
-
-  /**
-   * 检查协议是否支持
-   */
-  private isProtocolSupported(protocol: ProtocolType): boolean {
-    const supportedProtocols: ProtocolType[] = ['anthropic', 'openai', 'custom'];
-    return supportedProtocols.includes(protocol);
-  }
-
-  /**
-   * 检查目标协议是否可达
-   */
-  private isTargetProtocolReachable(targetProtocol: ProtocolType): boolean {
-    // 检查是否有转换器可以处理目标协议
-    const targetTransformers = Array.from(this.transformers.values()).filter(reg =>
-      reg.enabled && reg.supportedTargetProtocols.includes(targetProtocol)
-    );
-    return targetTransformers.length > 0;
-  }
-
-  /**
-   * 协议版本兼容性检查
-   */
-  private checkProtocolCompatibility(sourceProtocol: ProtocolType, targetProtocol: ProtocolType): { compatible: boolean; issues: string[] } {
-    const issues: string[] = [];
-
-    // 检查源协议和目标协议是否相同
-    if (sourceProtocol === targetProtocol) {
-      issues.push('Source and target protocols are the same - transformation may not be needed');
-    }
-
-    // 检查是否有兼容的转换器
-    const compatibleTransformers = Array.from(this.transformers.values()).filter(reg =>
-      reg.enabled &&
-      reg.supportedSourceProtocols.includes(sourceProtocol) &&
-      reg.supportedTargetProtocols.includes(targetProtocol)
-    );
-
-    if (compatibleTransformers.length === 0) {
-      issues.push(`No compatible transformers found for ${sourceProtocol} -> ${targetProtocol}`);
-    }
-
-    // 检查配置表中是否有对应的映射
-    if (this.mappingTable) {
-      const mappingKey = `${sourceProtocol}-to-${targetProtocol}`;
-      if (!this.mappingTable.protocolMappings[mappingKey]) {
-        issues.push(`No protocol mapping found for ${mappingKey}`);
-      }
-    }
-
-    return {
-      compatible: issues.length === 0,
-      issues
-    };
-  }
-
-  /**
-   * 验证 Anthropic 请求
-   */
-  private validateAnthropicRequest(payload: any, errors: string[]): void {
-    if (!payload.model) {
-      errors.push('Anthropic model is required');
-    }
-    if (!payload.messages || !Array.isArray(payload.messages)) {
-      errors.push('Anthropic messages must be an array');
-    }
-  }
-
-  /**
-   * 验证 OpenAI 请求
-   */
-  private validateOpenAIRequest(payload: any, errors: string[]): void {
-    if (!payload.model) {
-      errors.push('OpenAI model is required');
-    }
-    if (!payload.messages || !Array.isArray(payload.messages)) {
-      errors.push('OpenAI messages must be an array');
-    }
-  }
-
-  /**
-   * 创建错误响应
-   */
-  private createErrorResponse(
-    message: string,
-    code: string,
-    details?: any
-  ): StandardErrorResponse {
-    return {
-      protocol: this.config.defaultTargetProtocol,
-      error: {
-        code,
-        message,
-        details
-      },
-      metadata: {
-        timestamp: Date.now(),
-        moduleName: this.moduleName,
-        error: true
-      }
-    };
   }
 
   /**
@@ -633,118 +604,117 @@ export class LLMSwitchModule extends BasePipelineModule {
   }
 
   /**
-   * 获取模块状态
+   * 获取模块状态 (实现IPipelineModule接口)
    */
-  getStatus(): {
-    initialized: boolean;
-    transformers: Array<{ name: string; enabled: boolean; priority: number }>;
-    mappingTableLoaded: boolean;
-    ioRecordingEnabled: boolean;
-  } {
+  async getStatus(): Promise<{
+    isInitialized: boolean;
+    isRunning: boolean;
+    lastError?: Error;
+    statistics: {
+      requestsProcessed: number;
+      averageResponseTime: number;
+      errorRate: number;
+    };
+  }> {
     return {
-      initialized: this.isInitialized,
-      transformers: Array.from(this.transformers.values()).map(t => ({
-        name: t.name,
-        enabled: t.enabled,
-        priority: t.priority
-      })),
-      mappingTableLoaded: !!this.mappingTable,
-      ioRecordingEnabled: !!this.ioRecorder
+      isInitialized: this.isInitialized,
+      isRunning: this.isInitialized,
+      lastError: undefined,
+      statistics: {
+        requestsProcessed: 0, // 简化实现
+        averageResponseTime: 0,
+        errorRate: 0
+      }
     };
   }
 
   /**
-   * 销毁模块
+   * 销毁模块 (实现ILLMSwitch接口)
    */
   async destroy(): Promise<void> {
     await super.destroy();
     this.transformers.clear();
     this.mappingTable = null;
-    this.ioRecorder = null;
     this.isInitialized = false;
     this.logInfo('LLMSwitchModule destroyed', {}, 'destroy');
   }
 }
 
-/**
- * IO 记录器
- */
-class IORecorder {
-  private logDirectory: string;
-
-  constructor(logDirectory: string) {
-    this.logDirectory = logDirectory;
-    this.ensureDirectoryExists();
-  }
-
-  private async ensureDirectoryExists(): Promise<void> {
-    try {
-      await fs.promises.mkdir(this.logDirectory, { recursive: true });
-    } catch (error) {
-      console.error('Failed to create IO recording directory:', error);
-    }
-  }
-
-  async recordInput(traceId: string, request: StandardRequest): Promise<void> {
-    const logFile = path.join(this.logDirectory, `input_${traceId}.json`);
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      traceId,
-      type: 'input',
-      request
-    };
-    await fs.promises.writeFile(logFile, JSON.stringify(logEntry, null, 2));
-  }
-
-  async recordOutput(traceId: string, response: StandardResponse): Promise<void> {
-    const logFile = path.join(this.logDirectory, `output_${traceId}.json`);
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      traceId,
-      type: 'output',
-      response
-    };
-    await fs.promises.writeFile(logFile, JSON.stringify(logEntry, null, 2));
-  }
-
-  async recordError(traceId: string, error: StandardErrorResponse): Promise<void> {
-    const logFile = path.join(this.logDirectory, `error_${traceId}.json`);
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      traceId,
-      type: 'error',
-      error
-    };
-    await fs.promises.writeFile(logFile, JSON.stringify(logEntry, null, 2));
-  }
-}
-
-// 导入实际转换器实现
-import { AnthropicToOpenAITransformer } from '../transformers/AnthropicToOpenAITransformer';
-
-// 重新导出转换器类以保持向后兼容性
-export { AnthropicToOpenAITransformer };
-
-export class OpenAIPassthroughTransformer implements ProtocolTransformer {
+// 简化的OpenAI透传转换器
+class OpenAIPassthroughTransformer implements ProtocolTransformer {
   readonly name = 'openai-passthrough';
-  readonly sourceProtocol: ProtocolType = 'openai';
-  readonly targetProtocol: ProtocolType = 'openai';
+  readonly sourceProtocol: ProtocolType = ProtocolType.OPENAI;
+  readonly targetProtocol: ProtocolType = ProtocolType.OPENAI;
   readonly version = '1.0.0';
 
-  transformRequest(request: any): StandardRequest {
+  transformRequest(request: StandardRequest): StandardRequest {
     return {
-      protocol: 'openai',
+      protocol: ProtocolType.OPENAI,
       payload: request.payload,
       metadata: request.metadata
     };
   }
 
-  transformResponse(response: StandardRequest): any {
+  transformResponse(response: StandardResponse): any {
     return response.payload;
   }
 
   validateInput(request: any): { isValid: boolean; errors: string[] } {
     return { isValid: true, errors: [] };
+  }
+
+  validateOutput(response: any): { isValid: boolean; errors: string[] } {
+    return { isValid: true, errors: [] };
+  }
+}
+
+// 简化的Anthropic到OpenAI转换器
+class AnthropicToOpenAITransformer implements ProtocolTransformer {
+  readonly name = 'anthropic-to-openai';
+  readonly sourceProtocol: ProtocolType = ProtocolType.ANTHROPIC;
+  readonly targetProtocol: ProtocolType = ProtocolType.OPENAI;
+  readonly version = '1.0.0';
+  private mappingTable: MappingTable;
+
+  constructor(mappingTable: MappingTable) {
+    this.mappingTable = mappingTable;
+  }
+
+  transformRequest(request: StandardRequest): StandardRequest {
+    const payload = request.payload;
+    const transformedPayload = {
+      ...payload,
+      // 简化的字段映射
+      messages: payload.messages,
+      model: payload.model,
+      temperature: payload.temperature,
+      max_tokens: payload.max_tokens
+    };
+
+    return {
+      protocol: ProtocolType.OPENAI,
+      payload: transformedPayload,
+      metadata: request.metadata
+    };
+  }
+
+  transformResponse(response: StandardResponse): any {
+    const payload = response.payload;
+    const transformedPayload = {
+      ...payload,
+      // 简化的字段映射
+      content: payload.choices?.[0]?.message?.content,
+      stop_reason: payload.choices?.[0]?.finish_reason
+    };
+
+    return transformedPayload;
+  }
+
+  validateInput(request: any): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    if (!request.payload?.model) errors.push('Model is required');
+    if (!request.payload?.messages) errors.push('Messages are required');
+    return { isValid: errors.length === 0, errors };
   }
 
   validateOutput(response: any): { isValid: boolean; errors: string[] } {

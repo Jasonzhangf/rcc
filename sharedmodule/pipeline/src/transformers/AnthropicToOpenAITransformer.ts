@@ -3,8 +3,8 @@
  * 实现Anthropic协议到OpenAI协议的完整转换
  */
 
-import { ProtocolTransformer, ProtocolType } from '../modules/LLMSwitchModule';
-import { TransformContext } from '../modules/LLMSwitchModule';
+import { ProtocolTransformer, ProtocolType } from '../interfaces/ModularInterfaces';
+import { TransformContext } from '../interfaces/FieldMapping';
 import {
   FieldMapping,
   MappingTable,

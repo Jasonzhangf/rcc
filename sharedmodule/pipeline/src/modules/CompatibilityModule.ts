@@ -114,7 +114,7 @@ export interface ValidationResult {
 }
 
 export class CompatibilityModule extends BasePipelineModule {
-  protected override config: CompatibilityConfig = {} as CompatibilityConfig;
+  protected config: CompatibilityConfig = {} as CompatibilityConfig;
   private mappingTable: MappingTable | null = null;
   private fieldMappings: Record<string, FieldMapping> = {};
   private mappingValidationRules: MappingTable['validationRules'] = {};
@@ -128,7 +128,7 @@ export class CompatibilityModule extends BasePipelineModule {
    * Configure the Compatibility module
    * @param config - Configuration object
    */
-  override async configure(config: CompatibilityConfig): Promise<void> {
+  async configure(config: CompatibilityConfig): Promise<void> {
     this.logInfo('Configuring CompatibilityModule', config, 'configure');
     
     this.config = config;
@@ -151,7 +151,7 @@ export class CompatibilityModule extends BasePipelineModule {
    * @param request - Input request data
    * @returns Promise<any> - Mapped and validated request data
    */
-  override async process(request: any): Promise<any> {
+  async process(request: any): Promise<any> {
     this.logInfo('Processing CompatibilityModule request', {
       mappingTable: this.config?.mappingTable,
       strictMapping: this.config?.strictMapping,
@@ -195,7 +195,7 @@ export class CompatibilityModule extends BasePipelineModule {
    * @param response - Input response data
    * @returns Promise<any> - Mapped and validated response data
    */
-  override async processResponse(response: any): Promise<any> {
+  async processResponse(response: any): Promise<any> {
     this.logInfo('Processing CompatibilityModule response', {
       mappingTable: this.config?.mappingTable,
       strictMapping: this.config?.strictMapping,

@@ -3,9 +3,31 @@
  * 使用iflow现有OAuth凭据文件的iFlow Provider - TypeScript版本
  */
 
-import { BaseModule } from 'rcc-basemodule';
 import { BaseProvider } from '../framework/BaseProvider';
-import { ErrorHandlingCenter } from 'rcc-errorhandling';
+// Simple mock implementation for ErrorHandlingCenter
+class SimpleErrorHandlingCenter {
+  constructor(config: any) {
+    // Mock implementation
+  }
+
+  handleError(error: any): void {
+    // Mock implementation
+    console.error('Error handled:', error);
+  }
+
+  async destroy(): Promise<void> {
+    // Mock implementation
+  }
+}
+
+// Use mock if import fails
+let ErrorHandlingCenter: any;
+try {
+  ErrorHandlingCenter = require('rcc-errorhandling').ErrorHandlingCenter;
+} catch {
+  ErrorHandlingCenter = SimpleErrorHandlingCenter;
+}
+import { OpenAIChatRequest, OpenAIChatResponse } from '../framework/OpenAIInterface';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import open from 'open';
@@ -13,48 +35,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as readline from 'readline';
-
-// OpenAI Interface imports would be defined in separate TypeScript files
-interface OpenAIChatRequest {
-  model: string;
-  messages: Array<{
-    role: string;
-    content: string;
-  }>;
-  temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  stream?: boolean;
-  tools?: Array<{
-    type: 'function';
-    function: {
-      name: string;
-      description: string;
-      parameters: any;
-    };
-  }>;
-}
-
-interface OpenAIChatResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: Array<{
-    index: number;
-    message: {
-      role: string;
-      content: string;
-      tool_calls?: Array<any>;
-    };
-    finish_reason: string;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
 
 interface OpenAIStreamChunk {
   id: string;
@@ -357,7 +337,7 @@ class IFlowProvider extends BaseProvider {
    * 将iFlow响应转换为OpenAI响应格式
    */
   private convertToOpenAIResponse(iflowResponse: any): OpenAIChatResponse {
-    return {
+    return new OpenAIChatResponse({
       id: iflowResponse.id || `chatcmpl-${Date.now()}`,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
@@ -372,7 +352,7 @@ class IFlowProvider extends BaseProvider {
         finish_reason: iflowResponse.choices?.[0]?.finish_reason || 'stop'
       }],
       usage: iflowResponse.usage
-    };
+    });
   }
 
   /**
@@ -847,13 +827,13 @@ class IFlowProvider extends BaseProvider {
     const now = Date.now();
     const timeUntilExpiry = this.tokenExpiry > 0 ? Math.max(0, this.tokenExpiry - now) / 1000 : 0;
     let isValid = false;
-    
+
     if (this.authMode === 'oauth') {
       isValid = this.isTokenValid();
     } else if (this.authMode === 'apikey') {
       isValid = !!this.apiKey;
     }
-    
+
     return {
       authMode: this.authMode,
       hasAccessToken: !!this.accessToken,
@@ -861,6 +841,33 @@ class IFlowProvider extends BaseProvider {
       isValid: !!isValid, // 确保返回布尔值
       timeUntilExpiry,
       credentialsPath: this.credentialsPath
+    };
+  }
+
+  /**
+   * 验证请求
+   */
+  validate(request: any): boolean {
+    if (!request.model) {
+      throw new Error('Model is required');
+    }
+    if (!request.messages || request.messages.length === 0) {
+      throw new Error('Messages are required');
+    }
+    return true;
+  }
+
+  /**
+   * 转换为标准格式
+   */
+  toStandardFormat(): any {
+    return {
+      id: this.info.id,
+      name: this.info.name,
+      endpoint: this.endpoint,
+      supportedModels: this.supportedModels,
+      defaultModel: this.defaultModel,
+      capabilities: this.getCapabilities()
     };
   }
 

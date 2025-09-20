@@ -5,6 +5,7 @@
 [![Coverage Status](https://coveralls.io/github/rcc/rcc-pipeline/badge.svg)](https://coveralls.io/github/rcc/rcc-pipeline)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![🚀 Virtual Model Routing](https://img.shields.io/badge/Virtual_Model_Routing-Implemented-brightgreen.svg)](https://github.com/rcc/rcc-pipeline)
 
 ## 🎯 Overview
 
@@ -107,6 +108,314 @@ interface IExecutableModule extends IPipelineModule {
 }
 ```
 
+## 🚀 Virtual Model Routing System
+
+The RCC Pipeline Module now features an advanced **Virtual Model Routing System** that provides intelligent request routing capabilities. This system automatically analyzes incoming requests, matches them with the most suitable pipeline pools based on capabilities, and provides seamless integration with server modules through an internal API endpoint.
+
+### 🎯 System Architecture
+
+The virtual model routing system consists of three core components:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      Virtual Model Routing System                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Server Request                                                                 │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │                    Internal API Endpoint                              │  │
+│  │                   (Port: 8080, configurable)                      │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │                 RequestAnalyzer                                     │  │
+│  │               (Model Analysis, Capability Extraction)              │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐
+│  │                RoutingRulesEngine                                   │  │
+│  │           (Capability Matching, Decision Making)                   │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │              Pipeline Pool Selection                               │  │
+│  │         (Based on RoutingCapabilities)                          │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │                   Pipeline Execution                              │  │
+│  │               (Actual Request Processing)                          │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🧠 Core Components
+
+#### 1. RequestAnalyzer (Intelligent Request Analysis)
+
+The RequestAnalyzer automatically examines incoming requests to extract key routing information:
+
+```typescript
+interface RequestAnalysisResult {
+  model: string;                    // Identified model
+  capabilities: string[];           // Required capabilities
+  requestType: 'chat' | 'streaming' | 'tools' | 'multimodal';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  complexity: 'simple' | 'standard' | 'complex';
+  estimatedTokens: number;          // Token estimation
+  requiresTools: boolean;           // Tool calling detection
+  hasImages: boolean;              // Image content detection
+  streamingRequired: boolean;       // Streaming requirement
+}
+```
+
+**Key Features:**
+- **Model Identification**: Automatically detects the target AI model from request content
+- **Capability Extraction**: Identifies required capabilities (tools, streaming, images, etc.)
+- **Content Analysis**: Analyzes request complexity and token requirements
+- **Performance Optimization**: Provides routing metrics for optimal decision making
+
+#### 2. RoutingRulesEngine (Intelligent Decision Making)
+
+The RoutingRulesEngine makes intelligent routing decisions based on pipeline capabilities and request analysis:
+
+```typescript
+interface RoutingDecision {
+  targetVirtualModelId: string;     // Selected pipeline pool
+  matchResult: RoutingMatchResult;   // Match scoring and reasons
+  metadata: {
+    strategyUsed: string;            // Routing strategy applied
+    alternatives: string[];         // Alternative pipelines
+    fallbackAvailable: boolean;     // Fallback options
+  };
+}
+
+interface RoutingMatchResult {
+  matchScore: number;                // 0.0 - 1.0 confidence score
+  reasons: string[];                 // Reasons for selection
+  capabilityMatches: {              // Capability match details
+    model: boolean;
+    streaming: boolean;
+    tools: boolean;
+    images: boolean;
+  };
+}
+```
+
+**Routing Strategies:**
+- **Capability-Based Matching**: Selects pipelines with all required capabilities
+- **Performance Optimization**: Prioritizes high-performing pipelines
+- **Load Balancing**: Distributes requests based on pipeline load
+- **Cost Optimization**: Considers cost efficiency for routing decisions
+- **Fallback Handling**: Provides alternative routes when primary is unavailable
+
+#### 3. Routing Capabilities System
+
+Each pipeline pool now includes detailed routing capabilities for intelligent matching:
+
+```typescript
+interface RoutingCapabilities {
+  supportedModels: string[];           // Models this pipeline can handle
+  maxTokens: number;                   // Maximum context length
+  supportsStreaming: boolean;         // Streaming support
+  supportsTools: boolean;             // Tool calling support
+  supportsImages: boolean;            // Image processing support
+  supportsFunctionCalling: boolean;   // Function calling support
+  supportsMultimodal: boolean;        // Multimodal support
+  supportedModalities: string[];      // Supported input/output types
+  priority: number;                   // Routing priority (0-100)
+  availability: number;                // Availability score (0.0-1.0)
+  loadWeight: number;                  // Load balancing weight
+  costScore: number;                   // Cost efficiency score
+  performanceScore: number;           // Performance score
+  routingTags: string[];              // Custom routing tags
+  extendedCapabilities: {             // Extended capabilities
+    supportsVision: boolean;
+    maxContextLength: number;
+    specializedModels: string[];
+  };
+}
+```
+
+### 🔌 Internal API Endpoint
+
+The VirtualModelSchedulerManager provides an internal API endpoint for seamless server integration:
+
+```typescript
+// Server forwards request to scheduler
+const response = await virtualModelSchedulerManager.handleRequest(request, {
+  requestId: 'unique-request-id',
+  timestamp: Date.now(),
+  metadata: { source: 'server-module' }
+});
+
+// Automatic routing process:
+// 1. Request analysis identifies model and capabilities
+// 2. Rules engine matches with best pipeline pool
+// 3. Request is routed to the selected pipeline
+// 4. Response is returned to the server
+```
+
+**API Configuration:**
+```typescript
+interface ManagerConfig {
+  enableInternalAPI: boolean;          // Enable internal API
+  internalAPIPort?: number;           // API port (default: 8080)
+  enableRouting: boolean;             // Enable smart routing
+  requestAnalyzerConfig?: RequestAnalyzerConfig;
+  routingEngineConfig?: RoutingRulesEngineConfig;
+  routingStrategy?: string;           // Default routing strategy
+}
+```
+
+### 🔄 Initialization Flow
+
+The initialization process ensures proper information flow between pipeline assembly and scheduling:
+
+```typescript
+// 1. Pipeline Assembly completes
+const pipelinePools = await pipelineAssembler.assembleFromConfig(configPath);
+
+// 2. Initialize VirtualModelSchedulerManager with routing
+const schedulerManager = new VirtualModelSchedulerManager({
+  enableRouting: true,
+  enableInternalAPI: true,
+  internalAPIPort: 8080,
+  requestAnalyzerConfig: {
+    enableDetailedTokenCounting: true,
+    enableContentAnalysis: true,
+    enabledAnalyzers: {
+      tokenAnalyzer: true,
+      toolAnalyzer: true,
+      imageAnalyzer: true,
+      modalityAnalyzer: true,
+      complexityAnalyzer: true
+    }
+  },
+  routingEngineConfig: {
+    defaultMatchThreshold: 0.8,
+    enableFallback: true,
+    enableLoadBalancing: true,
+    enablePerformanceOptimization: true
+  }
+}, pipelineTracker);
+
+// 3. Initialize with pipeline pools
+schedulerManager.initialize(pipelinePools);
+
+// 4. System is ready for intelligent routing
+```
+
+### 💡 Intelligent Routing Examples
+
+#### Example 1: Tool-Based Request Routing
+```typescript
+const request = {
+  model: "gpt-4",
+  messages: [...],
+  tools: [{ type: "function", function: {...} }]
+};
+
+// Routing Decision:
+// - Analysis: Tool calling required, GPT-4 model
+// - Matching: Selects pipeline with supportsTools=true and GPT-4 capability
+// - Execution: Routes to appropriate pipeline pool
+```
+
+#### Example 2: Streaming Request Routing
+```typescript
+const request = {
+  model: "claude-3-sonnet",
+  stream: true,
+  messages: [...]
+};
+
+// Routing Decision:
+// - Analysis: Streaming required, Claude model
+// - Matching: Selects pipeline with supportsStreaming=true and Claude capability
+// - Execution: Routes to streaming-enabled pipeline
+```
+
+#### Example 3: Multimodal Request Routing
+```typescript
+const request = {
+  model: "gpt-4-vision",
+  messages: [
+    { role: "user", content: [
+      { type: "text", text: "What's in this image?" },
+      { type: "image_url", image_url: {...} }
+    ]}
+  ]
+};
+
+// Routing Decision:
+// - Analysis: Image processing required, GPT-4 Vision model
+// - Matching: Selects pipeline with supportsImages=true and vision capability
+// - Execution: Routes to multimodal-capable pipeline
+```
+
+### 🎛️ Configuration and Management
+
+#### RequestAnalyzer Configuration
+```typescript
+interface RequestAnalyzerConfig {
+  enableDetailedTokenCounting: boolean;
+  enableContentAnalysis: boolean;
+  defaultTokenEstimationFactor: number;
+  complexityThresholds: {
+    low: number;
+    medium: number;
+    high: number;
+    critical: number;
+  };
+  enabledAnalyzers: {
+    tokenAnalyzer: boolean;
+    toolAnalyzer: boolean;
+    imageAnalyzer: boolean;
+    modalityAnalyzer: boolean;
+    complexityAnalyzer: boolean;
+  };
+}
+```
+
+#### RoutingRulesEngine Configuration
+```typescript
+interface RoutingRulesEngineConfig {
+  defaultMatchThreshold: number;     // Minimum match score (0.0-1.0)
+  enableFallback: boolean;           // Enable fallback routing
+  maxAlternatives: number;           // Maximum alternative routes
+  enableLoadBalancing: boolean;      // Enable load balancing
+  enablePerformanceOptimization: boolean;  // Enable performance optimization
+  ruleCacheTime: number;            // Rule cache duration (ms)
+}
+```
+
+### 📊 Monitoring and Metrics
+
+The routing system provides comprehensive monitoring capabilities:
+
+```typescript
+interface RoutingMetrics {
+  totalRequests: number;
+  successfulRoutes: number;
+  failedRoutes: number;
+  averageRoutingTime: number;
+  pipelineUtilization: Map<string, number>;
+  capabilityMatchRates: Map<string, number>;
+  fallbackUsage: number;
+  errorRates: Map<string, number>;
+}
+```
+
+**Key Metrics:**
+- **Routing Accuracy**: How well requests are matched to appropriate pipelines
+- **Performance Metrics**: Routing decision time and execution performance
+- **Capability Utilization**: How well pipeline capabilities are utilized
+- **Fallback Analysis**: Frequency and reasons for fallback routing
+- **Load Distribution**: Distribution of requests across pipeline pools
+
 ## 📁 Module Structure & File Purpose
 
 ```
@@ -153,6 +462,11 @@ sharedmodule/pipeline/
 │   ├── types/                     # Type definitions
 │   │   ├── virtual-model.ts      # Virtual model configuration (198 lines)
 │   │   └── ErrorTypes.ts         # Error handling types (167 lines)
+│   ├── routing/                   # Virtual model routing system
+│   │   ├── RequestAnalyzer.ts    # Intelligent request analysis (456 lines)
+│   │   ├── RoutingRulesEngine.ts # Routing decision engine (678 lines)
+│   │   ├── RoutingCapabilities.ts # Routing capabilities and types (389 lines)
+│   │   └── RoutingExample.ts     # Usage examples and demos (234 lines)
 │   ├── transformers/             # Protocol transformers
 │   │   └── AnthropicToOpenAITransformer.ts # Anthropic → OpenAI conversion (234 lines)
 │   └── test/                      # Test and demo files
@@ -183,12 +497,204 @@ sharedmodule/pipeline/
   - Assembly result reporting with error handling
 
 #### 3. VirtualModelSchedulerManager (Central Orchestration)
-- **Purpose**: Central coordinator for all virtual model schedulers
+- **Purpose**: Central coordinator for all virtual model schedulers with intelligent routing capabilities
 - **Key Features**:
   - Unified request execution interface
   - Dynamic pipeline pool updates
   - Health checking and metrics monitoring
   - Virtual model mapping and lifecycle management
+  - **🆕 Intelligent request analysis and routing decision making**
+  - **🆕 Capability-based pipeline pool routing**
+  - **🆕 Internal API endpoint for server integration**
+
+#### 3.1 RequestAnalyzer (Intelligent Request Analysis)
+- **Purpose**: Analyze incoming requests to extract key routing information
+- **Key Features**:
+  - Model identification and capability extraction
+  - Request type classification (chat, streaming, tools, etc.)
+  - Context analysis for enhanced routing decisions
+  - Performance metrics and analysis statistics
+- **Analysis Process**:
+  ```typescript
+  const analysisResult = await requestAnalyzer.analyzeRequest(request, context);
+  // Returns: {
+  //   model: 'gpt-4',
+  //   capabilities: ['tools', 'streaming', 'images'],
+  //   requestType: 'chat',
+  //   priority: 'medium',
+  //   complexity: 'standard'
+  // }
+  ```
+
+#### 3.2 RoutingRulesEngine (Capability-Based Routing)
+- **Purpose**: Make intelligent routing decisions based on pipeline capabilities and request analysis
+- **Key Features**:
+  - Dynamic rule-based routing engine
+  - Pipeline capability matching and scoring
+  - Load-aware resource allocation
+  - Fallback routing strategies
+  - Real-time routing statistics and monitoring
+- **Routing Decision Process**:
+  ```typescript
+  const routingDecision = await routingEngine.makeRoutingDecision(
+    analysisResult,
+    context,
+    routingStrategy
+  );
+  // Returns: {
+  //   targetVirtualModelId: 'gpt-4-pipeline',
+  //   matchResult: { matchScore: 0.95, reasons: [...] },
+  //   metadata: { strategyUsed: 'capability-matching' }
+  // }
+  ```
+
+#### 3.3 Virtual Model Routing System Architecture
+The enhanced VirtualModelSchedulerManager implements a complete intelligent routing system:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      Virtual Model Routing System                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Server Request                                                                 │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │                    Internal API Endpoint                              │  │
+│  │                   (Port: 8080, configurable)                      │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │                 RequestAnalyzer                                     │  │
+│  │               (Model Analysis, Capability Extraction)              │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │                RoutingRulesEngine                                   │  │
+│  │           (Capability Matching, Decision Making)                   │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │              Pipeline Pool Selection                               │  │
+│  │         (Based on RoutingCapabilities)                          │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│      ↓                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │                   Pipeline Execution                              │  │
+│  │               (Actual Request Processing)                          │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 3.4 Routing Capabilities System
+Each pipeline pool now includes routing capabilities for intelligent matching:
+
+```typescript
+interface RoutingCapabilities {
+  supportedModels: string[];           // Models this pipeline can handle
+  maxTokens: number;                   // Maximum context length
+  supportsStreaming: boolean;         // Streaming support
+  supportsTools: boolean;             // Tool calling support
+  supportsImages: boolean;            // Image processing support
+  supportsFunctionCalling: boolean;   // Function calling support
+  supportsMultimodal: boolean;        // Multimodal support
+  supportedModalities: string[];      // Supported input/output types
+  priority: number;                   // Routing priority (0-100)
+  availability: number;                // Availability score (0.0-1.0)
+  loadWeight: number;                  // Load balancing weight
+  costScore: number;                   // Cost efficiency score
+  performanceScore: number;           // Performance score
+  routingTags: string[];              // Custom routing tags
+  extendedCapabilities: {             // Extended capabilities
+    supportsVision: boolean;
+    maxContextLength: number;
+    specializedModels: string[];
+  };
+}
+```
+
+#### 3.5 Initialization Flow Between Assembly and Scheduler
+The initialization process ensures proper information传递 between pipeline assembly and scheduling:
+
+```typescript
+// 1. Pipeline Assembly completes
+const pipelinePools = await pipelineAssembler.assembleFromConfig(configPath);
+
+// 2. Pass pipeline pools to VirtualModelSchedulerManager
+virtualModelSchedulerManager.initialize(pipelinePools);
+
+// 3. Scheduler registers pipeline pools with routing engine
+virtualModelSchedulerManager.registerPipelinePoolsWithRoutingEngine(pipelinePools);
+
+// 4. Internal API endpoint becomes ready for server requests
+virtualModelSchedulerManager.startInternalAPI();
+```
+
+#### 3.6 Internal API Endpoint Usage
+The VirtualModelSchedulerManager provides an internal API endpoint for server integration:
+
+```typescript
+// Server receives request and forwards to scheduler
+const response = await virtualModelSchedulerManager.handleRequest(request, {
+  requestId: 'unique-request-id',
+  timestamp: Date.now(),
+  metadata: { source: 'server-module' }
+});
+
+// The routing happens automatically:
+// 1. Request analysis identifies model and capabilities needed
+// 2. Rules engine matches with best pipeline pool
+// 3. Request is routed to the selected pipeline
+// 4. Response is returned to the server
+```
+
+#### 3.7 Intelligent Routing Examples
+
+**Example 1: Tool-Based Request Routing**
+```typescript
+const request = {
+  model: "gpt-4",
+  messages: [...],
+  tools: [{ type: "function", function: {...} }]
+};
+
+// Routing Decision:
+// - Analysis: Tool calling required, GPT-4 model
+// - Matching: Selects pipeline with supportsTools=true and GPT-4 capability
+// - Execution: Routes to appropriate pipeline pool
+```
+
+**Example 2: Streaming Request Routing**
+```typescript
+const request = {
+  model: "claude-3-sonnet",
+  stream: true,
+  messages: [...]
+};
+
+// Routing Decision:
+// - Analysis: Streaming required, Claude model
+// - Matching: Selects pipeline with supportsStreaming=true and Claude capability
+// - Execution: Routes to streaming-enabled pipeline
+```
+
+**Example 3: Multimodal Request Routing**
+```typescript
+const request = {
+  model: "gpt-4-vision",
+  messages: [
+    { role: "user", content: [
+      { type: "text", text: "What's in this image?" },
+      { type: "image_url", image_url: {...} }
+    ]}
+  ]
+};
+
+// Routing Decision:
+// - Analysis: Image processing required, GPT-4 Vision model
+// - Matching: Selects pipeline with supportsImages=true and vision capability
+// - Execution: Routes to multimodal-capable pipeline
+```
 
 #### 4. PipelineScheduler (Load Balancing)
 - **Purpose**: Request scheduling with intelligent load balancing
@@ -215,6 +721,12 @@ sharedmodule/pipeline/
 - **Protocol Validation**: Handshake validation before module execution
 - **IO Recording**: Complete input/output recording and tracking
 
+### 🆕 Intelligent Virtual Model Routing
+- **Smart Request Analysis**: Automatic model identification and capability extraction
+- **Capability-Based Routing**: Intelligent pipeline selection based on request requirements
+- **Dynamic Load Balancing**: Real-time resource allocation and performance optimization
+- **Server Integration**: Internal API endpoint for seamless server-to-scheduler communication
+
 ### 🔧 Advanced Capabilities
 - **Dynamic Discovery**: Automatic module discovery and registration
 - **Health Monitoring**: Regular component health status checking
@@ -230,25 +742,34 @@ sharedmodule/pipeline/
 
 ## 系统架构详解
 
-### 整体架构图
+### 整体架构图 (Updated with Virtual Model Routing)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              RCC Pipeline System                             │
+│                    RCC Pipeline System with Intelligent Routing               │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────┐  │
-│  │                          System Scheduler                           │  │
+│  │                        System Scheduler                            │  │
 │  └─────────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                         │
 │                                    ▼                                         │
 │  ┌─────────────────────────────────────────────────────────────────────────┐  │
-│  │                        Pipeline Assembler                          │  │
+│  │                      Pipeline Assembler                           │  │
 │  └─────────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                         │
 │                                    ▼                                         │
 │  ┌─────────────────────────────────────────────────────────────────────────┐  │
-│  │                      Module Scanner & Discovery                  │  │
+│  │                  Module Scanner & Discovery                         │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │            VirtualModelSchedulerManager (Enhanced)                   │  │
+│  │  ┌─────────────────┐ ┌──────────────────┐ ┌─────────────────────────┐   │  │
+│  │  │ RequestAnalyzer │ │ RoutingRulesEngine│ │ Internal API Endpoint   │   │  │
+│  │  │   (Analysis)    │ │   (Decision)     │ │   (Server Integration)   │   │  │
+│  │  └─────────────────┘ └──────────────────┘ └─────────────────────────┘   │  │
 │  └─────────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                         │
 │                                    ▼                                         │
@@ -274,6 +795,36 @@ sharedmodule/pipeline/
 │  └─────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🆕 Virtual Model Routing Flow
+
+The enhanced system now includes intelligent request routing between server and pipeline execution:
+
+```
+Server Request Flow:
+┌─────────────┐    ┌─────────────────────────┐    ┌─────────────────────┐
+│   Server    │───▶│ Internal API Endpoint  │───▶│ RequestAnalyzer     │
+│   Module     │    │ (VirtualModelSchedulerManager) │   │ (Model Analysis)  │
+└─────────────┘    └─────────────────────────┘    └─────────────────────┘
+                                                        │
+                                                        ▼
+                                               ┌─────────────────────┐
+                                               │ RoutingRulesEngine   │
+                                               │ (Decision Making)   │
+                                               └─────────────────────┘
+                                                        │
+                                                        ▼
+                                               ┌─────────────────────┐
+                                               │ Pipeline Pool       │
+                                               │ (Capability Match)  │
+                                               └─────────────────────┘
+                                                        │
+                                                        ▼
+                                               ┌─────────────────────┐
+                                               │ Pipeline Execution │
+                                               │ (Processing)        │
+                                               └─────────────────────┘
 ```
 
 ### 配置表系统
@@ -3212,6 +3763,309 @@ The following files contain TODO comments that should be replaced with UnderCons
 
 ### Development Standards Compliance
 
+## 🌟 Integration Examples
+
+### Complete Virtual Model Routing Setup
+
+#### Basic Configuration
+```typescript
+import { VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } from 'rcc-pipeline';
+
+// 1. Create components
+const tracker = new PipelineTracker();
+const assembler = new PipelineAssembler({ enableAutoDiscovery: true }, tracker);
+
+// 2. Configure virtual model routing
+const schedulerManager = new VirtualModelSchedulerManager({
+  maxSchedulers: 10,
+  enableAutoScaling: true,
+  healthCheckInterval: 30000,
+  // Enable intelligent routing
+  enableRouting: true,
+  enableInternalAPI: true,
+  internalAPIPort: 8080,
+  requestAnalyzerConfig: {
+    enableDetailedTokenCounting: true,
+    enableContentAnalysis: true,
+    complexityThresholds: {
+      low: 100,
+      medium: 500,
+      high: 1000,
+      critical: 2000
+    },
+    enabledAnalyzers: {
+      tokenAnalyzer: true,
+      toolAnalyzer: true,
+      imageAnalyzer: true,
+      modalityAnalyzer: true,
+      complexityAnalyzer: true
+    }
+  },
+  routingEngineConfig: {
+    defaultMatchThreshold: 0.8,
+    enableFallback: true,
+    maxAlternatives: 3,
+    enableLoadBalancing: true,
+    enablePerformanceOptimization: true,
+    ruleCacheTime: 60000
+  }
+}, tracker);
+
+// 3. Assemble pipelines
+const assemblyResult = await assembler.assembleFromConfig('./config/virtual-models.json');
+
+if (assemblyResult.success) {
+  // 4. Initialize scheduler with pipeline pools
+  await schedulerManager.initialize(assemblyResult.pipelinePools);
+
+  console.log('✅ Virtual model routing system initialized successfully');
+  console.log(`🎯 Ready to serve requests on port ${schedulerManager.config.internalAPIPort}`);
+}
+```
+
+#### Server Integration Example
+```typescript
+import express from 'express';
+import { VirtualModelSchedulerManager } from 'rcc-pipeline';
+
+const app = express();
+const port = 3000;
+
+// Initialize virtual model routing
+const schedulerManager = new VirtualModelSchedulerManager({
+  enableRouting: true,
+  enableInternalAPI: true,
+  internalAPIPort: 8080
+}, tracker);
+
+// Middleware to route requests through virtual model system
+app.use('/api/v1/chat', async (req, res) => {
+  try {
+    // Forward request to virtual model routing system
+    const response = await schedulerManager.handleRequest(req.body, {
+      requestId: req.headers['x-request-id'] || generateRequestId(),
+      timestamp: Date.now(),
+      metadata: {
+        source: 'http-server',
+        userAgent: req.headers['user-agent'],
+        ip: req.ip
+      }
+    });
+
+    res.json(response);
+  } catch (error) {
+    console.error('Request routing failed:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  const health = schedulerManager.getHealth();
+  res.json(health);
+});
+
+// Metrics endpoint
+app.get('/metrics', (req, res) => {
+  const metrics = schedulerManager.getMetrics();
+  res.json(metrics);
+});
+
+app.listen(port, () => {
+  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🧠 Virtual model routing available on port 8080`);
+});
+```
+
+#### Advanced Configuration with Custom Routing
+```typescript
+// Configure custom routing rules
+const customSchedulerManager = new VirtualModelSchedulerManager({
+  enableRouting: true,
+  routingStrategy: 'custom-performance-based',
+  requestAnalyzerConfig: {
+    enableDetailedTokenCounting: true,
+    defaultTokenEstimationFactor: 1.3,
+    enabledAnalyzers: {
+      tokenAnalyzer: true,
+      toolAnalyzer: true,
+      imageAnalyzer: true,
+      modalityAnalyzer: false, // Disable for performance
+      complexityAnalyzer: true
+    }
+  },
+  routingEngineConfig: {
+    defaultMatchThreshold: 0.9, // Higher threshold for better matches
+    enableFallback: true,
+    maxAlternatives: 2,
+    enableLoadBalancing: true,
+    enablePerformanceOptimization: true,
+    ruleCacheTime: 30000 // Cache rules for 30 seconds
+  }
+}, tracker);
+
+// Add custom routing tags to pipeline pools
+schedulerManager.addRoutingTags('gpt-4-pipeline', ['high-performance', 'tools-enabled']);
+schedulerManager.addRoutingTags('claude-pipeline', ['cost-effective', 'streaming-optimized']);
+
+// Set custom priorities
+schedulerManager.setPipelinePriority('gpt-4-pipeline', 90); // High priority
+schedulerManager.setPipelinePriority('claude-pipeline', 70); // Medium priority
+```
+
+### Monitoring and Observability
+
+#### Routing Metrics Collection
+```typescript
+// Set up metrics collection
+const metricsInterval = setInterval(() => {
+  const metrics = schedulerManager.getRoutingMetrics();
+
+  console.log('📊 Routing Metrics:');
+  console.log(`  Total Requests: ${metrics.totalRequests}`);
+  console.log(`  Success Rate: ${((metrics.successfulRoutes / metrics.totalRequests) * 100).toFixed(2)}%`);
+  console.log(`  Average Routing Time: ${metrics.averageRoutingTime.toFixed(2)}ms`);
+  console.log(`  Fallback Usage: ${metrics.fallbackUsage.toFixed(2)}%`);
+
+  // Log pipeline utilization
+  metrics.pipelineUtilization.forEach((utilization, pipelineId) => {
+    console.log(`  ${pipelineId}: ${(utilization * 100).toFixed(1)}% utilized`);
+  });
+
+  // Export to monitoring system
+  exportToPrometheus(metrics);
+}, 10000); // Every 10 seconds
+```
+
+#### Health Monitoring
+```typescript
+// Comprehensive health check
+async function checkSystemHealth() {
+  const health = await schedulerManager.getHealth();
+
+  if (health.status === 'healthy') {
+    console.log('✅ System is healthy');
+  } else {
+    console.warn('⚠️ System health issues detected:');
+    health.checks.forEach(check => {
+      if (check.status !== 'healthy') {
+        console.warn(`  - ${check.component}: ${check.status}`);
+      }
+    });
+  }
+
+  // Check specific pipeline health
+  const pipelineHealth = await schedulerManager.getPipelineHealth('gpt-4-pipeline');
+  console.log(`🔍 GPT-4 Pipeline Health: ${pipelineHealth.status}`);
+}
+
+// Run health checks periodically
+setInterval(checkSystemHealth, 30000); // Every 30 seconds
+```
+
+### Production Deployment Example
+
+#### Docker Configuration
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY sharedmodule/pipeline/package*.json ./sharedmodule/pipeline/
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN cd sharedmodule/pipeline && npm run build
+
+# Expose ports
+EXPOSE 3000 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start the application
+CMD ["node", "server.js"]
+```
+
+#### Kubernetes Deployment
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rcc-pipeline-router
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rcc-pipeline-router
+  template:
+    metadata:
+      labels:
+        app: rcc-pipeline-router
+    spec:
+      containers:
+      - name: router
+        image: rcc/pipeline-router:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        - containerPort: 8080
+          name: internal-api
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: RCC_PIPELINE_CONFIG_PATH
+          value: "/app/config/production.json"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rcc-pipeline-router-service
+spec:
+  selector:
+    app: rcc-pipeline-router
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+  - name: internal-api
+    port: 8080
+    targetPort: 8080
+  type: LoadBalancer
+```
+
+This comprehensive documentation showcases the powerful virtual model routing capabilities of the RCC Pipeline Module, providing developers with everything needed to implement intelligent AI model request routing in their applications.
+
 ### UnderConstruction Module Usage
 **MANDATORY**: All unimplemented features MUST use the UnderConstruction module instead of TODO comments or mock implementations.
 
@@ -3229,10 +4083,14 @@ underConstruction.callUnderConstructionFeature('advanced-capability-detection', 
 });
 ```
 
-## 📅 Last Updated: 2025-09-19
-- ✅ Documentation comprehensively updated with complete modular architecture design
-- ✅ Configuration table formats and error handling specifications detailed
-- ✅ System integration requirements and best practices added
-- ✅ Deployment, testing, and monitoring guidelines completed
-- ✅ Module structure documentation with file purposes added
-- ✅ Known issues and development standards compliance documented
+## 📅 Last Updated: 2025-09-20
+- ✅ **Virtual Model Routing System**: Comprehensive documentation of intelligent request routing
+- ✅ **RequestAnalyzer**: Detailed documentation of intelligent request analysis capabilities
+- ✅ **RoutingRulesEngine**: Complete coverage of intelligent routing decision making
+- ✅ **Internal API Endpoint**: Documentation of server integration capabilities
+- ✅ **Architecture Updates**: Enhanced system architecture diagrams with routing components
+- ✅ **Module Structure**: Updated file structure to include new routing components
+- ✅ **Configuration Examples**: Complete configuration examples for routing system
+- ✅ **Monitoring & Metrics**: Comprehensive monitoring and metrics documentation
+- ✅ **Initialization Flow**: Detailed initialization process between assembly and scheduling
+- ✅ **Usage Examples**: Real-world routing examples with different request types

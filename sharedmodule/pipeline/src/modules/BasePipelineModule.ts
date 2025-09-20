@@ -147,4 +147,58 @@ export abstract class BasePipelineModule extends BaseModule {
       lastCheck: Date.now()
     };
   }
+
+  /**
+   * Handle messages (required by BaseModule abstract class)
+   */
+  public async handleMessage(message: any): Promise<any> {
+    switch (message.type) {
+      case 'getInfo':
+        return {
+          success: true,
+          data: this.getInfo()
+        };
+
+      case 'getName':
+        return {
+          success: true,
+          data: this.getName()
+        };
+
+      case 'getType':
+        return {
+          success: true,
+          data: this.getType()
+        };
+
+      case 'getId':
+        return {
+          success: true,
+          data: this.getId()
+        };
+
+      case 'getHealth':
+        return {
+          success: true,
+          data: this.getHealth()
+        };
+
+      case 'isConfigured':
+        return {
+          success: true,
+          data: this.isConfigured()
+        };
+
+      default:
+        // Handle unknown message types
+        this.warn(`Unknown message type: ${message.type}`, { message }, 'handleMessage');
+        return {
+          messageId: message.id,
+          correlationId: message.correlationId || '',
+          success: false,
+          error: `Unknown message type: ${message.type}`,
+          timestamp: Date.now()
+        };
+    }
+  }
 }

@@ -67,8 +67,6 @@ export { PipelineAssembler, AssemblerConfig, AssemblyResult } from './framework/
 
 // Scheduling system
 export { Pipeline } from './framework/Pipeline';
-export { PipelineFactory } from './framework/PipelineFactory';
-export { PipelineScheduler } from './framework/PipelineScheduler';
 export { VirtualModelSchedulerManager } from './framework/VirtualModelSchedulerManager';
 
 // Pipeline tracking
@@ -93,6 +91,39 @@ export { default as QwenProvider } from './providers/qwen';
 
 // iFlow provider
 export { default as IFlowProvider } from './providers/iflow';
+
+// Routing system
+export {
+  RoutingCapabilities,
+  RequestAnalysisResult,
+  RoutingDecision,
+  RoutingMatchResult,
+  RoutingRule,
+  RoutingStrategyConfig
+} from './routing/RoutingCapabilities';
+
+export {
+  RequestAnalyzer,
+  RequestAnalyzerConfig,
+  AnalysisStatistics
+} from './routing/RequestAnalyzer';
+
+export {
+  RoutingRulesEngine,
+  RoutingRulesEngineConfig,
+  RoutingStatistics
+} from './routing/RoutingRulesEngine';
+
+// RoutingContext is exported from RoutingCapabilities, not RoutingRulesEngine
+export {
+  RoutingContext
+} from './routing/RoutingCapabilities';
+
+// Routing system example
+export {
+  RoutingExample,
+  runRoutingExample
+} from './routing/RoutingExample';
 
 // Version info
 export const version = '1.0.0';

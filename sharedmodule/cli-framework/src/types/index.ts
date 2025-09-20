@@ -57,3 +57,16 @@ export interface ParsedCommand {
   args: string[];
   options: Record<string, unknown>;
 }
+
+export interface BaseModuleConfig {
+  id: string;
+  name: string;
+  version: string;
+  type: string;
+  description?: string;
+}
+
+export interface BaseModule {
+  initialize(): Promise<void>;
+  destroy(): Promise<void>;
+}

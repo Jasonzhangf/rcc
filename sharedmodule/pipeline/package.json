@@ -41,11 +41,12 @@
     "axios": "^1.12.2",
     "open": "^10.2.0",
     "rcc-basemodule": "^0.2.3",
-    "rcc-config-parser": "file:../config-parser",
+    "rcc-config-parser": ">=0.1.0",
     "rcc-debugcenter": "^0.1.0",
     "rcc-errorhandling": "^1.0.6"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.19.14",

@@ -110,7 +110,7 @@ export class CommandRegistry {
       }
 
     } catch (error) {
-      this.logger.error(`Error discovering commands from directory ${dirPath}:`, error);
+      this.logger.error(`Error discovering commands from directory ${dirPath}:`, error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -125,7 +125,7 @@ export class CommandRegistry {
       }
 
     } catch (error) {
-      this.logger.error(`Error discovering commands from modules ${pattern}:`, error);
+      this.logger.error(`Error discovering commands from modules ${pattern}:`, error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -143,7 +143,7 @@ export class CommandRegistry {
       }
 
     } catch (error) {
-      this.logger.error(`Error loading command from file ${filePath}:`, error);
+      this.logger.error(`Error loading command from file ${filePath}:`, error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -165,7 +165,7 @@ export class CommandRegistry {
       }
 
     } catch (error) {
-      this.logger.error(`Error loading commands from module ${modulePath}:`, error);
+      this.logger.error(`Error loading commands from module ${modulePath}:`, error instanceof Error ? error.message : String(error));
     }
   }
 

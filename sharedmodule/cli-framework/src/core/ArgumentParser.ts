@@ -110,11 +110,11 @@ export class ArgumentParser {
         throw new Error(`Option --${option.name} is required`);
       }
 
-      if (option.type === 'boolean' && option.name in options && typeof options[option.name] !== 'boolean') {
+      if (option.type === 'boolean' && (option.name in options) && typeof options[option.name] !== 'boolean') {
         throw new Error(`Option --${option.name} must be a boolean`);
       }
 
-      if (option.type === 'number' && option.name in options && typeof options[option.name] !== 'number') {
+      if (option.type === 'number' && (option.name in options) && typeof options[option.name] !== 'number') {
         throw new Error(`Option --${option.name} must be a number`);
       }
     }
@@ -134,7 +134,7 @@ export class ArgumentParser {
       }
 
       // Handle aliases
-      if (option.alias && option.alias in options && !(option.name in options)) {
+      if (option.alias && (option.alias in options) && !(option.name in options)) {
         options[option.name] = options[option.alias];
         delete options[option.alias];
       }

@@ -93,7 +93,7 @@ export interface TransformerRegistration {
  * LLMSwitch 模块 - 实现标准协议转换层
  */
 export class LLMSwitchModule extends BasePipelineModule {
-  protected override config!: LLMSwitchConfig;
+  protected config!: LLMSwitchConfig;
   private transformers: Map<string, TransformerRegistration> = new Map();
   private mappingTable: MappingTable | null = null;
   private ioRecorder: IORecorder | null = null;
@@ -107,7 +107,7 @@ export class LLMSwitchModule extends BasePipelineModule {
   /**
    * 配置 LLMSwitch 模块
    */
-  override async configure(config: LLMSwitchConfig): Promise<void> {
+  async configure(config: LLMSwitchConfig): Promise<void> {
     this.logInfo('Configuring LLMSwitchModule', config, 'configure');
 
     this.config = {
@@ -284,7 +284,7 @@ export class LLMSwitchModule extends BasePipelineModule {
   /**
    * 处理请求 - 实现标准接口
    */
-  override async process(request: StandardRequest): Promise<StandardResponse | StandardErrorResponse> {
+  async process(request: StandardRequest): Promise<StandardResponse | StandardErrorResponse> {
     if (!this.isInitialized) {
       return this.createErrorResponse('LLMSwitch module not initialized', 'not_initialized');
     }
@@ -404,7 +404,7 @@ export class LLMSwitchModule extends BasePipelineModule {
   /**
    * 处理响应 - 实现标准接口
    */
-  override async processResponse(response: StandardResponse): Promise<StandardResponse | StandardErrorResponse> {
+  async processResponse(response: StandardResponse): Promise<StandardResponse | StandardErrorResponse> {
     if (!this.isInitialized) {
       return this.createErrorResponse('LLMSwitch module not initialized', 'not_initialized');
     }
@@ -656,7 +656,7 @@ export class LLMSwitchModule extends BasePipelineModule {
   /**
    * 销毁模块
    */
-  override async destroy(): Promise<void> {
+  async destroy(): Promise<void> {
     await super.destroy();
     this.transformers.clear();
     this.mappingTable = null;

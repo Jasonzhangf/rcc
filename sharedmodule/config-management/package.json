@@ -37,8 +37,8 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "rcc-basemodule": "file:../basemodule",
-    "rcc-config-parser": "file:../config-parser"
+    "rcc-basemodule": ">=0.1.0",
+    "rcc-config-parser": ">=0.1.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",

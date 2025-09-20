@@ -6,7 +6,7 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
     private app;
     private server;
     private serverConfig;
-    private isRunning;
+    isRunning(): boolean;
     constructor();
     /**
      * Initialize the HTTP server with configuration
@@ -20,7 +20,7 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
     /**
      * Stop the HTTP server
      */
-    close(): Promise<void>;
+    stop(): Promise<void>;
     /**
      * Add event listener
      */

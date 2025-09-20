@@ -9,6 +9,12 @@ export { startCommand } from './commands/start';
 export { stopCommand } from './commands/stop';
 export { codeCommand } from './commands/code';
 
+// Export config utilities
+export * from './config';
+
+// Export utility modules
+export * from './utils';
+
 import * as path from 'path';
 import * as url from 'url';
 

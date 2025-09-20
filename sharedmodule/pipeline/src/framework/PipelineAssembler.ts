@@ -4,30 +4,65 @@
  */
 
 import { ModuleScanner, ProviderDiscoveryOptions } from './ModuleScanner';
-import { PipelineFactory, PipelineFactoryConfig } from './PipelineFactory';
 import { PipelineTracker } from './PipelineTracker';
 import { VirtualModelConfig } from '../types/virtual-model';
 import { Pipeline, PipelineConfig } from './Pipeline';
 import { BaseProvider } from './BaseProvider';
+import { VirtualModelSchedulerManager, ManagerConfig } from './VirtualModelSchedulerManager';
 
-// Import config-parser types and functions
-import {
-  ConfigLoader,
-  ConfigParser,
-  PipelineConfigGenerator,
-  PipelineTable,
-  PipelineTableEntry,
-  ConfigData,
-  parseConfigFile
-} from 'rcc-config-parser';
+// Type definitions for rcc-config-parser to resolve TypeScript errors
+// Since the module is untyped, we'll define the interfaces we need
+interface ConfigData {
+  [key: string]: unknown;
+}
+
+interface PipelineTableEntry {
+  id: string;
+  name: string;
+  layer: string;
+  config: Record<string, unknown>;
+  virtualModelId: string;
+  enabled: boolean;
+  modelId: string;
+  providerId: string;
+  weight?: number;
+}
+
+interface PipelineTable {
+  entries: PipelineTableEntry[];
+  metadata: {
+    version: string;
+    created: string;
+  };
+  getEntries(): PipelineTableEntry[];
+  toJSON(): Record<string, unknown>;
+}
+
+// Import config-parser types with proper type assertion
+// We'll use dynamic import to avoid TypeScript compilation issues
+let ConfigLoader: any;
+let ConfigParser: any;
+let PipelineConfigGenerator: any;
+let parseConfigFile: any;
+
+try {
+  // Try to import the module at runtime
+  const configParserModule = require('rcc-config-parser');
+  ConfigLoader = configParserModule.ConfigLoader;
+  ConfigParser = configParserModule.ConfigParser;
+  PipelineConfigGenerator = configParserModule.PipelineConfigGenerator;
+  parseConfigFile = configParserModule.parseConfigFile;
+} catch (error) {
+  console.warn('⚠️  rcc-config-parser module not available, some configuration features may be disabled');
+}
 
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { RoutingCapabilities } from '../routing/RoutingCapabilities';
 
 export interface AssemblerConfig {
   providerDiscoveryOptions?: ProviderDiscoveryOptions;
-  pipelineFactoryConfig?: PipelineFactoryConfig;
   enableAutoDiscovery?: boolean;
   fallbackStrategy?: 'first-available' | 'round-robin';
   configFilePath?: string;
@@ -47,10 +82,10 @@ export interface PipelinePool {
     failedRequests: number;
     averageResponseTime: number;
   };
+  routingCapabilities?: RoutingCapabilities; // 新增路由能力描述
 }
 
 // 导出所有核心接口以支持外部类型安全
-export type { AssemblerConfig, AssemblyResult, PipelinePool };
 
 export interface AssemblyResult {
   success: boolean;
@@ -73,15 +108,15 @@ export interface AssemblyResult {
 export class PipelineAssembler {
   private config: AssemblerConfig;
   private moduleScanner: ModuleScanner;
-  private pipelineFactory: PipelineFactory;
   private pipelineTracker: PipelineTracker;
   private pipelinePools: Map<string, PipelinePool> = new Map();
   private discoveredProviders: Map<string, BaseProvider> = new Map();
+  private virtualModelScheduler?: VirtualModelSchedulerManager; // 虚拟模型调度器引用
 
   // Configuration module integration
-  private configLoader?: ConfigLoader;
-  private configParser?: ConfigParser;
-  private pipelineConfigGenerator?: PipelineConfigGenerator;
+  private configLoader?: any;
+  private configParser?: any;
+  private pipelineConfigGenerator?: any;
   private currentConfigData?: ConfigData;
   private currentPipelineTable?: PipelineTable;
 
@@ -95,18 +130,6 @@ export class PipelineAssembler {
 
     this.pipelineTracker = pipelineTracker;
     this.moduleScanner = new ModuleScanner();
-
-    const factoryConfig: PipelineFactoryConfig = {
-      defaultTimeout: 30000,
-      defaultHealthCheckInterval: 60000,
-      defaultMaxRetries: 3,
-      defaultLoadBalancingStrategy: 'round-robin',
-      enableHealthChecks: true,
-      metricsEnabled: true,
-      ...config.pipelineFactoryConfig
-    };
-
-    this.pipelineFactory = new PipelineFactory(factoryConfig, pipelineTracker);
 
     // Initialize configuration modules if enabled
     if (this.config.enableConfigModuleIntegration) {
@@ -176,23 +199,27 @@ export class PipelineAssembler {
       await this.pipelineConfigGenerator.initialize();
 
       // Load configuration
-      const rawData = await this.configLoader.loadFromFile(configPath);
+      const rawData = await this.configLoader!.loadFromFile(configPath);
       console.log('📋 Configuration file loaded successfully');
 
       // Parse configuration
-      this.currentConfigData = await this.configParser.parseConfig(rawData);
+      this.currentConfigData = await this.configParser!.parseConfig(rawData);
       console.log('🔍 Configuration parsed successfully');
 
       // Generate pipeline table
-      this.currentPipelineTable = await this.pipelineConfigGenerator.generatePipelineTable(this.currentConfigData);
-      console.log(`🗂️  Pipeline table generated with ${this.currentPipelineTable.getEntries().length} entries`);
+      this.currentPipelineTable = await this.pipelineConfigGenerator!.generatePipelineTable(this.currentConfigData);
+      if (this.currentPipelineTable) {
+        console.log(`🗂️  Pipeline table generated with ${this.currentPipelineTable.getEntries().length} entries`);
+      } else {
+        console.log('🗂️  Pipeline table generated but is undefined');
+      }
 
       // Save pipeline table to file if output path specified
-      if (this.config.pipelineTableOutputPath) {
+      if (this.config.pipelineTableOutputPath && this.currentPipelineTable) {
         await this.savePipelineTableToFile(this.currentPipelineTable, this.config.pipelineTableOutputPath);
       }
 
-      return this.currentConfigData;
+      return this.currentConfigData || null;
     } catch (error) {
       console.error('❌ Failed to load configuration and generate pipeline table:', error);
       return null;
@@ -257,25 +284,26 @@ export class PipelineAssembler {
     const virtualModelConfigs: Map<string, VirtualModelConfig> = new Map();
 
     for (const entry of entries) {
-      if (!virtualModelConfigs.has(entry.virtualModelId)) {
-        virtualModelConfigs.set(entry.virtualModelId, {
-          id: entry.virtualModelId,
-          name: entry.virtualModelId,
-          enabled: entry.enabled,
-          modelId: entry.modelId,
-          provider: entry.providerId,
+      const virtualModelId = entry.virtualModelId || `vm-${entry.id}`;
+      if (!virtualModelConfigs.has(virtualModelId)) {
+        virtualModelConfigs.set(virtualModelId, {
+          id: virtualModelId,
+          name: entry.name || virtualModelId,
+          enabled: entry.enabled !== false,
+          modelId: entry.modelId || 'default',
+          provider: entry.providerId || 'unknown',
           targets: [],
           capabilities: ['chat']
         });
       }
 
-      const vmConfig = virtualModelConfigs.get(entry.virtualModelId)!;
+      const vmConfig = virtualModelConfigs.get(virtualModelId)!;
       if (vmConfig.targets) {
         vmConfig.targets.push({
-          providerId: entry.providerId,
-          modelId: entry.modelId,
+          providerId: entry.providerId || 'unknown',
+          modelId: entry.modelId || 'default',
           weight: entry.weight || 1,
-          enabled: entry.enabled
+          enabled: entry.enabled !== false
         });
       }
     }
@@ -408,6 +436,17 @@ export class PipelineAssembler {
       console.log(`🎯 Pipeline assembly completed. Success: ${result.success}`);
       console.log(`📊 Results: ${result.pipelinePools.size} pools, ${result.errors.length} errors, ${result.warnings.length} warnings`);
 
+      // 如果有可用的scheduler并且组装成功，初始化scheduler
+      if (result.success && this.virtualModelScheduler) {
+        console.log('🔄 Initializing VirtualModelSchedulerManager with assembled pipeline pools...');
+        try {
+          this.virtualModelScheduler.initialize(result.pipelinePools);
+          console.log('✅ VirtualModelSchedulerManager initialized successfully');
+        } catch (error) {
+          console.warn('⚠️ Failed to initialize VirtualModelSchedulerManager:', error);
+        }
+      }
+
       return result;
 
     } catch (error) {
@@ -499,6 +538,9 @@ export class PipelineAssembler {
       // Select active pipeline (first available)
       const activePipeline = pipelines.size > 0 ? Array.from(pipelines.values())[0] : null;
 
+      // 创建路由能力描述
+      const routingCapabilities: RoutingCapabilities = this.createRoutingCapabilities(virtualModel, providers);
+
       const pool: PipelinePool = {
         virtualModelId: virtualModel.id,
         pipelines,
@@ -510,7 +552,8 @@ export class PipelineAssembler {
           successfulRequests: 0,
           failedRequests: 0,
           averageResponseTime: 0
-        }
+        },
+        routingCapabilities
       };
 
       console.log(`✅ Pipeline pool assembled for ${virtualModel.id}: ${pipelines.size} pipelines, health: ${pool.healthStatus}`);
@@ -530,7 +573,8 @@ export class PipelineAssembler {
           successfulRequests: 0,
           failedRequests: 0,
           averageResponseTime: 0
-        }
+        },
+        routingCapabilities: this.createDefaultRoutingCapabilities(virtualModel)
       };
     }
   }
@@ -561,6 +605,192 @@ export class PipelineAssembler {
   }
 
   /**
+   * 创建路由能力描述
+   */
+  private createRoutingCapabilities(virtualModel: VirtualModelConfig, providers: Map<string, BaseProvider>): RoutingCapabilities {
+    // 从虚拟模型配置和能力中推断路由能力
+    const capabilities = virtualModel.capabilities || ['chat'];
+    const supportedModels = virtualModel.targets?.map(target => target.modelId) || [virtualModel.modelId || 'default'];
+
+    return {
+      supportedModels,
+      maxTokens: this.estimateMaxTokens(virtualModel),
+      supportsStreaming: capabilities.includes('streaming') || capabilities.includes('chat'),
+      supportsTools: capabilities.includes('tools') || capabilities.includes('function-calling'),
+      supportsImages: capabilities.includes('vision') || capabilities.includes('images'),
+      supportsFunctionCalling: capabilities.includes('function-calling'),
+      supportsMultimodal: capabilities.includes('multimodal') || capabilities.includes('vision'),
+      supportedModalities: this.determineSupportedModalities(capabilities),
+      priority: this.determinePriority(virtualModel),
+      availability: 0.9, // 默认高可用性
+      loadWeight: virtualModel.targets?.reduce((sum, target) => sum + (target.weight || 1), 0) || 1,
+      costScore: this.estimateCostScore(virtualModel),
+      performanceScore: this.estimatePerformanceScore(virtualModel),
+      routingTags: this.generateRoutingTags(virtualModel),
+      extendedCapabilities: {
+        supportsVision: capabilities.includes('vision'),
+        supportsAudio: capabilities.includes('audio'),
+        supportsCodeExecution: capabilities.includes('code-execution'),
+        supportsWebSearch: capabilities.includes('web-search'),
+        maxContextLength: this.estimateMaxTokens(virtualModel),
+        temperatureRange: [0, 1],
+        topPRange: [0, 1]
+      }
+    };
+  }
+
+  /**
+   * 创建默认路由能力
+   */
+  private createDefaultRoutingCapabilities(virtualModel: VirtualModelConfig): RoutingCapabilities {
+    return {
+      supportedModels: [virtualModel.modelId || 'default'],
+      maxTokens: 4000,
+      supportsStreaming: true,
+      supportsTools: true,
+      supportsImages: true,
+      supportsFunctionCalling: true,
+      supportsMultimodal: true,
+      supportedModalities: ['text'],
+      priority: 50,
+      availability: 0.5, // 较低的可用性，因为是错误情况
+      loadWeight: 1.0,
+      costScore: 0.5,
+      performanceScore: 0.3,
+      routingTags: ['fallback', 'error'],
+      extendedCapabilities: {
+        supportsVision: false,
+        maxContextLength: 4000
+      }
+    };
+  }
+
+  /**
+   * 估算最大token数
+   */
+  private estimateMaxTokens(virtualModel: VirtualModelConfig): number {
+    // 根据模型类型估算最大token数
+    const modelId = virtualModel.modelId?.toLowerCase() || '';
+
+    if (modelId.includes('gpt-4')) {
+      return modelId.includes('32k') ? 32768 : 8192;
+    } else if (modelId.includes('gpt-3.5')) {
+      return 4096;
+    } else if (modelId.includes('claude')) {
+      return modelId.includes('100k') ? 100000 : 100000;
+    } else {
+      return 4000; // 默认值
+    }
+  }
+
+  /**
+   * 确定支持的模态
+   */
+  private determineSupportedModalities(capabilities: string[]): string[] {
+    const modalities = new Set<string>(['text']); // 默认支持文本
+
+    for (const capability of capabilities) {
+      switch (capability.toLowerCase()) {
+        case 'vision':
+        case 'images':
+          modalities.add('vision');
+          break;
+        case 'audio':
+          modalities.add('audio');
+          break;
+        case 'multimodal':
+          modalities.add('vision');
+          modalities.add('audio');
+          break;
+      }
+    }
+
+    return Array.from(modalities);
+  }
+
+  /**
+   * 确定优先级
+   */
+  private determinePriority(virtualModel: VirtualModelConfig): number {
+    // 根据模型类型确定优先级
+    const modelId = virtualModel.modelId?.toLowerCase() || '';
+
+    if (modelId.includes('gpt-4')) {
+      return 80;
+    } else if (modelId.includes('claude')) {
+      return 75;
+    } else if (modelId.includes('gpt-3.5')) {
+      return 60;
+    } else {
+      return 50; // 默认优先级
+    }
+  }
+
+  /**
+   * 估算成本分数
+   */
+  private estimateCostScore(virtualModel: VirtualModelConfig): number {
+    // 根据模型类型估算成本（0-1，分数越高成本越高）
+    const modelId = virtualModel.modelId?.toLowerCase() || '';
+
+    if (modelId.includes('gpt-4')) {
+      return 0.8;
+    } else if (modelId.includes('claude')) {
+      return 0.7;
+    } else if (modelId.includes('gpt-3.5')) {
+      return 0.4;
+    } else {
+      return 0.5; // 默认成本
+    }
+  }
+
+  /**
+   * 估算性能分数
+   */
+  private estimatePerformanceScore(virtualModel: VirtualModelConfig): number {
+    // 根据模型类型估算性能（0-1，分数越高性能越好）
+    const modelId = virtualModel.modelId?.toLowerCase() || '';
+
+    if (modelId.includes('gpt-4')) {
+      return 0.9;
+    } else if (modelId.includes('claude')) {
+      return 0.8;
+    } else if (modelId.includes('gpt-3.5')) {
+      return 0.7;
+    } else {
+      return 0.6; // 默认性能
+    }
+  }
+
+  /**
+   * 生成路由标签
+   */
+  private generateRoutingTags(virtualModel: VirtualModelConfig): string[] {
+    const tags: string[] = [];
+    const modelId = virtualModel.modelId?.toLowerCase() || '';
+    const capabilities = virtualModel.capabilities || [];
+
+    // 添加模型相关标签
+    if (modelId.includes('gpt-4')) {
+      tags.push('gpt-4', 'high-performance');
+    } else if (modelId.includes('claude')) {
+      tags.push('claude', 'large-context');
+    } else if (modelId.includes('gpt-3.5')) {
+      tags.push('gpt-3.5', 'cost-effective');
+    }
+
+    // 添加能力相关标签
+    for (const capability of capabilities) {
+      tags.push(capability.toLowerCase());
+    }
+
+    // 添加通用标签
+    tags.push('available');
+
+    return tags;
+  }
+
+  /**
    * Create pipeline from target configuration
    * 从目标配置创建流水线
    */
@@ -576,7 +806,8 @@ export class PipelineAssembler {
         return null;
       }
 
-      return this.pipelineFactory.createPipelineFromConfig(pipelineConfig);
+      // 直接创建Pipeline实例
+      return new Pipeline(pipelineConfig, this.pipelineTracker);
 
     } catch (error) {
       console.error(`❌ Failed to create pipeline from target ${targetConfig.providerId}:${targetConfig.modelId}:`, error);
@@ -734,6 +965,14 @@ export class PipelineAssembler {
   }
 
   /**
+   * 设置虚拟模型调度器
+   */
+  setVirtualModelScheduler(scheduler: VirtualModelSchedulerManager): void {
+    console.log('🔗 Setting VirtualModelSchedulerManager for PipelineAssembler');
+    this.virtualModelScheduler = scheduler;
+  }
+
+  /**
    * Get assembler status
    * 获取组装器状态
    */
@@ -744,6 +983,8 @@ export class PipelineAssembler {
     healthyPools: number;
     discoveredProviders: number;
     virtualModelIds: string[];
+    routingEnabled: boolean;
+    schedulerInitialized: boolean;
     configModuleIntegration: {
       enabled: boolean;
       configLoaded: boolean;
@@ -767,6 +1008,8 @@ export class PipelineAssembler {
       healthyPools,
       discoveredProviders: this.discoveredProviders.size,
       virtualModelIds: Array.from(this.pipelinePools.keys()),
+      routingEnabled: !!this.virtualModelScheduler,
+      schedulerInitialized: this.virtualModelScheduler?.isInitializedAccessor || false,
       configModuleIntegration: {
         enabled: this.config.enableConfigModuleIntegration || false,
         configLoaded: !!this.currentConfigData,

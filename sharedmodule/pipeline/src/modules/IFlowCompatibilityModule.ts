@@ -63,7 +63,7 @@ export interface OpenAITool {
 /**
  * OpenAI Chat Completion Request
  */
-export interface OpenAIChatRequest {
+export interface IFlowOpenAIChatRequest {
   model: string;
   messages: Array<{
     role: 'system' | 'user' | 'assistant' | 'tool';
@@ -120,7 +120,7 @@ export interface IFlowChatRequest {
 /**
  * OpenAI Chat Completion Response
  */
-export interface OpenAIChatResponse {
+export interface IFlowOpenAIChatResponse {
   id: string;
   object: 'chat.completion';
   created: number;
@@ -205,7 +205,7 @@ export interface IFlowCompatibilityConfig extends CompatibilityConfig {
  * Implements agent-based architecture inspired by Claude Code Router
  */
 export class IFlowCompatibilityModule extends CompatibilityModule {
-  protected override config: IFlowCompatibilityConfig = {} as IFlowCompatibilityConfig;
+  protected config: IFlowCompatibilityConfig = {} as IFlowCompatibilityConfig;
   private agents: Map<string, IFlowAgent> = new Map();
 
   constructor(info: ModuleInfo) {
@@ -216,7 +216,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
   /**
    * Configure the iFlow compatibility module
    */
-  override async configure(config: IFlowCompatibilityConfig): Promise<void> {
+  async configure(config: IFlowCompatibilityConfig): Promise<void> {
     this.logInfo('Configuring IFlowCompatibilityModule', config, 'configure');
     
     this.config = config;
@@ -464,7 +464,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
   /**
    * Convert OpenAI request to iFlow request using field mapping and agent selection
    */
-  public async convertOpenAIToIFlow(openaiRequest: OpenAIChatRequest): Promise<IFlowChatRequest> {
+  public async convertOpenAIToIFlow(openaiRequest: IFlowOpenAIChatRequest): Promise<IFlowChatRequest> {
     const startTime = Date.now();
     
     try {
@@ -507,7 +507,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
   /**
    * Convert iFlow response to OpenAI response using field mapping
    */
-  public async convertIFlowToOpenAI(iflowResponse: IFlowChatResponse): Promise<OpenAIChatResponse> {
+  public async convertIFlowToOpenAI(iflowResponse: IFlowChatResponse): Promise<IFlowOpenAIChatResponse> {
     const startTime = Date.now();
     
     try {
@@ -566,7 +566,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
   /**
    * Process method - Required by BasePipelineModule
    */
-  override async process(request: any): Promise<any> {
+  async process(request: any): Promise<any> {
     this.logInfo('Processing IFlowCompatibilityModule request', {
       direction: this.config.direction,
       model: request.model
@@ -587,7 +587,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
   /**
    * Process response method - Required by BasePipelineModule
    */
-  override async processResponse(response: any): Promise<any> {
+  async processResponse(response: any): Promise<any> {
     this.logInfo('Processing IFlowCompatibilityModule response', {
       direction: this.config.direction,
       taskId: response.taskId
@@ -638,7 +638,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
   /**
    * Validation methods
    */
-  public validateOpenAIRequest(request: OpenAIChatRequest): {
+  public validateOpenAIRequest(request: IFlowOpenAIChatRequest): {
     isValid: boolean;
     errors: string[];
     warnings: string[];

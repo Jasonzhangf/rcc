@@ -53,12 +53,12 @@ export class StopCommand implements ICommand {
       
     } catch (error) {
       context.logger.error('Failed to stop RCC system:', error);
-      
+
       if (options.force) {
         context.logger.warn('Force stop requested, attempting aggressive shutdown...');
         await this.forceStop(context);
       } else {
-        console.error('❌ Failed to stop RCC system. Use --force for强制停止');
+        console.error('❌ Failed to stop RCC system. Use --force for force stop');
         throw error;
       }
     }

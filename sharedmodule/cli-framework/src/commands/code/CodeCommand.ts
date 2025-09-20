@@ -89,13 +89,19 @@ export class CodeCommand implements ICommand {
     context.logger.info('  rcc code --help            - Show this help message');
   }
 
-  private parseOptions(rawOptions: Record<string, unknown>): any {
+  private parseOptions(rawOptions: Record<string, unknown>): {
+    generate?: string;
+    build: boolean;
+    watch: boolean;
+    clean: boolean;
+    verbose: boolean;
+  } {
     return {
       generate: rawOptions.generate as string,
-      build: (rawOptions.build as boolean) || false,
-      watch: (rawOptions.watch as boolean) || false,
-      clean: (rawOptions.clean as boolean) || false,
-      verbose: (rawOptions.verbose as boolean) || false,
+      build: (rawOptions.build as boolean) ?? false,
+      watch: (rawOptions.watch as boolean) ?? false,
+      clean: (rawOptions.clean as boolean) ?? false,
+      verbose: (rawOptions.verbose as boolean) ?? false,
     };
   }
 

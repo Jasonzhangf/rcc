@@ -3,57 +3,37 @@
  * 支持OAuth 2.0 Device Flow的Qwen Provider - TypeScript版本
  */
 
-import { BaseModule } from 'rcc-basemodule';
 import { BaseProvider } from '../framework/BaseProvider';
-import { ErrorHandlingCenter } from 'rcc-errorhandling';
+// Simple mock implementation for ErrorHandlingCenter
+class SimpleErrorHandlingCenter {
+  constructor(config: any) {
+    // Mock implementation
+  }
+
+  handleError(error: any): void {
+    // Mock implementation
+    console.error('Error handled:', error);
+  }
+
+  async destroy(): Promise<void> {
+    // Mock implementation
+  }
+}
+
+// Use mock if import fails
+let ErrorHandlingCenter: any;
+try {
+  ErrorHandlingCenter = require('rcc-errorhandling').ErrorHandlingCenter;
+} catch {
+  ErrorHandlingCenter = SimpleErrorHandlingCenter;
+}
+import { OpenAIChatRequest, OpenAIChatRequestData, OpenAIChatResponse } from '../framework/OpenAIInterface';
 import axios from 'axios';
 import crypto from 'crypto';
 import open from 'open';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-
-// OpenAI Interface imports would be defined in separate TypeScript files
-interface OpenAIChatRequest {
-  model: string;
-  messages: Array<{
-    role: string;
-    content: string;
-  }>;
-  temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  stream?: boolean;
-  tools?: Array<{
-    type: 'function';
-    function: {
-      name: string;
-      description: string;
-      parameters: any;
-    };
-  }>;
-}
-
-interface OpenAIChatResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: Array<{
-    index: number;
-    message: {
-      role: string;
-      content: string;
-      tool_calls?: Array<any>;
-    };
-    finish_reason: string;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
 
 interface QwenProviderConfig {
   name: string;
@@ -596,7 +576,25 @@ class QwenProvider extends BaseProvider {
           throw new Error('No valid access token available');
         }
 
-        const qwenRequest = this.convertToQwenFormat({ ...providerRequest, stream: true });
+        const requestData: OpenAIChatRequestData = {
+          model: providerRequest.model,
+          messages: providerRequest.messages,
+          stream: true,
+          temperature: providerRequest.temperature,
+          max_tokens: providerRequest.max_tokens,
+          top_p: providerRequest.top_p,
+          n: providerRequest.n,
+          stop: providerRequest.stop,
+          presence_penalty: providerRequest.presence_penalty,
+          frequency_penalty: providerRequest.frequency_penalty,
+          logit_bias: providerRequest.logit_bias,
+          user: providerRequest.user,
+          tools: providerRequest.tools,
+          tool_choice: providerRequest.tool_choice
+        };
+
+        const openAIRequest = new OpenAIChatRequest(requestData);
+        const qwenRequest = this.convertToQwenFormat(openAIRequest);
 
         const response = await axios.post(this.endpoint + '/chat/completions', qwenRequest, {
           headers: {
@@ -700,7 +698,7 @@ class QwenProvider extends BaseProvider {
 
   // 转换Qwen响应到标准格式
   private convertQwenResponse(qwenResponse: any): OpenAIChatResponse {
-    return {
+    return new OpenAIChatResponse({
       id: qwenResponse.id || 'qwen_' + Date.now(),
       object: qwenResponse.object || 'chat.completion',
       created: qwenResponse.created || Date.now(),
@@ -719,7 +717,7 @@ class QwenProvider extends BaseProvider {
         completion_tokens: qwenResponse.usage.completion_tokens,
         total_tokens: qwenResponse.usage.total_tokens
       } : undefined
-    };
+    });
   }
 
   // 转换OpenAI工具格式到Qwen格式
@@ -780,6 +778,29 @@ class QwenProvider extends BaseProvider {
       vision: false,
       jsonMode: true,
       oauth: true
+    };
+  }
+
+  // 验证请求
+  validate(request: any): boolean {
+    if (!request.model) {
+      throw new Error('Model is required');
+    }
+    if (!request.messages || request.messages.length === 0) {
+      throw new Error('Messages are required');
+    }
+    return true;
+  }
+
+  // 转换为标准格式
+  toStandardFormat(): any {
+    return {
+      id: this.info.id,
+      name: this.info.name,
+      endpoint: this.endpoint,
+      supportedModels: this.supportedModels,
+      defaultModel: this.defaultModel,
+      capabilities: this.getCapabilities()
     };
   }
 

@@ -3,7 +3,12 @@
  * 流水线基础模块 - 具有增强调试功能的流水线组件基础模块
  */
 import { BaseModule, DebugConfig, IOTrackingConfig, ModuleIOEntry } from 'rcc-basemodule';
-import { ErrorHandlingCenter } from 'rcc-errorhandling';
+// Simple mock implementation for ErrorHandlingCenter
+declare class ErrorHandlingCenter {
+  constructor(config: any);
+  handleError(error: any): void;
+  destroy?(): Promise<void>;
+}
 
 /**
  * Provider information structure

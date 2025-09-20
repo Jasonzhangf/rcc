@@ -1,5 +1,5 @@
 // Dynamic import for ES module compatibility
-let BaseModule: any;
+let BaseModule: new (config: unknown) => { initialize(): Promise<void>; destroy(): Promise<void> };
 
 async function loadBaseModule() {
   if (!BaseModule) {
@@ -20,19 +20,19 @@ const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class SimpleLogger implements ILogger {
-  info(message: string, ...args: any[]): void {
+  info(message: string, ...args: unknown[]): void {
     console.log(`[INFO] ${message}`, ...args);
   }
-  warn(message: string, ...args: any[]): void {
+  warn(message: string, ...args: unknown[]): void {
     console.warn(`[WARN] ${message}`, ...args);
   }
-  error(message: string, ...args: any[]): void {
+  error(message: string, ...args: unknown[]): void {
     console.error(`[ERROR] ${message}`, ...args);
   }
-  debug(message: string, ...args: any[]): void {
+  debug(message: string, ...args: unknown[]): void {
     console.debug(`[DEBUG] ${message}`, ...args);
   }
-  trace(message: string, ...args: any[]): void {
+  trace(message: string, ...args: unknown[]): void {
     console.trace(`[TRACE] ${message}`, ...args);
   }
 }
@@ -49,7 +49,7 @@ export class CLIEngine {
   private parser: ArgumentParser;
   protected config: CLIEngineConfig;
   private logger: ILogger;
-  private baseModule: any | null;
+  private baseModule: { initialize(): Promise<void>; destroy(): Promise<void> } | null;
 
   constructor(config: CLIEngineConfig) {
     this.config = config;

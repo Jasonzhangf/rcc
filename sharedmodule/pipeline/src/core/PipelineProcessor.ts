@@ -571,7 +571,15 @@ export class PipelineProcessor extends BaseModule implements IPipelineProcessor 
         };
 
       default:
-        return super.handleMessage(message);
+        // Handle unknown message types
+        this.warn(`Unknown message type: ${message.type}`, { message }, 'handleMessage');
+        return {
+          messageId: message.id,
+          correlationId: message.correlationId || '',
+          success: false,
+          error: `Unknown message type: ${message.type}`,
+          timestamp: Date.now()
+        };
     }
   }
 }

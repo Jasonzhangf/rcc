@@ -1,6 +1,7 @@
 # RCC Config-Parser Module
 
 [![npm version](https://badge.fury.io/js/rcc-config-parser.svg)](https://badge.fury.io/js/rcc-config-parser)
+[![npm](https://img.shields.io/npm/v/rcc-config-parser.svg)](https://www.npmjs.com/package/rcc-config-parser)
 [![Build Status](https://github.com/rcc/rcc-config-parser/actions/workflows/build.yml/badge.svg)](https://github.com/rcc/rcc-config-parser/actions/workflows/build.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -682,6 +683,110 @@ npm run test:coverage
 npm run test:integration
 ```
 
+## 已知问题和待改进项
+
+### 🚨 需要UnderConstruction模块替换的TODO项目
+
+#### 1. 多语言翻译功能未实现
+**位置**: `src/core/ConfigParser.ts`
+**状态**: 翻译功能请求但未实现
+```typescript
+// 当前代码:
+this.warn(`Translation to locale ${locale} requested but not implemented`);
+
+// 应该使用UnderConstruction声明:
+import { underConstruction } from 'rcc-underconstruction';
+
+underConstruction.callUnderConstructionFeature('config-translation', {
+  caller: 'ConfigParser.translateConfig',
+  parameters: { config, locale },
+  purpose: '配置文件多语言翻译功能，支持国际化配置'
+});
+```
+
+#### 2. YAML格式支持未实现
+**位置**: `src/core/ConfigParser.ts`
+**状态**: YAML配置格式解析未实现
+```typescript
+// 当前代码:
+throw new Error('YAML support not implemented');
+
+// 应该使用UnderConstruction声明:
+underConstruction.callUnderConstructionFeature('yaml-format-support', {
+  caller: 'ConfigParser.parseConfigurationString',
+  parameters: { content, format: 'yaml' },
+  purpose: 'YAML配置格式的完整解析和处理支持'
+});
+```
+
+#### 3. TOML格式支持待实现
+**位置**: `src/core/ConfigParser.ts`
+**状态**: TOML配置格式解析待实现
+```typescript
+// 应该添加TOML支持:
+underConstruction.callUnderConstructionFeature('toml-format-support', {
+  caller: 'ConfigParser.parseConfigurationString',
+  parameters: { content, format: 'toml' },
+  purpose: 'TOML配置格式的完整解析和处理支持'
+});
+```
+
+### ⚠️ 潜在架构改进点
+
+#### 1. 配置格式扩展机制
+当前硬编码支持JSON格式，可以改进为插件式的格式扩展机制。
+
+#### 2. 配置验证规则引擎
+可以引入更强大的验证规则引擎，支持复杂的验证逻辑和自定义规则。
+
+#### 3. 配置模板系统
+可以开发更强大的配置模板系统，支持模板继承、覆盖和组合。
+
+#### 4. 配置版本迁移
+可以添加配置版本迁移功能，自动处理配置格式的向后兼容性。
+
+### 📋 性能优化机会
+
+#### 1. 大型配置文件处理
+对于大型配置文件，可以添加流式处理和分块加载机制。
+
+#### 2. 并行配置处理
+可以优化多个配置文件的并行处理能力。
+
+#### 3. 配置缓存策略
+可以实现更智能的缓存策略，包括依赖关系缓存。
+
+## 开发标准合规性
+
+### ✅ 已符合的开发标准
+
+1. **模块化架构**: 严格遵循RCC模块化架构原则
+2. **错误处理**: 完整的错误类型和恢复机制
+3. **类型安全**: 完整的TypeScript类型定义
+4. **性能监控**: 内置性能统计和监控功能
+5. **扩展性**: 支持自定义处理器和验证器
+
+### 🔄 需要改进的方面
+
+1. **UnderConstruction模块集成**: 需要替换未实现功能的错误抛出
+2. **配置格式支持**: 需要扩展YAML和TOML格式支持
+3. **测试覆盖率**: 需要增加边缘情况和错误场景的测试
+
+### 📝 UnderConstruction使用标准
+
+所有未完成功能必须使用UnderConstruction模块显式声明：
+
+```typescript
+import { underConstruction } from 'rcc-underconstruction';
+
+// 标准使用模式
+underConstruction.callUnderConstructionFeature('feature-identifier', {
+  caller: 'ClassName.methodName',
+  parameters: { /* 相关参数 */ },
+  purpose: '功能的具体目的和预期行为'
+});
+```
+
 ## 开发指南
 
 ### 添加新的配置格式支持
@@ -693,10 +798,20 @@ class ConfigParser extends BaseModule {
       case 'json':
         return JSON.parse(content);
       case 'yaml':
-        // 添加YAML支持
+        // 使用UnderConstruction声明
+        underConstruction.callUnderConstructionFeature('yaml-format-support', {
+          caller: 'ConfigParser.parseConfigurationString',
+          parameters: { content, format: 'yaml' },
+          purpose: 'YAML配置格式的完整解析和处理支持'
+        });
         return this.parseYaml(content);
       case 'toml':
-        // 添加TOML支持
+        // 使用UnderConstruction声明
+        underConstruction.callUnderConstructionFeature('toml-format-support', {
+          caller: 'ConfigParser.parseConfigurationString',
+          parameters: { content, format: 'toml' },
+          purpose: 'TOML配置格式的完整解析和处理支持'
+        });
         return this.parseToml(content);
       default:
         throw new Error(`Unsupported format: ${format}`);

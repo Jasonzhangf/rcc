@@ -1,10 +1,10 @@
 {
   "name": "rcc-config-parser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "RCC Configuration Parser Module - Pure configuration file parsing and generation",
   "type": "module",
-  "main": "dist/index.esm.js",
-  "module": "dist/index.esm.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*",
@@ -36,10 +36,14 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "rcc-basemodule": "^0.1.8",
+    "rcc-basemodule": "^0.2.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.5",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.0.0",
     "@types/uuid": "^9.0.7",
@@ -49,13 +53,15 @@
     "jest": "^29.7.0",
     "prettier": "^3.2.5",
     "rimraf": "^5.0.5",
+    "rollup": "^3.29.4",
     "ts-jest": "^29.1.2",
     "typescript": "^5.9.2"
   },
   "scripts": {
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && rollup -c",
+    "build:tsc": "npm run clean && tsc",
     "clean": "rm -rf dist",
-    "dev": "tsc --watch",
+    "dev": "rollup -c -w",
     "test": "jest --config jest.config.js",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",

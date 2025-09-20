@@ -1,6 +1,6 @@
 {
   "name": "rcc-errorhandling",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "RCC ErrorHandling Center - Simple error handling for RCC modules",
   "type": "module",
   "main": "dist/index.esm.js",
@@ -33,7 +33,7 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "rcc-basemodule": "^0.2.2"
+    "rcc-basemodule": "^0.2.3"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -53,11 +53,9 @@
     "typescript": "^5.9.2"
   },
   "scripts": {
-    "build": "npm run clean && npm run build:types && npm run build:dts && npm run build:cjs && npm run build:esm",
+    "build": "npm run clean && npm run build:types && npm run build:esm",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-    "build:dts": "rollup -c rollup.config.dts.mjs",
-    "build:cjs": "rollup -c rollup.config.esm.js",
-    "build:esm": "rollup -c rollup.config.esm.js",
+    "build:esm": "rollup -c rollup.config.mjs",
     "clean": "rimraf dist",
     "dev": "tsc --watch",
     "test": "jest",

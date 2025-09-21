@@ -9,7 +9,8 @@ import {
   IWorkflowModule,
   IPipelineModule,
   PipelineExecutionContext,
-  ModuleConfig
+  ModuleConfig,
+  PipelineStage
 } from '../interfaces/ModularInterfaces';
 
 /**
@@ -84,6 +85,7 @@ export class WorkflowModule extends BasePipelineModule implements IWorkflowModul
   public readonly moduleId: string;
   public readonly moduleName: string;
   public readonly moduleVersion: string;
+  public ioRecords: any[] = [];
   private providerConfigs: Map<string, ProviderStreamingConfig> = new Map();
   private activeStreams: Map<string, StreamingContext> = new Map();
   private isInitialized: boolean = false;
@@ -341,10 +343,25 @@ export class WorkflowModule extends BasePipelineModule implements IWorkflowModul
     const context: PipelineExecutionContext = {
       sessionId: 'session-' + Date.now(),
       requestId: 'req-' + Date.now(),
+      executionId: 'exec-' + Date.now(),
+      traceId: 'trace-' + Date.now(),
       virtualModelId: 'default',
       providerId: 'default-provider',
       startTime: Date.now(),
-      metadata: {}
+      stage: PipelineStage.REQUEST_INIT,
+      timing: {
+        startTime: Date.now(),
+        endTime: undefined,
+        duration: undefined,
+        stageTimings: new Map(),
+        status: 'pending'
+      },
+      ioRecords: [],
+      metadata: {},
+      parentContext: undefined,
+      debugConfig: undefined,
+      routingDecision: undefined,
+      performanceMetrics: undefined
     };
 
     return this.convertStreamingToNonStreaming(request, context);

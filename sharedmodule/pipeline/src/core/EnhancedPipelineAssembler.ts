@@ -11,7 +11,9 @@ import {
   RoutingConfig,
   RoutingOptimizationConfig,
   DebugConfig,
-  IModularPipelineExecutor
+  IModularPipelineExecutor,
+  RoutingDecision,
+  PerformanceMetrics
 } from '../interfaces/ModularInterfaces';
 import { ModuleFactory } from './ModuleFactory';
 import { ConfigurationValidator } from './ConfigurationValidator';
@@ -253,8 +255,8 @@ export class EnhancedPipelineAssembler {
           config: {
             fieldMappings: {
               'model': 'model',
-              'messages': 'messages',
-              'max_tokens': 'max_tokens'
+              'messages': 'messages'
+              // 移除max_tokens硬编码限制
             }
           }
         },
@@ -439,20 +441,34 @@ export class EnhancedPipelineAssembler {
       const status = await this.executor.getStatus();
 
       // 收集路由指标
-      if (status.routing) {
-        console.log('📈 路由指标:', {
-          providers: status.routing.size,
-          healthyProviders: Array.from(status.routing.values()).filter(h => h.isHealthy).length
-        });
+      if (this.routingOptimizer) {
+        try {
+          const metrics = this.routingOptimizer.getPerformanceMetrics();
+          const health = this.routingOptimizer.getHealthStatus();
+          const healthData: any = health;
+          console.log('📈 路由指标:', {
+            providers: healthData instanceof Map ? healthData.size : Object.keys(healthData.providers || {}).length,
+            healthyProviders: healthData instanceof Map ?
+              Array.from(healthData.values()).filter((h: any) => h.isHealthy).length :
+              Object.values(healthData.providers || {}).filter((h: any) => h.isHealthy).length
+          });
+        } catch (routingError) {
+          console.warn('⚠️ 路由指标收集失败:', routingError);
+        }
       }
 
       // 收集性能指标
-      if (status.performance) {
-        console.log('📊 性能指标:', {
-          averageStepTime: status.performance.averageStepTime,
-          throughput: status.performance.throughput,
-          bottleneck: status.performance.bottleneckStep
-        });
+      if (this.ioTracker) {
+        try {
+          const analysis = this.ioTracker.getPerformanceAnalysis();
+          console.log('📊 性能指标:', {
+            averageStepTime: analysis.averageStepTime,
+            throughput: 'N/A',
+            bottleneck: 'N/A'
+          });
+        } catch (trackingError) {
+          console.warn('⚠️ 性能指标收集失败:', trackingError);
+        }
       }
 
     } catch (error) {

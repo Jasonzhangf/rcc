@@ -150,8 +150,8 @@ interface OpenAIResponse {
  */
 export class AnthropicToOpenAITransformer implements ProtocolTransformer {
   readonly name = 'anthropic-to-openai';
-  readonly sourceProtocol: ProtocolType = 'anthropic';
-  readonly targetProtocol: ProtocolType = 'openai';
+  readonly sourceProtocol: ProtocolType = ProtocolType.ANTHROPIC;
+  readonly targetProtocol: ProtocolType = ProtocolType.OPENAI;
   readonly version = '1.0.0';
 
   private mappingTable: MappingTable;
@@ -165,7 +165,7 @@ export class AnthropicToOpenAITransformer implements ProtocolTransformer {
   /**
    * 转换请求
    */
-  transformRequest(request: any): StandardRequest {
+  transformRequest(request: any): any {
     const anthropicRequest = request as AnthropicRequest;
     const context: TransformContext = {
       sourceProtocol: 'anthropic',
@@ -196,7 +196,7 @@ export class AnthropicToOpenAITransformer implements ProtocolTransformer {
   /**
    * 转换响应
    */
-  transformResponse(response: StandardRequest): any {
+  transformResponse(response: any): any {
     const openaiResponse = response.payload as OpenAIResponse;
     const context: TransformContext = {
       sourceProtocol: 'openai',

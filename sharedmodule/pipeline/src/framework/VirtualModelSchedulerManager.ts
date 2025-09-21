@@ -19,6 +19,7 @@ type OperationType = 'chat' | 'streamChat' | 'healthCheck';
 export interface PipelinePoolData {
   virtualModelId: string;
   pool: PipelinePool;
+  config: any;
 }
 
 export interface ManagerConfig {
@@ -85,13 +86,20 @@ export class VirtualModelSchedulerManager {
   private requestAnalyzer?: RequestAnalyzer;
   private routingEngine?: RoutingRulesEngine;
   private internalAPIServer?: any; // HTTP服务器实例
-  private isInitialized: boolean = false;
+  private _isInitialized: boolean = false;
 
   /**
    * 获取初始化状态
    */
   public get isInitializedAccessor(): boolean {
-    return this.isInitialized;
+    return this._isInitialized;
+  }
+
+  /**
+   * 公共初始化状态访问器
+   */
+  public get isInitialized(): boolean {
+    return this._isInitialized;
   }
 
   constructor(config: ManagerConfig, pipelineTracker: PipelineTracker) {
@@ -164,7 +172,7 @@ export class VirtualModelSchedulerManager {
         this.startInternalAPI();
       }
 
-      this.isInitialized = true;
+      this._isInitialized = true;
       console.log(`✅ VirtualModelSchedulerManager initialized with ${pipelinePools.size} pipeline pools`);
 
     } catch (error) {
@@ -194,7 +202,7 @@ export class VirtualModelSchedulerManager {
         // 使用默认的路由能力
         const defaultCapabilities: RoutingCapabilities = {
           supportedModels: ['default'],
-          maxTokens: 4000,
+          maxTokens: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
           supportsStreaming: true,
           supportsTools: true,
           supportsImages: true,
@@ -209,7 +217,7 @@ export class VirtualModelSchedulerManager {
           routingTags: ['default'],
           extendedCapabilities: {
             supportsVision: true,
-            maxContextLength: 4000
+            maxContextLength: Number.MAX_SAFE_INTEGER // 使用最大安全整数，实际限制由provider控制
           }
         };
 
@@ -382,7 +390,8 @@ export class VirtualModelSchedulerManager {
   addPipelinePool(virtualModelId: string, pool: PipelinePool): void {
     this.pipelinePools.set(virtualModelId, {
       virtualModelId,
-      pool
+      pool,
+      config: pool.virtualModelId // Use virtualModelId as config for now
     });
 
     // Initialize virtual model metrics
@@ -569,17 +578,30 @@ export class VirtualModelSchedulerManager {
       // Check all pipeline pools
       for (const [virtualModelId, poolData] of this.pipelinePools) {
         try {
-          // Perform health check through pipeline pool's active pipeline
+          // Perform health check directly on providers in the pipeline
           if (!poolData.pool.activePipeline) {
             console.warn(`No active pipeline for health check on virtual model ${virtualModelId}`);
             continue;
           }
 
-          await poolData.pool.activePipeline.execute(
-            { type: 'health_check' },
-            'healthCheck',
-            { timeout: 5000 }
-          );
+          // Access the pipeline's targets and call healthCheck directly on each provider
+          const pipeline = poolData.pool.activePipeline;
+          const targets = this.getPipelineTargets(pipeline);
+
+          if (targets.length === 0) {
+            console.warn(`No targets found for health check on virtual model ${virtualModelId}`);
+            continue;
+          }
+
+          // Perform health check on each provider
+          for (const target of targets) {
+            try {
+              const healthResult = await target.provider.healthCheck();
+              console.log(`Health check passed for ${target.provider.getProviderInfo().name} (${virtualModelId}):`, healthResult.status);
+            } catch (error) {
+              console.warn(`Health check failed for ${target.provider.getProviderInfo().name} (${virtualModelId}):`, error);
+            }
+          }
         } catch (error) {
           console.warn(`Health check failed for virtual model ${virtualModelId}:`, error);
         }
@@ -588,6 +610,27 @@ export class VirtualModelSchedulerManager {
       this.metrics.lastHealthCheck = Date.now();
     } catch (error) {
       console.error('Health check failed:', error);
+    }
+  }
+
+  /**
+   * Get targets from a pipeline instance
+   * This is a workaround to access private targets for health checks
+   */
+  private getPipelineTargets(pipeline: any): any[] {
+    try {
+      // Try to access targets through various possible methods
+      if (pipeline.targets && typeof pipeline.targets === 'object') {
+        return Array.from(pipeline.targets.values());
+      }
+      if (pipeline.getTargets && typeof pipeline.getTargets === 'function') {
+        return pipeline.getTargets();
+      }
+      // Fallback: return empty array
+      return [];
+    } catch (error) {
+      console.warn('Could not access pipeline targets for health check:', error);
+      return [];
     }
   }
 
@@ -624,6 +667,26 @@ export class VirtualModelSchedulerManager {
   }
 
   /**
+   * Get virtual model mappings for compatibility
+   * 获取虚拟模型映射以保持兼容性
+   */
+  getVirtualModelMappings(): any {
+    const mappings: any = {};
+
+    for (const [virtualModelId, poolData] of this.pipelinePools) {
+      mappings[virtualModelId] = {
+        id: virtualModelId,
+        name: poolData.config.name || virtualModelId,
+        pipelineCount: poolData.pool.pipelines.size,
+        status: poolData.pool.isActive ? 'active' : 'inactive',
+        config: poolData.config
+      };
+    }
+
+    return mappings;
+  }
+
+  /**
    * Destroy manager and cleanup resources
    * 销毁管理器并清理资源
    */
@@ -654,7 +717,7 @@ export class VirtualModelSchedulerManager {
 
     this.pipelinePools.clear();
     this.metrics.virtualModelMetrics.clear();
-    this.isInitialized = false;
+    this._isInitialized = false;
 
     console.log('✅ VirtualModelSchedulerManager destroyed');
   }

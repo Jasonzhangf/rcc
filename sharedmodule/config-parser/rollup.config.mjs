@@ -19,7 +19,6 @@ export default defineConfig({
     },
   ],
   external: [
-    'rcc-basemodule',
     'uuid'
   ],
   plugins: [

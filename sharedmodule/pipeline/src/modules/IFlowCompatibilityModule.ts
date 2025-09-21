@@ -5,9 +5,33 @@
 
 import { ModuleInfo, ValidationRule } from 'rcc-basemodule';
 import { BasePipelineModule } from './BasePipelineModule';
-import { CompatibilityModule, MappingTable, FieldMapping, CompatibilityConfig } from './CompatibilityModule';
+import { CompatibilityModule } from './CompatibilityModule';
+import {
+  FieldMapping,
+  ModuleConfig,
+  PipelineExecutionContext
+} from '../interfaces/ModularInterfaces';
 import * as fs from 'fs';
 import * as path from 'path';
+
+/**
+ * Configuration for compatibility mapping
+ */
+export interface CompatibilityConfig {
+  providerType: 'openai' | 'anthropic' | 'iflow' | 'custom';
+  mappings: MappingTable;
+  enabledTools?: string[];
+  customHandlers?: Record<string, Function>;
+}
+
+/**
+ * Mapping table for field transformations
+ */
+export interface MappingTable {
+  requestFields: FieldMapping[];
+  responseFields: FieldMapping[];
+  toolFields?: FieldMapping[];
+}
 
 /**
  * iFlow Agent Interface
@@ -198,6 +222,11 @@ export interface IFlowCompatibilityConfig extends CompatibilityConfig {
     /** Default agent */
     defaultAgent?: string;
   };
+  /** Additional compatibility properties */
+  mappingTable?: any;
+  strictMapping?: boolean;
+  preserveUnknownFields?: boolean;
+  validation?: any;
 }
 
 /**
@@ -205,50 +234,39 @@ export interface IFlowCompatibilityConfig extends CompatibilityConfig {
  * Implements agent-based architecture inspired by Claude Code Router
  */
 export class IFlowCompatibilityModule extends CompatibilityModule {
-  protected config: IFlowCompatibilityConfig = {} as IFlowCompatibilityConfig;
+  protected iflowConfig: IFlowCompatibilityConfig = {} as IFlowCompatibilityConfig;
   private agents: Map<string, IFlowAgent> = new Map();
 
-  constructor(info: ModuleInfo) {
-    super(info);
+  // Required by IPipelineModule interface
+  public readonly moduleId: string;
+  public readonly moduleName: string;
+  public readonly moduleVersion: string;
+
+  constructor(config: ModuleConfig) {
+    // Pass the config directly - BasePipelineModule will handle the conversion
+    super(config as any);
+
+    // Initialize required interface properties
+    this.moduleId = config.id;
+    this.moduleName = config.name || 'IFlow Compatibility Module';
+    this.moduleVersion = config.version || '1.0.0';
+
+    // Set the IFlow-specific config
+    this.iflowConfig = config.config as IFlowCompatibilityConfig;
+
     this.logInfo('IFlowCompatibilityModule initialized', { module: this.moduleName }, 'constructor');
   }
 
-  /**
-   * Configure the iFlow compatibility module
-   */
-  async configure(config: IFlowCompatibilityConfig): Promise<void> {
-    this.logInfo('Configuring IFlowCompatibilityModule', config, 'configure');
-    
-    this.config = config;
-    
-    // Validate configuration
-    this.validateIFlowConfig();
-    
-    // Configure base compatibility module
-    await super.configure({
-      mappingTable: config.mappingTable,
-      strictMapping: config.strictMapping,
-      preserveUnknownFields: config.preserveUnknownFields,
-      validation: config.validation
-    });
-    
-    // Initialize agents if enabled
-    if (this.config.enableAgents) {
-      await this.initializeAgents();
-    }
-    
-    this.logInfo('IFlowCompatibilityModule configured successfully', config, 'configure');
-  }
 
   /**
    * Validate iFlow configuration
    */
   private validateIFlowConfig(): void {
-    if (!this.config.direction) {
+    if (!this.iflowConfig.direction) {
       throw new Error('Conversion direction is required');
     }
 
-    if (!this.config.mappingTable) {
+    if (!this.iflowConfig.mappingTable) {
       throw new Error('Mapping table name is required');
     }
   }
@@ -271,7 +289,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
     ];
 
     // Add image processing agent if enabled
-    if (this.config.agentConfig?.enableImageAgent) {
+    if (this.iflowConfig.agentConfig?.enableImageAgent) {
       const imageAgent: IFlowAgent = {
         name: 'image',
         shouldHandle: (request: any, config: any) => {
@@ -311,7 +329,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
     }
 
     // Add code processing agent if enabled
-    if (this.config.agentConfig?.enableCodeAgent) {
+    if (this.iflowConfig.agentConfig?.enableCodeAgent) {
       const codeAgent: IFlowAgent = {
         name: 'code',
         shouldHandle: (request: any, config: any) => {
@@ -325,7 +343,7 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
     }
 
     // Add tool processing agent if enabled
-    if (this.config.agentConfig?.enableToolAgent) {
+    if (this.iflowConfig.agentConfig?.enableToolAgent) {
       const toolAgent: IFlowAgent = {
         name: 'tool',
         shouldHandle: (request: any, config: any) => {
@@ -468,24 +486,24 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
     const startTime = Date.now();
     
     try {
-      this.logInfo('Converting OpenAI request to iFlow', { 
+      this.logInfo('Converting OpenAI request to iFlow', {
         model: openaiRequest.model,
         messageCount: openaiRequest.messages.length,
         hasTools: !!openaiRequest.tools?.length,
-        enableAgents: this.config.enableAgents
+        enableAgents: this.iflowConfig.enableAgents
       }, 'convertOpenAIToIFlow');
 
       let processedRequest: any;
-      
-      if (this.config.enableAgents) {
+
+      if (this.iflowConfig.enableAgents) {
         // Agent-based processing
         const selectedAgent = this.selectAgent(openaiRequest);
-        this.logInfo('Selected agent for processing', { 
+        this.logInfo('Selected agent for processing', {
           agent: selectedAgent.name,
           reason: 'content-based selection'
         }, 'convertOpenAIToIFlow');
-        
-        processedRequest = await selectedAgent.process(openaiRequest, this.config);
+
+        processedRequest = await selectedAgent.process(openaiRequest, this.iflowConfig);
       } else {
         // Direct field mapping
         processedRequest = await super.process(openaiRequest);
@@ -552,14 +570,14 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
 
     // Check specialized agents in priority order
     const agentPriority = ['image', 'code', 'tool', 'general'];
-    
+
     for (const agentName of agentPriority) {
       const agent = this.agents.get(agentName);
-      if (agent && agent.shouldHandle(request, this.config)) {
+      if (agent && agent.shouldHandle(request, this.iflowConfig)) {
         return agent;
       }
     }
-    
+
     return defaultAgent;
   }
 
@@ -568,15 +586,15 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
    */
   async process(request: any): Promise<any> {
     this.logInfo('Processing IFlowCompatibilityModule request', {
-      direction: this.config.direction,
+      direction: this.iflowConfig.direction,
       model: request.model
     }, 'process');
-    
+
     try {
-      if (this.config.direction === 'openai-to-iflow' || this.config.direction === 'bidirectional') {
+      if (this.iflowConfig.direction === 'openai-to-iflow' || this.iflowConfig.direction === 'bidirectional') {
         return this.convertOpenAIToIFlow(request);
       } else {
-        throw new Error(`Unsupported direction for request processing: ${this.config.direction}`);
+        throw new Error(`Unsupported direction for request processing: ${this.iflowConfig.direction}`);
       }
     } catch (error) {
       this.error('Error processing request', { error: error as Error, operation: 'process' }, 'process');
@@ -585,19 +603,169 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
   }
 
   /**
+   * Initialize method - Required by IPipelineModule interface
+   */
+  async initialize(config?: ModuleConfig): Promise<void> {
+    if (config) {
+      this.iflowConfig = config.config as IFlowCompatibilityConfig;
+    }
+
+    this.logInfo('Initializing IFlowCompatibilityModule', this.iflowConfig, 'initialize');
+
+    // Validate configuration
+    this.validateIFlowConfig();
+
+    // Initialize base class
+    await super.initialize({
+      id: this.getId(),
+      name: this.getName(),
+      version: this.moduleVersion,
+      type: 'compatibility',
+      config: {
+        mappingTable: this.iflowConfig.mappingTable,
+        strictMapping: this.iflowConfig.strictMapping,
+        preserveUnknownFields: this.iflowConfig.preserveUnknownFields,
+        validation: this.iflowConfig.validation
+      }
+    });
+
+    // Initialize agents if enabled
+    if (this.iflowConfig.enableAgents) {
+      await this.initializeAgents();
+    }
+
+    this.logInfo('IFlowCompatibilityModule initialized successfully', this.iflowConfig, 'initialize');
+  }
+
+  /**
+   * Get module status - Required by IPipelineModule interface
+   */
+  async getStatus(): Promise<{
+    isInitialized: boolean;
+    isRunning: boolean;
+    lastError?: Error;
+    statistics: {
+      requestsProcessed: number;
+      averageResponseTime: number;
+      errorRate: number;
+    };
+  }> {
+    return {
+      isInitialized: this.isConfigured(),
+      isRunning: this.isConfigured(),
+      lastError: undefined,
+      statistics: {
+        requestsProcessed: 0,
+        averageResponseTime: 0,
+        errorRate: 0
+      }
+    };
+  }
+
+  /**
+   * Map request fields - Required by ICompatibilityModule interface
+   */
+  async mapRequest(request: any, provider: string, context: PipelineExecutionContext): Promise<any> {
+    this.logInfo('Mapping request for provider', {
+      provider,
+      requestId: context.requestId,
+      direction: this.iflowConfig.direction
+    }, 'mapRequest');
+
+    try {
+      if (this.iflowConfig.direction === 'openai-to-iflow' || this.iflowConfig.direction === 'bidirectional') {
+        return this.convertOpenAIToIFlow(request);
+      } else {
+        throw new Error(`Unsupported direction for request mapping: ${this.iflowConfig.direction}`);
+      }
+    } catch (error) {
+      this.error('Request mapping failed', error, 'mapRequest');
+      throw error;
+    }
+  }
+
+  /**
+   * Map response fields - Required by ICompatibilityModule interface
+   */
+  async mapResponse(response: any, provider: string, context: PipelineExecutionContext): Promise<any> {
+    this.logInfo('Mapping response for provider', {
+      provider,
+      requestId: context.requestId,
+      direction: this.iflowConfig.direction
+    }, 'mapResponse');
+
+    try {
+      if (this.iflowConfig.direction === 'iflow-to-openai' || this.iflowConfig.direction === 'bidirectional') {
+        return this.convertIFlowToOpenAI(response);
+      } else {
+        throw new Error(`Unsupported direction for response mapping: ${this.iflowConfig.direction}`);
+      }
+    } catch (error) {
+      this.error('Response mapping failed', error, 'mapResponse');
+      throw error;
+    }
+  }
+
+  /**
+   * Get field mappings - Required by ICompatibilityModule interface
+   */
+  getFieldMappings(provider: string): FieldMapping[] {
+    // Return default field mappings for iFlow compatibility
+    return [
+      {
+        sourceField: 'model',
+        targetField: 'agentId',
+        type: 'direct',
+        description: 'Map OpenAI model to iFlow agent ID'
+      },
+      {
+        sourceField: 'max_tokens',
+        targetField: 'maxTokens',
+        type: 'direct',
+        description: 'Map max tokens field'
+      },
+      {
+        sourceField: 'messages',
+        targetField: 'messages',
+        type: 'direct',
+        description: 'Messages field remains the same'
+      }
+    ];
+  }
+
+  /**
+   * Get compatibility config - Required by ICompatibilityModule interface
+   */
+  getCompatibilityConfig(provider: string): {
+    supportsStreaming: boolean;
+    supportedModels: string[];
+    specialHandling: Record<string, any>;
+  } {
+    return {
+      supportsStreaming: true,
+      supportedModels: ['claude-3-sonnet', 'claude-3-opus', 'gpt-4', 'gpt-3.5-turbo'],
+      specialHandling: {
+        agentBasedProcessing: this.iflowConfig.enableAgents,
+        toolSupport: true,
+        imageProcessing: this.iflowConfig.agentConfig?.enableImageAgent
+      }
+    };
+  }
+
+  /**
    * Process response method - Required by BasePipelineModule
    */
   async processResponse(response: any): Promise<any> {
     this.logInfo('Processing IFlowCompatibilityModule response', {
-      direction: this.config.direction,
+      direction: this.iflowConfig.direction,
       taskId: response.taskId
     }, 'processResponse');
-    
+
     try {
-      if (this.config.direction === 'iflow-to-openai' || this.config.direction === 'bidirectional') {
+      if (this.iflowConfig.direction === 'iflow-to-openai' || this.iflowConfig.direction === 'bidirectional') {
         return this.convertIFlowToOpenAI(response);
       } else {
-        throw new Error(`Unsupported direction for response processing: ${this.config.direction}`);
+        throw new Error(`Unsupported direction for response processing: ${this.iflowConfig.direction}`);
       }
     } catch (error) {
       this.error('Error processing response', { error: error as Error, operation: 'processResponse' }, 'processResponse');
@@ -618,12 +786,12 @@ export class IFlowCompatibilityModule extends CompatibilityModule {
     availableAgents: string[];
   } {
     return {
-      direction: this.config.direction,
-      mappingTable: this.config.mappingTable,
-      strictMapping: this.config.strictMapping || false,
-      modelMappings: this.config.modelMapping?.openaiToIFlow || {},
+      direction: this.iflowConfig.direction,
+      mappingTable: this.iflowConfig.mappingTable,
+      strictMapping: this.iflowConfig.strictMapping || false,
+      modelMappings: this.iflowConfig.modelMapping?.openaiToIFlow || {},
       supportedConversions: ['openai-to-iflow', 'iflow-to-openai'],
-      agentEnabled: this.config.enableAgents || false,
+      agentEnabled: this.iflowConfig.enableAgents || false,
       availableAgents: Array.from(this.agents.keys())
     };
   }

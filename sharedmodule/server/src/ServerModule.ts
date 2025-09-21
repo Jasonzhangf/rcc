@@ -102,6 +102,9 @@ export class ServerModule extends BaseModule implements IServerModule {
       // 初始化转发器
       await this.requestHandlerService.initialize(this.forwarder);
 
+      // 连接请求处理器到HTTP服务器
+      this.httpServer.setRequestHandler(this.handleRequest.bind(this));
+
       this.isInitialized = true;
       this.log('Server Module initialized successfully');
 
@@ -300,6 +303,31 @@ export class ServerModule extends BaseModule implements IServerModule {
 
     if (config.host && typeof config.host !== 'string') {
       throw new Error('Host must be a string');
+    }
+  }
+
+  /**
+   * 处理系统消息
+   */
+  public override async handleMessage(message: any): Promise<any> {
+    switch (message.type) {
+      case 'module_registered':
+        // 处理模块注册消息，记录模块信息
+        this.debug('info', 'Module registered', {
+          moduleId: message.payload?.moduleId,
+          moduleType: message.payload?.moduleType,
+          source: message.source
+        });
+        return {
+          messageId: message.id,
+          correlationId: message.correlationId || '',
+          success: true,
+          data: { acknowledged: true },
+          timestamp: Date.now()
+        };
+      default:
+        // 对于其他消息类型，调用父类的默认处理
+        return await super.handleMessage(message);
     }
   }
 }

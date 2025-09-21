@@ -4,7 +4,7 @@
  * 配置验证器，用于验证PipelineWrapper和模块配置
  */
 
-import { IConfigurationValidator, PipelineWrapper, ModuleConfig } from '../interfaces/ModularInterfaces';
+import { IConfigurationValidator, PipelineWrapper, ModuleConfig, FieldMapping } from '../interfaces/ModularInterfaces';
 
 export class ConfigurationValidator implements IConfigurationValidator {
   private requiredModuleTypes = ['llmswitch', 'workflow', 'compatibility', 'provider'];
@@ -203,7 +203,7 @@ export class ConfigurationValidator implements IConfigurationValidator {
       if (!Array.isArray(config.config.fieldMappings)) {
         errors.push('Compatibility模块的fieldMappings必须是数组');
       } else {
-        config.config.fieldMappings.forEach((mapping, index) => {
+        config.config.fieldMappings.forEach((mapping: FieldMapping, index: number) => {
           if (!mapping.sourceField) {
             errors.push(`fieldMappings[${index}].sourceField不能为空`);
           }

@@ -392,11 +392,12 @@ async function resolvePortConflict(port: number): Promise<void> {
   console.log(`⚠️ Port ${port} is already in use, attempting to stop existing services...`);
 
   try {
-    // Try graceful stop first
-    execSync('rcc stop', { stdio: 'pipe', timeout: 10000 });
-    console.log(`✅ Graceful stop completed`);
+    // Try graceful stop first with specific port
+    execSync(`rcc stop --port ${port}`, { stdio: 'pipe', timeout: 10000 });
+    console.log(`✅ Graceful stop completed for port ${port}`);
     await new Promise((resolve) => setTimeout(resolve, 2000));
   } catch {
+    console.log(`⚠️ Graceful stop failed, attempting force kill for port ${port}...`);
     // Force kill if graceful fails
     const processes = execSync(`lsof -ti :${port}`, { encoding: 'utf8' });
     const pids = processes
@@ -413,6 +414,15 @@ async function resolvePortConflict(port: number): Promise<void> {
       }
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  // Verify port is actually released
+  const stillInUse = await checkPortConflict(port);
+  if (stillInUse) {
+    console.log(`❌ Port ${port} is still in use after cleanup attempts`);
+    throw new Error(`Failed to release port ${port} after all cleanup attempts`);
+  } else {
+    console.log(`✅ Port ${port} successfully released`);
   }
 }
 

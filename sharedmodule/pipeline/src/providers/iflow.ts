@@ -295,7 +295,7 @@ class IFlowProvider extends BaseProvider {
    */
   private convertToIFlowRequest(openaiRequest: OpenAIChatRequest): any {
     const iflowRequest: any = {
-      model: openaiRequest.model || this.defaultModel,
+      model: this.defaultModel, // 始终使用配置的模型，忽略请求中的虚拟模型名称
       messages: openaiRequest.messages.map(msg => ({
         role: msg.role,
         content: msg.content
@@ -846,11 +846,10 @@ class IFlowProvider extends BaseProvider {
 
   /**
    * 验证请求
+   * 根据架构设计，提供商应忽略请求中的模型参数，使用初始化时配置的模型
    */
   validate(request: any): boolean {
-    if (!request.model) {
-      throw new Error('Model is required');
-    }
+    // 不再验证request.model，因为提供商使用初始化时配置的模型
     if (!request.messages || request.messages.length === 0) {
       throw new Error('Messages are required');
     }

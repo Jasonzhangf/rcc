@@ -49,7 +49,7 @@ function substituteEnvironmentVariables(data) {
 // Import wrapper generation functions from config-parser
 let generateAllWrappers = null;
 try {
-  const configParserPath = path.join(__dirname, 'sharedmodule/config-parser/dist/index.esm.js');
+  const configParserPath = path.join(__dirname, 'sharedmodule/config-parser/dist/index.js');
   if (fs.existsSync(configParserPath)) {
     const configParserModule = await import(configParserPath);
     generateAllWrappers = configParserModule.generateAllWrappers;
@@ -444,11 +444,27 @@ program
               console.log(`⚠️ Wrapper generation not available, using legacy configuration`);
             }
 
-            // Import Pipeline module from npm package
-            const pipelineModule = await import('rcc-pipeline');
-            const { Pipeline, VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } = pipelineModule;
+            // Import Pipeline module from local sharedmodule
+            const pipelineModulePath = path.join(__dirname, 'sharedmodule/pipeline/dist/index.esm.js');
+            console.log(`🔍 Attempting to import pipeline module from: ${pipelineModulePath}`);
+            let pipelineModule;
+            try {
+              pipelineModule = await import(pipelineModulePath);
+              console.log(`✅ Pipeline module imported successfully`);
+              console.log(`   - Available exports: ${Object.keys(pipelineModule).join(', ')}`);
+            } catch (importError) {
+              console.error(`❌ Failed to import pipeline module: ${importError.message}`);
+              console.error(`   - Stack: ${importError.stack}`);
+              throw importError;
+            }
+            const { PipelineFactory, VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } = pipelineModule;
 
-            if (Pipeline && VirtualModelSchedulerManager && PipelineAssembler && PipelineTracker) {
+            console.log(`🔍 Checking pipeline module components:`);
+            console.log(`   - PipelineFactory: ${!!PipelineFactory}`);
+            console.log(`   - VirtualModelSchedulerManager: ${!!VirtualModelSchedulerManager}`);
+            console.log(`   - PipelineAssembler: ${!!PipelineAssembler}`);
+            console.log(`   - PipelineTracker: ${!!PipelineTracker}`);
+            if (PipelineFactory && VirtualModelSchedulerManager && PipelineAssembler && PipelineTracker) {
                 console.log(`✅ Pipeline module loaded successfully`);
 
                 // Create PipelineTracker for request tracking
@@ -724,13 +740,36 @@ program
                     // Use the corrected constructor with proper parameter order
                     try {
                       schedulerManager = new VirtualModelSchedulerManager(
-                        assemblyResult.pipelinePools,
                         managerConfig,
                         pipelineTracker
                       );
                       console.log(`✅ VirtualModelSchedulerManager created successfully`);
                       console.log(`   - Scheduler manager type: ${typeof schedulerManager}`);
                       console.log(`   - Scheduler has required methods: ${typeof schedulerManager.getScheduler === 'function'}`);
+
+                      // Initialize the scheduler manager with pipeline pools
+                      console.log(`🔧 Initializing VirtualModelSchedulerManager with pipeline pools...`);
+                      console.log(`🔍 Pipeline pools structure:`);
+                      console.log(`   - Type: ${typeof assemblyResult.pipelinePools}`);
+                      console.log(`   - Is Map: ${assemblyResult.pipelinePools instanceof Map}`);
+                      console.log(`   - Size: ${assemblyResult.pipelinePools.size}`);
+                      console.log(`   - Keys: ${Array.from(assemblyResult.pipelinePools.keys()).join(', ')}`);
+
+                      // Convert pipeline pools to the expected format for initialization
+                      const initializationPools = new Map();
+                      for (const [virtualModelId, poolData] of assemblyResult.pipelinePools) {
+                        console.log(`🔍 Processing pool for ${virtualModelId}:`);
+                        console.log(`   - poolData type: ${typeof poolData}`);
+                        console.log(`   - poolData keys: ${Object.keys(poolData || {})}`);
+
+                        // Use poolData directly as it should be the PipelinePool
+                        initializationPools.set(virtualModelId, poolData);
+                        console.log(`   - Added pool for initialization: ${virtualModelId}`);
+                      }
+
+                      // Initialize the scheduler with all pipeline pools at once
+                      schedulerManager.initialize(initializationPools);
+                      console.log(`✅ VirtualModelSchedulerManager initialized with ${initializationPools.size} pipeline pools`);
                     } catch (schedulerError) {
                       console.log(`❌ CRITICAL ERROR - Failed to create VirtualModelSchedulerManager:`);
                       console.log(`   - Error: ${schedulerError.message}`);

@@ -67,5 +67,9 @@ export declare class ServerModule extends BaseModule implements IServerModule {
     getExpressApp(): Application;
     destroy(): Promise<void>;
     private validateConfig;
+    /**
+     * 处理系统消息
+     */
+    handleMessage(message: any): Promise<any>;
 }
 //# sourceMappingURL=ServerModule.d.ts.map

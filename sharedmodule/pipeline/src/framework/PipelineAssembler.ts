@@ -17,6 +17,10 @@ import {
   ModuleConfig,
   RoutingConfig
 } from '../interfaces/ModularInterfaces';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+import { RoutingCapabilities } from '../routing/RoutingCapabilities';
 
 // Define types for config-parser integration
 interface ConfigData {
@@ -36,26 +40,43 @@ interface PipelineTableEntry {
 
 // Import config-parser types with proper type assertion
 // We'll use dynamic import to avoid TypeScript compilation issues
+// Local module loading only - disable NPM module loading
 let ConfigLoader: any;
 let ConfigParser: any;
 let PipelineConfigGenerator: any;
 let parseConfigFile: any;
 
-try {
-  // Try to import the module at runtime
-  const configParserModule = require('rcc-config-parser');
-  ConfigLoader = configParserModule.ConfigLoader;
-  ConfigParser = configParserModule.ConfigParser;
-  PipelineConfigGenerator = configParserModule.PipelineConfigGenerator;
-  parseConfigFile = configParserModule.parseConfigFile;
-} catch (error) {
-  console.warn('⚠️  rcc-config-parser module not available, some configuration features may be disabled');
-}
+// Skip NPM module loading - use only local modules
+console.log('ℹ️  Using local module loading only, skipping NPM rcc-config-parser');
 
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
-import { RoutingCapabilities } from '../routing/RoutingCapabilities';
+// Provide local-only implementations
+ConfigLoader = class {
+  constructor(config: any) {}
+  async initialize() {}
+  async loadFromFile(path: string) {
+    throw new Error('ConfigLoader not available in local-only mode');
+  }
+};
+
+ConfigParser = class {
+  constructor(config: any) {}
+  async initialize() {}
+  async parseConfig(data: any) {
+    throw new Error('ConfigParser not available in local-only mode');
+  }
+};
+
+  PipelineConfigGenerator = class {
+    constructor(config: any) {}
+    async initialize() {}
+    async generatePipelineTable(data: any) {
+      throw new Error('PipelineConfigGenerator not available');
+    }
+
+    parseConfigFile = (path: string) => {
+      throw new Error('parseConfigFile not available');
+    };
+  };
 
 export interface AssemblerConfig {
   providerDiscoveryOptions?: ProviderDiscoveryOptions;
@@ -82,6 +103,7 @@ export interface PipelinePool {
     averageResponseTime: number;
   };
   routingCapabilities?: RoutingCapabilities; // 新增路由能力描述
+  isActive: boolean; // Add missing isActive property
 }
 
 // 导出所有核心接口以支持外部类型安全
@@ -545,7 +567,8 @@ export class PipelineAssembler {
           failedRequests: 0,
           averageResponseTime: 0
         },
-        routingCapabilities: this.createModularRoutingCapabilities(virtualModel, wrapper)
+        routingCapabilities: this.createModularRoutingCapabilities(virtualModel, wrapper),
+        isActive: true
       };
 
       console.log(`✅ Modular pipeline pool assembled for ${virtualModel.id}: ${pipelines.size} pipelines`);
@@ -566,7 +589,8 @@ export class PipelineAssembler {
           failedRequests: 0,
           averageResponseTime: 0
         },
-        routingCapabilities: this.createDefaultModularRoutingCapabilities(virtualModel)
+        routingCapabilities: this.createDefaultModularRoutingCapabilities(virtualModel),
+        isActive: false
       };
     }
   }
@@ -712,7 +736,7 @@ export class PipelineAssembler {
     // 从wrapper的路由配置创建路由能力
     return {
       supportedModels: [virtualModel.modelId || 'default'],
-      maxTokens: 4000,
+      maxTokens: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
       supportsStreaming: true,
       supportsTools: true,
       supportsImages: false,
@@ -730,7 +754,7 @@ export class PipelineAssembler {
         supportsAudio: false,
         supportsCodeExecution: false,
         supportsWebSearch: false,
-        maxContextLength: 4000,
+        maxContextLength: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
         temperatureRange: [0, 1],
         topPRange: [0, 1]
       }
@@ -744,7 +768,7 @@ export class PipelineAssembler {
   private createDefaultModularRoutingCapabilities(virtualModel: any): any {
     return {
       supportedModels: [virtualModel.modelId || 'default'],
-      maxTokens: 4000,
+      maxTokens: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
       supportsStreaming: true,
       supportsTools: true,
       supportsImages: false,
@@ -762,7 +786,7 @@ export class PipelineAssembler {
         supportsAudio: false,
         supportsCodeExecution: false,
         supportsWebSearch: false,
-        maxContextLength: 4000,
+        maxContextLength: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
         temperatureRange: [0, 1],
         topPRange: [0, 1]
       }
@@ -981,7 +1005,8 @@ export class PipelineAssembler {
           failedRequests: 0,
           averageResponseTime: 0
         },
-        routingCapabilities
+        routingCapabilities,
+        isActive: true
       };
 
       console.log(`✅ Pipeline pool assembled for ${virtualModel.id}: ${pipelines.size} pipelines, health: ${pool.healthStatus}`);
@@ -1002,7 +1027,8 @@ export class PipelineAssembler {
           failedRequests: 0,
           averageResponseTime: 0
         },
-        routingCapabilities: this.createDefaultRoutingCapabilities(virtualModel)
+        routingCapabilities: this.createDefaultRoutingCapabilities(virtualModel),
+        isActive: false
       };
     }
   }
@@ -1060,7 +1086,7 @@ export class PipelineAssembler {
         supportsAudio: capabilities.includes('audio'),
         supportsCodeExecution: capabilities.includes('code-execution'),
         supportsWebSearch: capabilities.includes('web-search'),
-        maxContextLength: this.estimateMaxTokens(virtualModel),
+        maxContextLength: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
         temperatureRange: [0, 1],
         topPRange: [0, 1]
       }
@@ -1073,7 +1099,7 @@ export class PipelineAssembler {
   private createDefaultRoutingCapabilities(virtualModel: VirtualModelConfig): RoutingCapabilities {
     return {
       supportedModels: [virtualModel.modelId || 'default'],
-      maxTokens: 4000,
+      maxTokens: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
       supportsStreaming: true,
       supportsTools: true,
       supportsImages: true,
@@ -1088,7 +1114,7 @@ export class PipelineAssembler {
       routingTags: ['fallback', 'error'],
       extendedCapabilities: {
         supportsVision: false,
-        maxContextLength: 4000
+        maxContextLength: 262144 // 256K 默认值
       }
     };
   }
@@ -1097,18 +1123,9 @@ export class PipelineAssembler {
    * 估算最大token数
    */
   private estimateMaxTokens(virtualModel: VirtualModelConfig): number {
-    // 根据模型类型估算最大token数
-    const modelId = virtualModel.modelId?.toLowerCase() || '';
-
-    if (modelId.includes('gpt-4')) {
-      return modelId.includes('32k') ? 32768 : 8192;
-    } else if (modelId.includes('gpt-3.5')) {
-      return 4096;
-    } else if (modelId.includes('claude')) {
-      return modelId.includes('100k') ? 100000 : 100000;
-    } else {
-      return 4000; // 默认值
-    }
+    // 移除硬编码token限制，从provider配置中获取实际token限制
+    // 这里返回一个较大的默认值，实际限制由provider控制
+    return Number.MAX_SAFE_INTEGER; // 使用最大安全整数，实际限制由provider控制
   }
 
   /**

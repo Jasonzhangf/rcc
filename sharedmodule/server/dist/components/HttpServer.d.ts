@@ -6,7 +6,12 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
     private app;
     private server;
     private serverConfig;
+    private requestHandler;
     isRunning(): boolean;
+    /**
+     * Set request handler for API routes
+     */
+    setRequestHandler(handler: (request: ClientRequest) => Promise<ClientResponse>): void;
     constructor();
     /**
      * Initialize the HTTP server with configuration
@@ -61,6 +66,18 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
      * Health check endpoint
      */
     private healthCheck;
+    /**
+     * Register API routes with proper error handling
+     */
+    private registerApiRoutes;
+    /**
+     * Status check endpoint - RCC system health check
+     */
+    private statusCheck;
+    /**
+     * Handle chat request - OpenAI compatible endpoint
+     */
+    private handleChatRequest;
     /**
      * Get server metrics
      */

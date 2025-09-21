@@ -18,7 +18,7 @@ const testRequest = {
   messages: [
     { role: 'user', content: 'Hello, how are you?' }
   ],
-  max_tokens: 100,
+  max_tokens: Number.MAX_SAFE_INTEGER,
   temperature: 0.7
 };
 

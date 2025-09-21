@@ -3,4 +3,5 @@
  * 流水线模块的类型定义
  */
 
-export * from './ErrorTypes';
+// ErrorCategory and ErrorSeverity are now defined in core/PipelineExecutionContext.ts
+// and exported through interfaces/ModularInterfaces.ts

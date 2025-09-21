@@ -53,7 +53,7 @@ class MockProvider {
         streaming: false,
         functions: false,
         vision: false,
-        maxTokens: 1000
+        maxTokens: Number.MAX_SAFE_INTEGER
       },
       authentication: {
         type: 'bearer',

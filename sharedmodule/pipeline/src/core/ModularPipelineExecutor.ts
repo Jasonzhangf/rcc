@@ -17,7 +17,8 @@ import {
   ProtocolType,
   ModuleConfig,
   RoutingOptimizationConfig,
-  DebugConfig
+  DebugConfig,
+  PipelineStage
 } from '../interfaces/ModularInterfaces';
 import { ModuleFactory } from './ModuleFactory';
 import { ConfigurationValidator } from './ConfigurationValidator';
@@ -173,12 +174,23 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
       const executionContext: PipelineExecutionContext = {
         sessionId,
         requestId,
+        executionId: `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        traceId: `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         virtualModelId,
-        providerId,
+        providerId: providerId || 'unknown',
         startTime,
+        stage: 'request_init' as PipelineStage,
+        timing: {
+          startTime,
+          endTime: undefined,
+          duration: undefined,
+          stageTimings: new Map(),
+          status: 'pending'
+        },
         ioRecords,
         metadata: context?.metadata || {},
         parentContext: context?.parentContext,
+        parent: context?.parentContext,
         routingDecision: context?.routingDecision,
         performanceMetrics: context?.performanceMetrics,
         debugConfig: this.debugConfig
@@ -198,7 +210,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
       if (!workflowStep.output) throw new Error('Workflow转换失败');
 
       // 步骤3: Compatibility - 字段映射
-      const compatibilityStep = await this.executeCompatibility(workflowStep.output, providerId, executionContext);
+      const compatibilityStep = await this.executeCompatibility(workflowStep.output, providerId!, executionContext);
       steps.push(compatibilityStep);
       if (!compatibilityStep.output) throw new Error('Compatibility转换失败');
 
@@ -208,7 +220,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
       if (!providerStep.output) throw new Error('Provider执行失败');
 
       // 步骤5: Compatibility - 响应字段映射
-      const responseCompatibilityStep = await this.executeCompatibilityResponse(providerStep.output, providerId, executionContext);
+      const responseCompatibilityStep = await this.executeCompatibilityResponse(providerStep.output, providerId!, executionContext);
       steps.push(responseCompatibilityStep);
       if (!responseCompatibilityStep.output) throw new Error('Compatibility响应转换失败');
 
@@ -253,11 +265,26 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
         context: {
           sessionId,
           requestId,
+          executionId: `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          traceId: `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           virtualModelId,
           providerId: context?.providerId || '',
           startTime,
+          stage: 'error_handling' as PipelineStage,
+          timing: {
+            startTime,
+            endTime: Date.now(),
+            duration: Date.now() - startTime,
+            stageTimings: new Map(),
+            status: 'failed'
+          },
           ioRecords,
-          metadata: context?.metadata || {}
+          metadata: context?.metadata || {},
+          parentContext: context?.parentContext,
+          parent: context?.parentContext,
+          routingDecision: context?.routingDecision,
+          performanceMetrics: context?.performanceMetrics,
+          debugConfig: this.debugConfig
         }
       };
     }
@@ -289,12 +316,26 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
       const executionContext: PipelineExecutionContext = {
         sessionId,
         requestId,
+        executionId: `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        traceId: `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         virtualModelId,
         providerId,
         startTime: Date.now(),
+        stage: 'request_init' as PipelineStage,
+        timing: {
+          startTime: Date.now(),
+          endTime: undefined,
+          duration: undefined,
+          stageTimings: new Map(),
+          status: 'pending'
+        },
         ioRecords: [],
         metadata: context?.metadata || {},
-        parentContext: context?.parentContext
+        parentContext: context?.parentContext,
+        parent: context?.parentContext,
+        routingDecision: undefined,
+        performanceMetrics: undefined,
+        debugConfig: this.debugConfig
       };
 
       // 执行流式处理流程

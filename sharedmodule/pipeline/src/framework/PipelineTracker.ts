@@ -69,7 +69,6 @@ interface PipelineOperationType {
 import { PipelineRequestContext, IRequestContext } from '../interfaces/IRequestContext';
 import { IPipelineStage, IPipelineStageFactory, IPipelineStageManager } from '../interfaces/IPipelineStage';
 import { PipelineIOEntry } from '../interfaces/IRequestContext';
-import { ErrorCategory, ErrorSeverity } from '../types/ErrorTypes';
 
 /**
  * Request Context Implementation
@@ -465,6 +464,111 @@ export class PipelineTracker extends PipelineBaseModule {
     // Simple event listener implementation
     // In a real implementation, this would use an event emitter
     this.logInfo(`Event listener registered for: ${event}`, { event }, 'subscribe');
+  }
+
+  /**
+   * Handle system messages including 'module_registered'
+   * 处理系统消息，包括'module_registered'
+   */
+  async handleMessage(message: any): Promise<any> {
+    if (!message || !message.type) {
+      this.warn('Received invalid message', { message }, 'handleMessage');
+      return { success: false, error: 'Invalid message format' };
+    }
+
+    try {
+      switch (message.type) {
+        case 'module_registered':
+          // Handle module registration messages
+          this.logInfo('Module registered', {
+            moduleId: message.moduleId,
+            moduleName: message.moduleName,
+            moduleType: message.moduleType
+          }, 'handleMessage');
+
+          // Record module registration in debug center if available
+          if (this.debugCenter) {
+            this.debugCenter.recordOperation(
+              'system',
+              this.info.id,
+              `module-registered-${message.moduleId}`,
+              {
+                moduleId: message.moduleId,
+                moduleName: message.moduleName,
+                moduleType: message.moduleType,
+                timestamp: Date.now()
+              },
+              undefined,
+              'handleMessage',
+              true,
+              undefined,
+              'middle'
+            );
+          }
+
+          return { success: true, message: `Module ${message.moduleName} registered successfully` };
+
+        case 'pipeline_started':
+          // Handle pipeline start messages
+          this.logInfo('Pipeline started', {
+            pipelineId: message.pipelineId,
+            virtualModelId: message.virtualModelId
+          }, 'handleMessage');
+
+          return { success: true, message: 'Pipeline start recorded' };
+
+        case 'pipeline_completed':
+          // Handle pipeline completion messages
+          this.logInfo('Pipeline completed', {
+            pipelineId: message.pipelineId,
+            executionTime: message.executionTime,
+            success: message.success
+          }, 'handleMessage');
+
+          return { success: true, message: 'Pipeline completion recorded' };
+
+        case 'request_started':
+          // Handle request start messages
+          this.logInfo('Request started', {
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            provider: message.provider
+          }, 'handleMessage');
+
+          return { success: true, message: 'Request start recorded' };
+
+        case 'request_completed':
+          // Handle request completion messages
+          this.logInfo('Request completed', {
+            requestId: message.requestId,
+            executionTime: message.executionTime,
+            success: message.success
+          }, 'handleMessage');
+
+          return { success: true, message: 'Request completion recorded' };
+
+        default:
+          // For unknown message types, just log them
+          this.debug('debug', 'Received unhandled message type', {
+            type: message.type,
+            data: message
+          }, 'handleMessage');
+
+          return { success: true, message: `Message type ${message.type} acknowledged` };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.error('Error handling message', {
+        messageType: message.type,
+        error: errorMessage
+      }, 'handleMessage');
+
+      return {
+        success: false,
+        error: errorMessage,
+        message: `Failed to handle message type: ${message.type}`
+      };
+    }
   }
 
   /**

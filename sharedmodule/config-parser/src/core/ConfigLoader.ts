@@ -199,4 +199,29 @@ export class ConfigLoader extends BaseModule {
     this.logInfo('ConfigLoader destroyed successfully');
     // Clean up resources
   }
+
+  /**
+   * 处理系统消息
+   */
+  protected async handleMessage(message: any): Promise<any> {
+    switch (message.type) {
+      case 'module_registered':
+        // 处理模块注册消息，记录模块信息
+        this.logInfo(`Module registered: ${message.payload?.moduleId || 'unknown'}`, {
+          moduleId: message.payload?.moduleId,
+          moduleType: message.payload?.moduleType,
+          source: message.source
+        });
+        return {
+          messageId: message.id,
+          correlationId: message.correlationId || '',
+          success: true,
+          data: { acknowledged: true },
+          timestamp: Date.now()
+        };
+      default:
+        // 对于其他消息类型，调用父类的默认处理
+        return await super.handleMessage(message);
+    }
+  }
 }

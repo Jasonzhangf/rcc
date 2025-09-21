@@ -85,7 +85,7 @@ export class RoutingRulesEngine {
     this.config = {
       defaultMatchThreshold: 0.6,
       enableFallback: true,
-      maxAlternatives: 3,
+      maxAlternatives: 0, // 0表示无限制
       enableLoadBalancing: true,
       enablePerformanceOptimization: true,
       ruleCacheTime: 300000, // 5分钟
@@ -174,7 +174,7 @@ export class RoutingRulesEngine {
         enabled: true,
         priority: 60,
         conditions: [
-          { field: 'tokenCount', operator: 'greater_than', value: 8000 }
+          { field: 'tokenCount', operator: 'greater_than', value: 0 }
         ],
         actions: [
           { type: 'select_virtual_model', target: 'large-context', parameters: {} }
@@ -591,11 +591,11 @@ export class RoutingRulesEngine {
       matchResult.mismatchReasons?.push('No supported models');
     }
 
-    // Token支持检查
-    caps.tokenSupport = requestAnalysis.tokenCount <= capabilities.maxTokens;
-    if (!caps.tokenSupport) {
-      matchResult.mismatchReasons?.push(`Token count exceeds limit: ${requestAnalysis.tokenCount} > ${capabilities.maxTokens}`);
-    }
+    // Token支持检查 - 移除硬编码限制
+    caps.tokenSupport = true; // 移除token限制，支持所有token数量
+    // if (!caps.tokenSupport) {
+    //   matchResult.mismatchReasons?.push(`Token count exceeds limit: ${requestAnalysis.tokenCount} > ${capabilities.maxTokens}`);
+    // }
 
     // 流式支持检查
     caps.streamingSupport = !requestAnalysis.requiresStreaming || capabilities.supportsStreaming;
@@ -689,9 +689,9 @@ export class RoutingRulesEngine {
     let score = 0;
     let checks = 0;
 
-    // Token能力分数
-    const tokenRatio = Math.min(requestAnalysis.tokenCount / capabilities.maxTokens, 1);
-    score += (1 - tokenRatio) * 0.3; // Token使用率越低分数越高
+    // Token能力分数 - 移除硬编码限制
+    // const tokenRatio = Math.min(requestAnalysis.tokenCount / capabilities.maxTokens, 1);
+    score += 0.3; // 移除token限制，给予满分
     checks++;
 
     // 模态匹配分数
@@ -799,13 +799,14 @@ export class RoutingRulesEngine {
     }
 
     // 生成备选方案
-    const alternatives = candidates
-      .slice(1, Math.min(this.config.maxAlternatives + 1, candidates.length))
-      .map(candidate => ({
-        virtualModelId: candidate.poolId,
-        matchScore: candidate.matchResult.matchScore,
-        reason: 'Alternative candidate'
-      }));
+    const alternatives = this.config.maxAlternatives > 0 ?
+      candidates
+        .slice(1, Math.min(this.config.maxAlternatives + 1, candidates.length))
+        .map(candidate => ({
+          virtualModelId: candidate.poolId,
+          matchScore: candidate.matchResult.matchScore,
+          reason: 'Alternative candidate'
+        })) : [];
 
     const decision: RoutingDecision = {
       targetVirtualModelId: selectedCandidate.poolId,

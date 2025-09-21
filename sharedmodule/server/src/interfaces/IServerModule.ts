@@ -24,6 +24,7 @@ export interface IHttpServer {
   stop(): Promise<void>;
   getExpressApp(): Application;
   isRunning(): boolean;
+  setRequestHandler(handler: (request: ClientRequest) => Promise<ClientResponse>): void;
 }
 
 // 请求处理器接口

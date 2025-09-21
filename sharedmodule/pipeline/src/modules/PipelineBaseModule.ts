@@ -743,6 +743,20 @@ export class PipelineBaseModule extends BaseModule {
   }
 
   /**
+   * Process method - abstract method to be implemented by subclasses
+   */
+  public async process(request: any): Promise<any> {
+    throw new Error('Process method must be implemented by subclass');
+  }
+
+  /**
+   * Process response method - optional implementation
+   */
+  public async processResponse?(response: any): Promise<any> {
+    return response;
+  }
+
+  /**
    * Handle messages (required by BaseModule abstract class)
    */
   public async handleMessage(message: any): Promise<any> {

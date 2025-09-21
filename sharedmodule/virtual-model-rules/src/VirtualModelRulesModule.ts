@@ -432,9 +432,32 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       case 'server-initialized':
       case 'server-started':
       case 'module_registered':
-        // Handle common system messages silently
-        this.log('Received system message', { type: message?.type }, 'handleMessage');
-        return { success: true, message: `Handled ${message?.type}` };
+        // Handle common system messages
+        this.log('Received system message', {
+          type: message?.type,
+          moduleId: message?.payload?.moduleId,
+          messageSource: message?.source
+        }, 'handleMessage');
+
+        // For module_registered messages, update our virtual model rules
+        if (message?.type === 'module_registered' && message?.payload?.moduleId) {
+          try {
+            // Check if we need to configure fallback routing for unconfigured virtual models
+            await this.setupFallbackRouting(message.payload);
+          } catch (error) {
+            this.error('Failed to setup fallback routing for module registration', error, 'handleMessage');
+          }
+        }
+
+        return {
+          success: true,
+          message: `Handled ${message?.type}`,
+          data: {
+            acknowledged: true,
+            moduleId: this.info.id,
+            timestamp: Date.now()
+          }
+        };
       default:
         return await super.handleMessage(message);
     }
@@ -1024,10 +1047,10 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
    */
   private async handleRuleMetrics(message: any): Promise<any> {
     this.log('Handling rule metrics request', {}, 'handleRuleMetrics');
-    
+
     const ruleId = message.payload?.ruleId;
     const metrics = this.getRuleMetrics(ruleId);
-    
+
     return {
       messageId: message.id,
       correlationId: message.correlationId || '',
@@ -1035,5 +1058,102 @@ export class VirtualModelRulesModule extends BaseModule implements IVirtualModel
       data: { metrics },
       timestamp: Date.now()
     };
+  }
+
+  /**
+   * Setup fallback routing for unconfigured virtual models
+   */
+  private async setupFallbackRouting(moduleInfo: any): Promise<void> {
+    this.log('Setting up fallback routing for module', {
+      moduleId: moduleInfo.moduleId,
+      moduleType: moduleInfo.moduleType
+    }, 'setupFallbackRouting');
+
+    try {
+      // Check if we have a default virtual model configured
+      const defaultVirtualModelId = this.getDefaultVirtualModelId();
+      if (!defaultVirtualModelId) {
+        this.log('No default virtual model configured, skipping fallback setup', {}, 'setupFallbackRouting');
+        return;
+      }
+
+      // Ensure the default virtual model has proper fallback rules
+      const existingRule = this.rules.get(defaultVirtualModelId);
+      if (!existingRule) {
+        // Create a default fallback rule
+        const fallbackRule: VirtualModelRule = {
+          id: `${defaultVirtualModelId}-fallback`,
+          name: `Default Fallback for ${defaultVirtualModelId}`,
+          description: 'Automatically created fallback rule for unconfigured requests',
+          conditions: [
+            {
+              field: 'model',
+              operator: 'exists',
+              value: true
+            }
+          ],
+          action: {
+            type: 'route',
+            target: 'default-provider',
+            parameters: {
+              priority: 1000, // Lowest priority
+              fallback: true
+            }
+          },
+          priority: RulePriority.LOW,
+          enabled: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+
+        this.rules.set(defaultVirtualModelId, fallbackRule);
+        this.logInfo('Created fallback rule for virtual model', {
+          virtualModelId: defaultVirtualModelId,
+          ruleId: fallbackRule.id
+        }, 'setupFallbackRouting');
+      }
+
+      // Initialize metrics for the fallback rule
+      if (!this.ruleMetrics.has(defaultVirtualModelId)) {
+        this.ruleMetrics.set(defaultVirtualModelId, {
+          totalEvaluations: 0,
+          successfulEvaluations: 0,
+          failedEvaluations: 0,
+          averageEvaluationTime: 0,
+          lastEvaluationTime: 0,
+          errorRate: 0
+        });
+      }
+
+      this.logInfo('Fallback routing setup completed successfully', {
+        moduleId: moduleInfo.moduleId,
+        defaultVirtualModelId,
+        ruleCount: this.rules.size
+      }, 'setupFallbackRouting');
+
+    } catch (error) {
+      this.error('Failed to setup fallback routing', error, 'setupFallbackRouting');
+      throw error;
+    }
+  }
+
+  /**
+   * Get the default virtual model ID
+   */
+  private getDefaultVirtualModelId(): string | null {
+    // First check if there's a rule with 'default' in the name
+    for (const [ruleId, rule] of this.rules) {
+      if (rule.name.toLowerCase().includes('default') || rule.id === 'default') {
+        return ruleId;
+      }
+    }
+
+    // If no default rule, use the first rule as fallback
+    if (this.rules.size > 0) {
+      return this.rules.keys().next().value;
+    }
+
+    // If no rules exist, create a default one
+    return 'claude-3-5-sonnet-latest'; // Common default model
   }
 }

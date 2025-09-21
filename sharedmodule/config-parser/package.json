@@ -36,7 +36,7 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
-    "rcc-basemodule": "^0.2.3",
+    "rcc-basemodule": "file:../basemodule",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

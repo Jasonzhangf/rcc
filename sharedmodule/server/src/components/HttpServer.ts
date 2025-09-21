@@ -14,8 +14,17 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   private app: ExpressApplication;
   private server: HttpServer | null = null;
   private serverConfig: ServerConfig | null = null;
+  private requestHandler: ((request: ClientRequest) => Promise<ClientResponse>) | null = null;
   public isRunning(): boolean {
     return this.server !== null && this.server.listening;
+  }
+
+  /**
+   * Set request handler for API routes
+   */
+  public setRequestHandler(handler: (request: ClientRequest) => Promise<ClientResponse>): void {
+    this.requestHandler = handler;
+    this.log('Request handler set for HTTP server component');
   }
 
   constructor() {
@@ -79,9 +88,19 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
     
     // Add health check endpoint
     this.app.get('/health', this.healthCheck.bind(this));
-    
+
     // Add metrics endpoint
     this.app.get('/metrics', this.getMetrics.bind(this));
+
+    // Add status endpoint (RCC system health check)
+    this.app.get('/status', this.statusCheck.bind(this));
+
+    // Add OpenAI compatible endpoints
+    this.app.post('/v1/messages', this.handleChatRequest.bind(this));
+    this.app.post('/v1/chat/completions', this.handleChatRequest.bind(this));
+
+    // Register all API routes with proper error handling
+    this.registerApiRoutes();
     
     this.log('HTTP server component initialized successfully', { method: 'initialize' });
   }
@@ -272,6 +291,123 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
       });
     } else {
       res.status(health.status === 'healthy' ? 200 : 503).json(health);
+    }
+  }
+
+  /**
+   * Register API routes with proper error handling
+   */
+  private registerApiRoutes(): void {
+    // Status endpoint - basic health check
+    this.app.get('/status', async (req: express.Request, res: express.Response) => {
+      try {
+        await this.statusCheck(req, res);
+      } catch (error) {
+        this.error('Status endpoint error', { error: error instanceof Error ? error.message : String(error) });
+        res.status(500).json({
+          status: 'error',
+          message: 'Internal server error',
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Chat endpoints - OpenAI compatible
+    this.app.post('/v1/messages', async (req: express.Request, res: express.Response) => {
+      try {
+        await this.handleChatRequest(req, res);
+      } catch (error) {
+        this.error('Chat endpoint error', { error: error instanceof Error ? error.message : String(error) });
+        res.status(500).json({
+          error: {
+            message: 'Internal server error',
+            type: 'internal_error',
+            timestamp: Date.now()
+          }
+        });
+      }
+    });
+
+    // Alternative OpenAI endpoint
+    this.app.post('/v1/chat/completions', async (req: express.Request, res: express.Response) => {
+      try {
+        await this.handleChatRequest(req, res);
+      } catch (error) {
+        this.error('Chat completions endpoint error', { error: error instanceof Error ? error.message : String(error) });
+        res.status(500).json({
+          error: {
+            message: 'Internal server error',
+            type: 'internal_error',
+            timestamp: Date.now()
+          }
+        });
+      }
+    });
+
+    this.log('API routes registered successfully');
+  }
+
+  /**
+   * Status check endpoint - RCC system health check
+   */
+  private async statusCheck(_req: express.Request, res: express.Response): Promise<void> {
+    const status = {
+      status: this.isRunning() ? 'healthy' : 'unhealthy',
+      service: 'rcc-server',
+      timestamp: Date.now(),
+      uptime: process.uptime(),
+      version: process.env.npm_package_version || '4.0.0',
+      node: process.version,
+      memory: process.memoryUsage(),
+      server: {
+        host: this.serverConfig?.host || 'localhost',
+        port: this.serverConfig?.port || 5506,
+        listening: this.isRunning()
+      },
+      components: {
+        httpServer: this.isRunning() ? 'running' : 'stopped',
+        requestHandler: this.requestHandler ? 'available' : 'unavailable'
+      }
+    };
+
+    res.status(this.isRunning() ? 200 : 503).json(status);
+  }
+
+  /**
+   * Handle chat request - OpenAI compatible endpoint
+   */
+  private async handleChatRequest(req: express.Request, res: express.Response): Promise<void> {
+    if (!this.requestHandler) {
+      res.status(503).json({
+        error: {
+          message: 'Request handler not available',
+          type: 'service_unavailable',
+          timestamp: Date.now()
+        }
+      });
+      return;
+    }
+
+    try {
+      // Convert Express request to ClientRequest
+      const clientRequest = this.expressToClientRequest(req);
+
+      // Forward to request handler
+      const response = await this.requestHandler(clientRequest);
+
+      // Convert ClientResponse to Express response
+      this.clientResponseToExpress(response, res);
+
+    } catch (error) {
+      this.error('Chat request handling failed', { error: error instanceof Error ? error.message : String(error) });
+
+      res.status(500).json({
+        error: {
+          message: 'Failed to process request',
+          type: 'request_processing_error',
+          timestamp: Date.now()
+        }
+      });
     }
   }
 

@@ -7,6 +7,7 @@ export interface IHttpServer {
     stop(): Promise<void>;
     getExpressApp(): Application;
     isRunning(): boolean;
+    setRequestHandler(handler: (request: ClientRequest) => Promise<ClientResponse>): void;
 }
 export interface IRequestProcessor {
     configure(config: any): Promise<void>;

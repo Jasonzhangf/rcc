@@ -880,7 +880,7 @@ export abstract class BaseModule implements MessageHandler {
    */
   public async handleMessage(message: Message): Promise<MessageResponse | void> {
     this.debug('debug', 'Handling message', { type: message.type, source: message.source }, 'handleMessage');
-    
+
     // Base message handling implementation
     // This should be overridden by subclasses for specific message handling logic
     switch (message.type) {
@@ -892,6 +892,58 @@ export abstract class BaseModule implements MessageHandler {
           data: { pong: true, moduleId: this.info.id },
           timestamp: Date.now()
         };
+
+      case 'module_registered':
+        // Handle module registration messages
+        this.debug('info', 'Module registration received', {
+          moduleId: message.payload?.moduleId,
+          moduleName: message.payload?.moduleName,
+          moduleType: message.payload?.moduleType
+        }, 'handleMessage');
+
+        // Call the module lifecycle method
+        if (message.payload?.moduleId) {
+          this.onModuleRegistered(message.payload.moduleId);
+        }
+
+        return {
+          messageId: message.id,
+          correlationId: message.correlationId || '',
+          success: true,
+          data: {
+            received: true,
+            acknowledged: true,
+            moduleId: this.info.id,
+            timestamp: Date.now()
+          },
+          timestamp: Date.now()
+        };
+
+      case 'server-initialized':
+      case 'server-started':
+      case 'pipeline_started':
+      case 'pipeline_completed':
+      case 'request_started':
+      case 'request_completed':
+        // Handle common system messages silently
+        this.debug('info', 'System message received', {
+          type: message.type,
+          messageId: message.id
+        }, 'handleMessage');
+
+        return {
+          messageId: message.id,
+          correlationId: message.correlationId || '',
+          success: true,
+          data: {
+            received: true,
+            acknowledged: true,
+            moduleId: this.info.id,
+            timestamp: Date.now()
+          },
+          timestamp: Date.now()
+        };
+
       default:
         this.debug('warn', 'Unhandled message type', { type: message.type }, 'handleMessage');
         return {

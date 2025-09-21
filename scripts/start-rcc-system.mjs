@@ -147,7 +147,7 @@ class RCCSystemInitializer {
 
       this.config = JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
 
-      // Validate required configuration sections
+      // Validate required configuration sections with enhanced fault tolerance
       if (!this.config.providers) {
         throw new Error('Configuration missing providers section');
       }
@@ -159,6 +159,37 @@ class RCCSystemInitializer {
 
       if (!this.config.pipeline) {
         this.config.pipeline = {};
+      }
+
+      // Ensure providers have proper structure
+      for (const [providerId, providerConfig] of Object.entries(this.config.providers)) {
+        if (!providerConfig.models || Object.keys(providerConfig.models).length === 0) {
+          console.warn(`⚠️ Provider ${providerId} has no models configured - it will be ignored`);
+        }
+        if (!providerConfig.auth || !providerConfig.auth.keys || providerConfig.auth.keys.length === 0) {
+          console.warn(`⚠️ Provider ${providerId} has no authentication keys - it will fail to connect`);
+        }
+      }
+
+      // Ensure virtual models have proper structure and fallback to default
+      for (const [vmId, vmConfig] of Object.entries(this.config.virtualModels)) {
+        if (!vmConfig.targets || vmConfig.targets.length === 0) {
+          console.warn(`⚠️ Virtual model ${vmId} has no targets - it will use default routing`);
+        }
+        if (vmConfig.enabled === undefined) {
+          vmConfig.enabled = true; // Default to enabled
+        }
+      }
+
+      // Ensure default virtual model exists
+      if (!this.config.virtualModels.default) {
+        console.warn('⚠️ Default virtual model missing - creating basic default configuration');
+        this.config.virtualModels.default = {
+          id: 'default',
+          targets: [],
+          enabled: true,
+          priority: 1
+        };
       }
 
       this.log('configuration', 'Configuration loaded successfully', {
@@ -174,7 +205,7 @@ class RCCSystemInitializer {
 
       try {
         // Import wrapper generation from config-parser
-        const configParserPath = path.join(process.cwd(), 'sharedmodule', 'config-parser', 'dist', 'index.esm.js');
+        const configParserPath = path.join(process.cwd(), 'sharedmodule', 'config-parser', 'dist', 'index.js');
 
         if (fs.existsSync(configParserPath)) {
           const configParserModule = await import(configParserPath);
@@ -280,9 +311,10 @@ class RCCSystemInitializer {
       const moduleScanner = new ModuleScanner();
 
       const scannerOptions = {
-        scanPaths: pipelineConfig?.scanPaths || this.config.pipeline?.scanPaths || ['./sharedmodule'],
+        scanPaths: pipelineConfig?.scanPaths || this.config.pipeline?.scanPaths || ['./sharedmodule/pipeline/src/providers'],
         providerPatterns: pipelineConfig?.providerPatterns || this.config.pipeline?.providerPatterns || ['*Provider.js', '*Provider.ts'],
-        recursive: true
+        recursive: true,
+        providerConfigs: this.config.providers || {}
       };
 
       this.log('pipeline', 'Discovering providers with options', scannerOptions);
@@ -353,12 +385,12 @@ class RCCSystemInitializer {
       this.log('pipeline', 'Pipeline assembly completed', {
         success: assemblyResult.success,
         poolsCreated: assemblyResult.pipelinePools.size,
-        errors: assemblyResult.errors.length,
-        warnings: assemblyResult.warnings.length,
+        errors: (assemblyResult.errors || []).length,
+        warnings: (assemblyResult.warnings || []).length,
         virtualModels: Array.from(assemblyResult.pipelinePools.keys())
       });
 
-      if (assemblyResult.errors.length > 0) {
+      if (assemblyResult.errors && assemblyResult.errors.length > 0) {
         this.log('pipeline', 'Assembly errors encountered', {
           errors: assemblyResult.errors
         });
@@ -420,16 +452,25 @@ class RCCSystemInitializer {
         enableMetricsExport: true
       };
 
-      // Create VirtualModelSchedulerManager with pre-assembled pipeline pools
+      // Create VirtualModelSchedulerManager with proper configuration
+      // Note: VirtualModelSchedulerManager expects ManagerConfig and PipelineTracker
+      const schedulerConfig = {
+        ...managerConfig,
+        pipelinePools: this.assembledPipelinePools,
+        enableInternalAPI: true
+      };
+
       this.pipelineManager = new VirtualModelSchedulerManager(
-        this.assembledPipelinePools,
-        managerConfig,
+        schedulerConfig,
         this.pipelineTracker
       );
 
-      this.log('scheduler', 'VirtualModelSchedulerManager created with assembled pipeline pools', {
-        schedulerCount: this.pipelineManager.getManagerMetrics().totalSchedulers,
-        activeSchedulers: this.pipelineManager.getManagerMetrics().activeSchedulers,
+      // Initialize the scheduler manager with pipeline pools
+      this.pipelineManager.initialize(this.assembledPipelinePools);
+
+      this.log('scheduler', 'VirtualModelSchedulerManager created and initialized with assembled pipeline pools', {
+        schedulerCount: this.pipelineManager.getMetrics().totalSchedulers,
+        activeSchedulers: this.pipelineManager.getMetrics().activeSchedulers,
         pipelinePools: this.assembledPipelinePools.size,
         virtualModels: Array.from(this.assembledPipelinePools.keys())
       });
@@ -609,23 +650,24 @@ class RCCSystemInitializer {
 
       // Get virtual model mappings from scheduler manager
       const virtualModelMappings = this.pipelineManager.getVirtualModelMappings();
+      const virtualModelArray = Object.values(virtualModelMappings);
 
       this.log('virtual-models', 'Virtual model mappings from scheduler manager', {
-        totalMappings: virtualModelMappings.length,
-        virtualModels: virtualModelMappings.map(m => m.virtualModelId)
+        totalMappings: virtualModelArray.length,
+        virtualModels: virtualModelArray.map(m => m.id)
       });
 
       // NOTE: Virtual model registration removed - ServerModule is pure forwarding only
       // Virtual models are handled by the pipeline system directly
       this.log('virtual-models', 'Virtual model mappings available (not registering with server)', {
-        totalMappings: virtualModelMappings.length,
-        virtualModels: virtualModelMappings.map(m => m.virtualModelId)
+        totalMappings: virtualModelArray.length,
+        virtualModels: virtualModelArray.map(m => m.id)
       });
 
       this.log('virtual-models', 'Virtual model routing configuration completed', {
-        totalRegistered: virtualModelMappings.length,
-        activeVirtualModels: virtualModelMappings.filter(m => m.enabled).length,
-        schedulerMetrics: this.pipelineManager.getManagerMetrics()
+        totalRegistered: virtualModelArray.length,
+        activeVirtualModels: virtualModelArray.filter(m => m.status === 'active').length,
+        schedulerMetrics: this.pipelineManager.getMetrics()
       });
 
     } catch (error) {
@@ -668,11 +710,11 @@ class RCCSystemInitializer {
     this.log('system', 'Finalizing system startup...');
 
     // Verify that virtual models are properly registered
-    const virtualModels = this.server.getVirtualModels ? this.server.getVirtualModels() : [];
-    const enabledModels = this.server.virtualModelRouter ?
-      this.server.virtualModelRouter.getEnabledModels() : [];
+    const virtualModelMappings = this.pipelineManager.getVirtualModelMappings();
+    const virtualModels = Object.values(virtualModelMappings);
+    const enabledModels = virtualModels.filter(vm => vm.status === 'active');
 
-    const metrics = this.pipelineManager.getManagerMetrics();
+    const metrics = this.pipelineManager.getMetrics();
 
     this.log('system', 'System startup verification', {
       totalVirtualModels: virtualModels.length,
@@ -682,7 +724,7 @@ class RCCSystemInitializer {
       serverStatus: this.server.getStatus ? await this.server.getStatus() : 'running'
     });
 
-    // Verify no "No available targets" error - we have 6 enabled models with targets
+    // Verify that we have virtual models available
     if (enabledModels.length === 0) {
       throw new Error('Critical startup failure: No virtual models available');
     }

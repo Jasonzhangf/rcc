@@ -27,40 +27,54 @@
         "required": false,
         "description": "Enable debug mode"
       }
-    },
-    "providers": {},
-    "routes": {},
-    "security": {
-      "rateLimiting": {
-        "enabled": {
-          "value": false,
-          "type": "boolean",
-          "required": false
-        }
-      },
-      "authentication": {
-        "required": {
-          "value": false,
-          "type": "boolean",
-          "required": false
-        }
+    }
+  },
+  "providers": {
+    "llmSwitch": {
+      "enabled": true,
+      "priority": 1,
+      "config": {
+        "defaultProvider": "anthropic",
+        "fallbackProviders": ["openai", "local"],
+        "timeout": 30000
       }
+    }
+  },
+  "routes": {},
+  "virtualModels": {
+    "claude-3-sonnet": {
+      "provider": "anthropic",
+      "model": "claude-3-sonnet-20240229",
+      "enabled": true
     },
-    "monitoring": {
-      "logging": {
-        "level": {
-          "value": "info",
-          "type": "string",
-          "required": false
-        }
-      },
-      "metrics": {
-        "enabled": {
-          "value": false,
-          "type": "boolean",
-          "required": false
-        }
-      }
+    "gpt-3.5-turbo": {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo",
+      "enabled": true
+    }
+  },
+  "security": {
+    "rateLimiting": {
+      "enabled": false,
+      "type": "boolean",
+      "required": false
+    },
+    "authentication": {
+      "required": false,
+      "type": "boolean",
+      "required": false
+    }
+  },
+  "monitoring": {
+    "logging": {
+      "level": "info",
+      "type": "string",
+      "required": false
+    },
+    "metrics": {
+      "enabled": false,
+      "type": "boolean",
+      "required": false
     }
   },
   "version": "4.0.0"

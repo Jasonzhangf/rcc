@@ -121,8 +121,7 @@ export class IOTracker {
       data: { sessionStart: true },
       size: 0,
       processingTime: 0,
-      timestamp: Date.now(),
-      type: 'transformation'
+      type: 'transformation' as const
     });
 
     return actualRequestId;
@@ -189,7 +188,7 @@ export class IOTracker {
           data: { success: true },
           size: JSON.stringify(result).length,
           processingTime,
-          type: 'transformation'
+          type: 'transformation' as const
         });
 
         return result;
@@ -205,7 +204,7 @@ export class IOTracker {
           data: { error: error.message },
           size: 0,
           processingTime,
-          type: 'error'
+          type: 'error' as const
         });
 
         throw error;
@@ -229,7 +228,7 @@ export class IOTracker {
       data: requestData,
       size: JSON.stringify(requestData).length,
       processingTime: 0,
-      type: 'request'
+      type: 'request' as const
     });
   }
 
@@ -253,7 +252,7 @@ export class IOTracker {
       data: responseData,
       size: JSON.stringify(responseData).length,
       processingTime,
-      type: 'response'
+      type: 'response' as const
     });
   }
 
@@ -521,7 +520,7 @@ export class IOTracker {
         },
         size: 0,
         processingTime: 0,
-        type: 'transformation'
+        type: 'transformation' as const
       });
 
       // 保留会话数据一段时间用于分析

@@ -96,7 +96,7 @@ class TestProvider {
         streaming: true,
         functions: true,
         vision: false,
-        maxTokens: 4000
+        maxTokens: Number.MAX_SAFE_INTEGER
       },
       authentication: {
         type: 'bearer',

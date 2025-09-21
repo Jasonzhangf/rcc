@@ -5,7 +5,7 @@
 
 import { ModuleInfo } from 'rcc-basemodule';
 import { BasePipelineModule } from './BasePipelineModule';
-import { IProviderModule, ProtocolType, PipelineExecutionContext, ModuleConfig } from '../interfaces/ModularInterfaces';
+import { IProviderModule, ProtocolType, PipelineExecutionContext, ModuleConfig, PipelineStage } from '../interfaces/ModularInterfaces';
 
 /**
  * Provider Module Configuration
@@ -36,6 +36,7 @@ export class ProviderModule extends BasePipelineModule implements IProviderModul
   public readonly moduleId: string;
   public readonly moduleName: string;
   public readonly moduleVersion: string;
+  public ioRecords: any[] = [];
 
   private config!: ProviderModuleConfig;
   private isInitialized: boolean = false;
@@ -163,10 +164,25 @@ export class ProviderModule extends BasePipelineModule implements IProviderModul
     const context: PipelineExecutionContext = {
       sessionId: 'session-' + Date.now(),
       requestId: 'req-' + Date.now(),
+      executionId: 'exec-' + Date.now(),
+      traceId: 'trace-' + Date.now(),
       virtualModelId: 'default',
       providerId: this.moduleId,
       startTime: Date.now(),
-      metadata: {}
+      stage: PipelineStage.PROVIDER_EXECUTION,
+      timing: {
+        startTime: Date.now(),
+        endTime: undefined,
+        duration: undefined,
+        stageTimings: new Map(),
+        status: 'pending'
+      },
+      ioRecords: [],
+      metadata: {},
+      parentContext: undefined,
+      debugConfig: undefined,
+      routingDecision: undefined,
+      performanceMetrics: undefined
     };
 
     return this.executeRequest(request, context);

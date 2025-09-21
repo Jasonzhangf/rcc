@@ -4,6 +4,25 @@
  * 核心模块化接口定义，实现 llmswitch → workflow → compatibility → provider 的流水线架构
  */
 
+import { PipelineStage, ErrorCategory, ErrorSeverity, ExecutionContextFactory, ExecutionContextOptions, ModuleInfo, PipelineExecutionContext } from '../core/PipelineExecutionContext';
+
+// Re-export core types for convenience
+export { PipelineStage, ErrorCategory, ErrorSeverity, ExecutionContextFactory, ExecutionContextOptions, ModuleInfo, PipelineExecutionContext } from '../core/PipelineExecutionContext';
+
+/**
+ * Enhanced execution error with timestamp
+ */
+export interface ExecutionError {
+  errorId: string;
+  message: string;
+  stack?: string;
+  category: ErrorCategory;
+  severity: ErrorSeverity;
+  recoverable: boolean;
+  timestamp: number;
+  context?: Record<string, any>;
+}
+
 // 定义PipelineWrapper接口
 export interface PipelineWrapper {
   virtualModels: VirtualModel[];
@@ -85,6 +104,8 @@ export interface ProtocolConversion {
 export interface IORecord {
   id: string;
   timestamp: number;
+  sessionId: string;
+  requestId: string;
   type: 'request' | 'response' | 'transformation' | 'error';
   moduleId: string;
   step: string;
@@ -166,24 +187,7 @@ export interface DebugConfig {
   sampleRate: number;
 }
 
-/**
- * 流水线执行上下文
- */
-export interface PipelineExecutionContext {
-  sessionId: string;
-  requestId: string;
-  virtualModelId: string;
-  providerId: string;
-  startTime: number;
-  routingDecision?: RoutingDecision;
-  performanceMetrics?: PerformanceMetrics;
-  ioRecords: IORecord[];
-  metadata: {
-    [key: string]: any;
-  };
-  parentContext?: PipelineExecutionContext;
-  debugConfig?: DebugConfig;
-}
+// PipelineExecutionContext is now imported from core/PipelineExecutionContext
 
 /**
  * 流水线模块基础接口
@@ -454,6 +458,32 @@ export interface IModuleFactory {
    * 创建Provider模块实例
    */
   createProviderModule(config: ModuleConfig): Promise<IProviderModule>;
+}
+
+/**
+ * 协议转换器接口
+ */
+export interface ProtocolTransformer {
+  readonly name: string;
+  readonly sourceProtocol: ProtocolType;
+  readonly targetProtocol: ProtocolType;
+  readonly version: string;
+  /**
+   * 转换请求
+   */
+  transformRequest(request: any): any;
+  /**
+   * 转换响应
+   */
+  transformResponse(response: any): any;
+  /**
+   * 验证输入
+   */
+  validateInput(request: any): { isValid: boolean; errors: string[] };
+  /**
+   * 验证输出
+   */
+  validateOutput(response: any): { isValid: boolean; errors: string[] };
 }
 
 /**

@@ -132,7 +132,7 @@ class QwenProvider extends BaseProvider {
         id: 'qwen3-coder-plus',
         name: 'Qwen3 Coder Plus',
         description: 'Advanced coding model with enhanced programming capabilities',
-        maxTokens: 65536,
+        maxTokens: 262144, // 256K 默认值
         contextWindow: 262144,
         supportsStreaming: true,
         supportsTools: true
@@ -782,10 +782,9 @@ class QwenProvider extends BaseProvider {
   }
 
   // 验证请求
+  // 根据架构设计，提供商应忽略请求中的模型参数，使用初始化时配置的模型
   validate(request: any): boolean {
-    if (!request.model) {
-      throw new Error('Model is required');
-    }
+    // 不再验证request.model，因为提供商使用初始化时配置的模型
     if (!request.messages || request.messages.length === 0) {
       throw new Error('Messages are required');
     }

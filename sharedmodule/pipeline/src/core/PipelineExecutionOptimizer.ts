@@ -230,7 +230,7 @@ export class PipelineExecutionOptimizer {
         requestId,
         moduleId: 'optimizer',
         step: 'execution_error',
-        data: { error: error.message },
+        data: { error: error instanceof Error ? error.message : String(error) },
         size: 0,
         processingTime: 0,
         type: 'error'

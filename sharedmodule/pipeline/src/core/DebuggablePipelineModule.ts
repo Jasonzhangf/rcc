@@ -68,15 +68,16 @@ try {
 } catch {
   DebugCenterType = SimpleDebugCenter;
 }
-import { ErrorCategory, ErrorSeverity } from '../types/ErrorTypes';
 import {
   PipelineExecutionContext,
   ExecutionContextFactory,
   ExecutionContextOptions,
   ModuleInfo,
+  ExecutionError,
   PipelineStage,
-  ExecutionError
-} from './PipelineExecutionContext';
+  ErrorCategory,
+  ErrorSeverity
+} from '../interfaces/ModularInterfaces';
 import { PipelineTracker } from '../framework/PipelineTracker';
 
 /**
@@ -239,8 +240,8 @@ export interface TraceSummary {
   completedStages: number;
   failedStages: number;
   stageTransitions: Array<{
-    from: PipelineStage;
-    to: PipelineStage;
+    from: string;
+    to: string;
     duration: number;
   }>;
   errors: ExecutionError[];
@@ -254,7 +255,6 @@ interface EnhancedError extends ExecutionError {
   executionId: string;
   context: PipelineExecutionContext;
   recoveryAttempts: number;
-  timestamp: number;
 }
 
 /**
@@ -423,7 +423,12 @@ export class DebuggablePipelineModule extends BaseModule {
       inheritFrom: options?.parentContext
     };
 
-    const context = this.tracker.createContext(moduleInfo, stage, request, contextOptions);
+    // Convert string literal stage to proper PipelineStage enum
+    const properStage = this.convertToPipelineStage(stage);
+    const rawContext = this.tracker.createContext(moduleInfo, properStage, request, contextOptions);
+
+    // Convert to proper PipelineExecutionContext
+    const context = this.convertToPipelineExecutionContext(rawContext, properStage, contextOptions);
 
     this.logDebug('Starting execution with tracing', {
       executionId: context.executionId,
@@ -435,7 +440,7 @@ export class DebuggablePipelineModule extends BaseModule {
     try {
       // Record request if provided
       if (request) {
-        await this.tracker.recordRequest(context, request, stage);
+        await this.tracker.recordRequest(context, request, properStage);
       }
 
       // Record memory and CPU usage if metrics enabled
@@ -453,7 +458,7 @@ export class DebuggablePipelineModule extends BaseModule {
       );
 
       // Record successful response
-      await this.tracker.recordResponse(context, result, stage);
+      await this.tracker.recordResponse(context, result, properStage);
 
       // Complete context
       this.tracker.completeContext(context, result);
@@ -578,7 +583,7 @@ export class DebuggablePipelineModule extends BaseModule {
       this.errorHandler.handleError({
         error,
         source: this.info.id,
-        severity: severity.toLowerCase() as any,
+        severity: severity,
         timestamp: Date.now(),
         context: {
           executionId: context.executionId,
@@ -650,7 +655,7 @@ export class DebuggablePipelineModule extends BaseModule {
    * 生成跟踪摘要用于分析
    */
   private generateTraceSummary(context: PipelineExecutionContext): TraceSummary {
-    const stageTransitions: Array<{ from: PipelineStage; to: PipelineStage; duration: number }> = [];
+    const stageTransitions: Array<{ from: string; to: string; duration: number }> = [];
 
     if (context.parent) {
       const parentStage = context.parent.stage;
@@ -669,11 +674,20 @@ export class DebuggablePipelineModule extends BaseModule {
       completedStages: Array.from(context.timing.stageTimings.values()).filter(t => t.status === 'completed').length,
       failedStages: Array.from(context.timing.stageTimings.values()).filter(t => t.status === 'failed').length,
       stageTransitions,
-      errors: context.error ? [context.error] : []
+      errors: context.error ? [{
+        errorId: context.error.errorId,
+        message: context.error.message,
+        stack: context.error.stack,
+        category: context.error.category as ErrorCategory,
+        severity: context.error.severity as ErrorSeverity,
+        recoverable: context.error.recoverable,
+        timestamp: context.error.timestamp,
+        context: (context.error as any).context || {}
+      }] : []
     };
   }
 
-  private categorizeError(error: Error): string {
+  private categorizeError(error: Error): ErrorCategory {
     const message = error.message.toLowerCase();
     const stack = error.stack?.toLowerCase() || '';
 
@@ -695,6 +709,9 @@ export class DebuggablePipelineModule extends BaseModule {
     if (message.includes('provider') || stack.includes('provider')) {
       return ErrorCategory.PROVIDER;
     }
+    if (message.includes('system') || message.includes('memory') || message.includes('internal')) {
+      return ErrorCategory.SYSTEM;
+    }
 
     return ErrorCategory.PROCESSING;
   }
@@ -706,13 +723,13 @@ export class DebuggablePipelineModule extends BaseModule {
     }
 
     // Network and auth errors are errors
-    if (this.categorizeError(error) === ErrorCategory.NETWORK ||
-        this.categorizeError(error) === ErrorCategory.AUTHENTICATION) {
+    const category = this.categorizeError(error);
+    if (category === ErrorCategory.NETWORK || category === ErrorCategory.AUTHENTICATION) {
       return ErrorSeverity.ERROR;
     }
 
     // Validation errors are warnings
-    if (this.categorizeError(error) === ErrorCategory.VALIDATION) {
+    if (category === ErrorCategory.VALIDATION) {
       return ErrorSeverity.WARNING;
     }
 
@@ -721,7 +738,7 @@ export class DebuggablePipelineModule extends BaseModule {
 
   private isErrorRecoverable(error: Error): boolean {
     const category = this.categorizeError(error);
-    return category !== ErrorCategory.SYSTEM && category !== ErrorCategory.FATAL;
+    return category !== ErrorCategory.SYSTEM && category !== ErrorCategory.PROCESSING;
   }
 
   /**
@@ -730,16 +747,16 @@ export class DebuggablePipelineModule extends BaseModule {
    */
   private async recordError(
     error: Error,
-    category: string,
-    severity: string,
+    category: ErrorCategory,
+    severity: ErrorSeverity,
     recoverable: boolean
   ): Promise<any> {
     return {
       errorId: this.generateErrorId(),
       message: error.message,
       stack: error.stack,
-      category: category as ErrorCategory,
-      severity: severity as ErrorSeverity,
+      category,
+      severity,
       recoverable,
       timestamp: Date.now()
     };
@@ -747,6 +764,79 @@ export class DebuggablePipelineModule extends BaseModule {
 
   private generateErrorId(): string {
     return `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Convert stage to proper PipelineStage enum
+   */
+  private convertToPipelineStage(stage: PipelineStage | string): PipelineStage {
+    // Handle string inputs
+    if (typeof stage === 'string') {
+      switch (stage) {
+        case 'initialization':
+          return PipelineStage.REQUEST_INIT;
+        case 'request_processing':
+          return PipelineStage.REQUEST_INIT;
+        case 'provider_selection':
+          return PipelineStage.PIPELINE_SELECTION;
+        case 'provider_call':
+          return PipelineStage.PROVIDER_EXECUTION;
+        case 'response_processing':
+          return PipelineStage.RESPONSE_PROCESSING;
+        case 'error_handling':
+          return PipelineStage.ERROR_HANDLING;
+        case 'completion':
+          return PipelineStage.COMPLETION;
+        default:
+          return PipelineStage.REQUEST_INIT;
+      }
+    }
+
+    // If it's already a PipelineStage enum, return it as-is
+    return stage;
+  }
+
+  /**
+   * Convert raw context to proper PipelineExecutionContext
+   */
+  private convertToPipelineExecutionContext(rawContext: any, stage: PipelineStage, options?: ExecutionContextOptions): PipelineExecutionContext {
+    const executionId = options?.executionId || rawContext.executionId;
+    const traceId = options?.traceId || rawContext.traceId;
+    const sessionId = options?.sessionId || this.generateSessionId();
+    const requestId = rawContext.requestId;
+
+    const context: PipelineExecutionContext = {
+      executionId,
+      traceId,
+      sessionId,
+      requestId,
+      virtualModelId: rawContext.module?.moduleId || 'unknown',
+      providerId: rawContext.module?.providerName || 'unknown',
+      startTime: rawContext.timing?.startTime || Date.now(),
+      stage,
+      timing: {
+        startTime: rawContext.timing?.startTime || Date.now(),
+        endTime: undefined,
+        duration: undefined,
+        stageTimings: new Map([[stage, {
+          startTime: Date.now(),
+          status: 'running'
+        }]]),
+        status: 'pending'
+      },
+      metadata: options?.metadata || rawContext.metadata || {},
+      ioRecords: [],
+      parentContext: options?.inheritFrom || options?.parent,
+      debugConfig: options?.debugConfig,
+      routingDecision: undefined,
+      performanceMetrics: undefined
+    };
+
+    return context;
+  }
+
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   private getErrorStatus(error: Error): 'failed' | 'timeout' | 'cancelled' {

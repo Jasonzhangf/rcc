@@ -7,50 +7,49 @@ import { BaseModuleRecordingConfig } from 'rcc-basemodule';
 
 /**
  * Pipeline execution context interface with comprehensive request-response tracing
- * 流水线执行上下文接口，提供完整的请求响应跟踪
+ * 流水线执行上下文接口，包含完整的请求响应跟踪功能
  */
 export interface PipelineExecutionContext {
-  /** Unique execution identifier */
-  executionId: string;
-
-  /** Request identifier for cross-module tracking */
+  sessionId: string;
   requestId: string;
+  virtualModelId: string;
+  providerId: string;
+  startTime: number;
+  routingDecision?: any;
+  performanceMetrics?: any;
+  ioRecords: any[];
+  metadata: {
+    [key: string]: any;
+  };
+  parentContext?: PipelineExecutionContext;
+  debugConfig?: any;
 
-  /** Trace identifier for distributed tracking */
+  // Additional properties needed by DebuggablePipelineModule
+  executionId: string;
   traceId: string;
-
-  /** Session identifier for session tracking */
-  sessionId?: string;
-
-  /** Pipeline stage tracking */
-  stage: PipelineStage;
-
-  /** Current module information */
-  module: ModuleInfo;
-
-  /** Execution timing information */
-  timing: ExecutionTiming;
-
-  /** Request data with truncation support */
-  request?: any;
-
-  /** Response data with truncation support */
-  response?: any;
-
-  /** Error information if execution failed */
-  error?: ExecutionError;
-
-  /** Metadata for additional context */
-  metadata?: Record<string, any>;
-
-  /** Configuration snapshot */
-  config?: ConfigSnapshot;
-
-  /** Child contexts for nested executions */
-  children?: PipelineExecutionContext[];
-
-  /** Parent context for hierarchical tracking */
+  stage: string;
   parent?: PipelineExecutionContext;
+  timing: {
+    startTime: number;
+    endTime?: number;
+    duration?: number;
+    stageTimings: Map<string, {
+      startTime: number;
+      endTime?: number;
+      duration?: number;
+      status: 'pending' | 'running' | 'completed' | 'failed';
+    }>;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+  };
+  error?: {
+    errorId: string;
+    message: string;
+    stack?: string;
+    category: string;
+    severity: string;
+    recoverable: boolean;
+    timestamp: number;
+  };
 }
 
 /**
@@ -88,7 +87,8 @@ export interface ExecutionTiming {
   startTime: number;
   endTime?: number;
   duration?: number;
-  stageTimings: Map<PipelineStage, StageTiming>;
+  stageTimings: Map<string, StageTiming>;
+  status: 'pending' | 'running' | 'completed' | 'failed';
 }
 
 /**
@@ -113,6 +113,7 @@ export interface ExecutionError {
   category: ErrorCategory;
   severity: ErrorSeverity;
   recoverable: boolean;
+  timestamp: number;
   context?: Record<string, any>;
 }
 
@@ -159,217 +160,177 @@ export interface ConfigSnapshot {
  * 执行上下文创建选项
  */
 export interface ExecutionContextOptions {
-  /** Create new trace or inherit existing */
-  createNewTrace?: boolean;
-
-  /** Inherit from parent context */
-  inheritFrom?: PipelineExecutionContext;
-
-  /** Custom execution ID */
+  /** Base directory for file operations */
+  baseDirectory?: string;
+  /** Recording configuration */
+  recordingConfig?: BaseModuleRecordingConfig;
+  /** Initial request data */
+  request?: any;
+  /** Parent context for hierarchical tracking */
+  parent?: PipelineExecutionContext;
+  /** Debug configuration */
+  debugConfig?: any;
   executionId?: string;
-
-  /** Custom trace ID */
   traceId?: string;
-
-  /** Custom session ID */
   sessionId?: string;
-
-  /** Additional metadata */
   metadata?: Record<string, any>;
-
-  /** Configuration overrides */
-  config?: Partial<BaseModuleRecordingConfig>;
+  inheritFrom?: PipelineExecutionContext;
+  requestId?: string;
+  virtualModelId?: string;
+  providerId?: string;
+  startTime?: number;
+  stage?: string;
+  timing?: any;
+  ioRecords?: any[];
+  parentContext?: PipelineExecutionContext;
+  routingDecision?: any;
+  performanceMetrics?: any;
+  error?: any;
 }
 
 /**
- * Execution context manager interface
- * 执行上下文管理器接口
- */
-export interface IExecutionContextManager {
-  /** Create new execution context */
-  createContext(
-    moduleInfo: ModuleInfo,
-    stage: PipelineStage,
-    request?: any,
-    options?: ExecutionContextOptions
-  ): PipelineExecutionContext;
-
-  /** Update context stage */
-  updateStage(
-    context: PipelineExecutionContext,
-    newStage: PipelineStage,
-    data?: any
-  ): void;
-
-  /** Complete context execution */
-  completeContext(
-    context: PipelineExecutionContext,
-    response?: any,
-    error?: ExecutionError
-  ): void;
-
-  /** Get context by execution ID */
-  getContext(executionId: string): PipelineExecutionContext | undefined;
-
-  /** Get context by request ID */
-  getContextByRequestId(requestId: string): PipelineExecutionContext | undefined;
-
-  /** Get active contexts */
-  getActiveContexts(): PipelineExecutionContext[];
-
-  /** Get contexts by trace ID */
-  getContextsByTraceId(traceId: string): PipelineExecutionContext[];
-
-  /** Clear completed contexts */
-  clearCompletedContexts(): void;
-
-  /** Get execution statistics */
-  getStatistics(): ExecutionStatistics;
-}
-
-/**
- * Execution statistics
- * 执行统计
- */
-export interface ExecutionStatistics {
-  totalExecutions: number;
-  activeExecutions: number;
-  completedExecutions: number;
-  failedExecutions: number;
-  averageDuration: number;
-  stageStatistics: Map<PipelineStage, StageStatistics>;
-  errorStatistics: Map<ErrorCategory, number>;
-}
-
-/**
- * Stage-specific statistics
- * 阶段特定统计
- */
-export interface StageStatistics {
-  total: number;
-  completed: number;
-  failed: number;
-  averageDuration: number;
-}
-
-/**
- * Execution context factory
- * 执行上下文工厂
+ * 执行上下文工厂类
  */
 export class ExecutionContextFactory {
   private static instance: ExecutionContextFactory;
+  private activeContexts: Map<string, PipelineExecutionContext> = new Map();
 
   private constructor() {}
 
-  static getInstance(): ExecutionContextFactory {
-    if (!this.instance) {
-      this.instance = new ExecutionContextFactory();
+  public static getInstance(): ExecutionContextFactory {
+    if (!ExecutionContextFactory.instance) {
+      ExecutionContextFactory.instance = new ExecutionContextFactory();
     }
-    return this.instance;
+    return ExecutionContextFactory.instance;
   }
 
   /**
-   * Create execution context
    * 创建执行上下文
    */
-  createContext(
+  public createContext(
     moduleInfo: ModuleInfo,
     stage: PipelineStage,
     request?: any,
     options?: ExecutionContextOptions
   ): PipelineExecutionContext {
-    const now = Date.now();
     const executionId = options?.executionId || this.generateExecutionId();
-    const traceId = options?.traceId || (options?.inheritFrom?.traceId || this.generateTraceId());
-    const sessionId = options?.sessionId || options?.inheritFrom?.sessionId;
+    const traceId = options?.traceId || this.generateTraceId();
+    const sessionId = options?.sessionId || this.generateSessionId();
+    const requestId = this.generateRequestId();
 
     const context: PipelineExecutionContext = {
       executionId,
-      requestId: this.generateRequestId(),
       traceId,
       sessionId,
+      requestId,
+      virtualModelId: moduleInfo.moduleId,
+      providerId: moduleInfo.providerName || 'unknown',
+      startTime: Date.now(),
       stage,
-      module: moduleInfo,
       timing: {
-        startTime: now,
-        stageTimings: new Map([[stage, {
-          startTime: now,
-          status: 'running'
-        }]])
+        startTime: Date.now(),
+        endTime: undefined,
+        duration: undefined,
+        stageTimings: new Map(),
+        status: 'pending'
       },
-      request: this.sanitizeRequest(request),
       metadata: options?.metadata || {},
-      config: this.createConfigSnapshot(options?.config),
-      children: [],
-      parent: options?.inheritFrom
+      ioRecords: [],
+      parentContext: options?.inheritFrom || options?.parent,
+      debugConfig: options?.debugConfig,
+      routingDecision: undefined,
+      performanceMetrics: undefined
     };
 
-    if (options?.inheritFrom) {
-      options.inheritFrom.children?.push(context);
+    // 如果有父上下文，继承相关属性
+    if (options?.inheritFrom || options?.parent) {
+      context.parent = options.inheritFrom || options.parent;
+      context.parentContext = options.inheritFrom || options.parent;
     }
+
+    // 记录阶段开始时间
+    context.timing.stageTimings.set(stage, {
+      startTime: Date.now(),
+      status: 'running'
+    });
+
+    // 缓存活跃上下文
+    this.activeContexts.set(executionId, context);
 
     return context;
   }
 
   /**
-   * Update context stage
-   * 更新上下文阶段
+   * 完成执行上下文
    */
-  updateStage(
-    context: PipelineExecutionContext,
-    newStage: PipelineStage,
-    data?: any
-  ): void {
-    const now = Date.now();
+  public completeContext(context: PipelineExecutionContext, result?: any, error?: ExecutionError): void {
+    const timing = context.timing;
+    timing.endTime = Date.now();
+    timing.duration = timing.endTime - timing.startTime;
+    timing.status = error ? 'failed' : 'completed';
 
-    // Complete current stage
-    const currentStageTiming = context.timing.stageTimings.get(context.stage);
-    if (currentStageTiming && !currentStageTiming.endTime) {
-      currentStageTiming.endTime = now;
-      currentStageTiming.duration = now - currentStageTiming.startTime;
-      currentStageTiming.status = 'completed';
+    // 完成当前阶段
+    const currentStage = context.timing.stageTimings.get(context.stage);
+    if (currentStage) {
+      currentStage.endTime = Date.now();
+      currentStage.duration = currentStage.endTime - currentStage.startTime;
+      currentStage.status = error ? 'failed' : 'completed';
     }
 
-    // Update to new stage
-    context.stage = newStage;
-    context.timing.stageTimings.set(newStage, {
-      startTime: now,
-      status: 'running'
-    });
-
-    // Update metadata if provided
-    if (data) {
-      context.metadata = { ...context.metadata, ...data };
+    // 如果有错误，记录到上下文
+    if (error) {
+      context.error = error;
     }
+
+    // 从活跃上下文中移除
+    this.activeContexts.delete(context.executionId);
   }
 
   /**
-   * Complete context execution
-   * 完成上下文执行
+   * 更新上下文阶段
    */
-  completeContext(
-    context: PipelineExecutionContext,
-    response?: any,
-    error?: ExecutionError
-  ): void {
+  public updateContextStage(context: PipelineExecutionContext, newStage: PipelineStage): void {
+    // 完成当前阶段
+    const currentStage = context.timing.stageTimings.get(context.stage);
+    if (currentStage) {
+      currentStage.endTime = Date.now();
+      currentStage.duration = currentStage.endTime - currentStage.startTime;
+      currentStage.status = 'completed';
+    }
+
+    // 更新上下文阶段
+    context.stage = newStage;
+
+    // 开始新阶段
+    context.timing.stageTimings.set(newStage, {
+      startTime: Date.now(),
+      status: 'running'
+    });
+  }
+
+  /**
+   * 获取活跃上下文
+   */
+  public getActiveContext(executionId: string): PipelineExecutionContext | undefined {
+    return this.activeContexts.get(executionId);
+  }
+
+  /**
+   * 获取所有活跃上下文
+   */
+  public getAllActiveContexts(): PipelineExecutionContext[] {
+    return Array.from(this.activeContexts.values());
+  }
+
+  /**
+   * 清理过期上下文
+   */
+  public cleanupExpiredContexts(maxAge: number = 300000): void {
     const now = Date.now();
-    context.timing.endTime = now;
-    context.timing.duration = now - context.timing.startTime;
-
-    // Complete current stage
-    const currentStageTiming = context.timing.stageTimings.get(context.stage);
-    if (currentStageTiming && !currentStageTiming.endTime) {
-      currentStageTiming.endTime = now;
-      currentStageTiming.duration = now - currentStageTiming.startTime;
-      currentStageTiming.status = error ? 'failed' : 'completed';
-    }
-
-    // Set response or error
-    if (response) {
-      context.response = this.sanitizeResponse(response);
-    }
-    if (error) {
-      context.error = error;
+    for (const [executionId, context] of this.activeContexts.entries()) {
+      if (now - context.startTime > maxAge) {
+        this.completeContext(context);
+      }
     }
   }
 
@@ -381,49 +342,11 @@ export class ExecutionContextFactory {
     return `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
   private generateRequestId(): string {
     return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private sanitizeRequest(request: any): any {
-    if (!request) return request;
-
-    // Remove sensitive data
-    const sanitized = { ...request };
-    const sensitiveKeys = ['password', 'token', 'apiKey', 'secret', 'auth'];
-
-    for (const key of sensitiveKeys) {
-      if (sanitized[key]) {
-        sanitized[key] = '[REDACTED]';
-      }
-    }
-
-    return sanitized;
-  }
-
-  private sanitizeResponse(response: any): any {
-    if (!response) return response;
-
-    // Remove sensitive data
-    const sanitized = { ...response };
-    const sensitiveKeys = ['token', 'apiKey', 'secret', 'privateKey'];
-
-    for (const key of sensitiveKeys) {
-      if (sanitized[key]) {
-        sanitized[key] = '[REDACTED]';
-      }
-    }
-
-    return sanitized;
-  }
-
-  private createConfigSnapshot(config?: Partial<BaseModuleRecordingConfig>): ConfigSnapshot {
-    return {
-      recordingConfig: config as BaseModuleRecordingConfig || { enabled: false },
-      baseDirectory: config?.basePath || '~/.rcc/debug',
-      port: config?.port,
-      environment: process.env.NODE_ENV || 'development',
-      timestamp: Date.now()
-    };
   }
 }

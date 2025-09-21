@@ -178,9 +178,7 @@ export class RequestAnalyzer {
       }
 
       // 检查是否超过某些阈值
-      if (result.tokenCount > 8000) {
-        result.specialRequirements.maxTokensRequired = result.tokenCount;
-      }
+      // 移除token限制硬编码，使用无限制模式
 
     } catch (error) {
       console.warn('⚠️ Token analysis failed, using estimation:', error);
@@ -454,8 +452,8 @@ export class RequestAnalyzer {
   private async analyzeComplexity(request: any, result: RequestAnalysisResult): Promise<void> {
     let complexityScore = 0;
 
-    // 基于token数量的复杂度
-    const tokenComplexity = Math.min(result.tokenCount / 4000, 1) * 0.3;
+    // 基于token数量的复杂度 - 移除硬编码60000限制，使用动态计算
+    const tokenComplexity = Math.min(result.tokenCount / 1000000, 1) * 0.3; // 使用1M作为动态基准
     complexityScore += tokenComplexity;
 
     // 基于工具调用的复杂度

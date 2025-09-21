@@ -19,6 +19,7 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "rcc-config-parser": "^0.1.1",
     "rcc-debugcenter": "^0.1.0",
     "rcc-errorhandling": "^1.0.6",
     "rcc-pipeline": "^0.1.7",
@@ -30,7 +31,8 @@
     "rcc",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "dist/**/*"
   ],
   "repository": {
     "type": "git",

@@ -57,7 +57,7 @@ export class ConfigLoader extends BaseModule {
   /**
    * 初始化加载器
    */
-  public async initialize(): Promise<void> {
+  public override async initialize(): Promise<void> {
     await super.initialize();
 
     this.logInfo('ConfigLoader initialized successfully');
@@ -183,7 +183,7 @@ export class ConfigLoader extends BaseModule {
   /**
    * 销毁加载器
    */
-  public async destroy(): Promise<void> {
+  public override async destroy(): Promise<void> {
     // 关闭所有文件监听器
     for (const [path, watcher] of this.watchers) {
       if (watcher && typeof watcher.close === 'function') {
@@ -203,7 +203,7 @@ export class ConfigLoader extends BaseModule {
   /**
    * 处理系统消息
    */
-  protected async handleMessage(message: any): Promise<any> {
+  public override async handleMessage(message: any): Promise<any> {
     switch (message.type) {
       case 'module_registered':
         // 处理模块注册消息，记录模块信息

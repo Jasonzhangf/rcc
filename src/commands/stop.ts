@@ -14,7 +14,7 @@ const stopCommand: CLICommand = {
   ],
   examples: ['rcc stop --port 4008', 'rcc stop -p 4008'],
   async execute({ args, options, logger }) {
-    const port = options.port || 5506; // Default port 5506
+    const port = (options['port'] as number) || 5506; // Default port 5506
 
     try {
       // Check if PID file exists for this port

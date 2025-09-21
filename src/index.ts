@@ -10,7 +10,6 @@ import {
   createMigrator,
   UnifiedConfigManager,
   ConfigValidator,
-  ConfigMigrator,
   type UnifiedConfig,
   type ConfigValidationResult,
   type MigrationResult,
@@ -24,7 +23,6 @@ export {
   createMigrator,
   UnifiedConfigManager,
   ConfigValidator,
-  ConfigMigrator,
   type UnifiedConfig,
   type ConfigValidationResult,
   type MigrationResult,
@@ -172,13 +170,13 @@ export const configUtils = {
       './rcc-config.json',
       './rcc-config.local.json',
       '~/.rcc-config.json',
-      path.join(process.env.HOME || '', '.rcc-config.json'),
+      path.join((process.env as any).HOME || '', '.rcc-config.json'),
       '/etc/rcc/rcc-config.json',
     ];
 
     for (const configPath of configPaths) {
       const expandedPath = configPath.startsWith('~')
-        ? path.join(process.env.HOME || '', configPath.slice(1))
+        ? path.join((process.env as any).HOME || '', configPath.slice(1))
         : path.resolve(configPath);
 
       try {

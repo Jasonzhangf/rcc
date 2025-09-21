@@ -1,10 +1,40 @@
 /**
- * Pipeline Base Module - Base module for pipeline components with enhanced debug capabilities
- * 流水线基础模块 - 具有增强调试功能的流水线组件基础模块
+ * Unified Pipeline Base Module - Merged functionality from PipelineBaseModule and DebuggablePipelineModule
+ * 统一流水线基础模块 - 合并了PipelineBaseModule和DebuggablePipelineModule的功能
  */
 
-import { BaseModule, ModuleInfo, DebugConfig as BaseDebugConfig } from 'rcc-basemodule';
+import { BaseModule, ModuleInfo, DebugConfig as BaseDebugConfig, BaseModuleRecordingConfig } from 'rcc-basemodule';
 import { default as ErrorHandlingCenter } from 'rcc-errorhandling';
+
+// Try to import DebugCenter, fall back to simple implementation if not available
+let DebugCenterType: any;
+class SimpleDebugCenter {
+  constructor(config: any) {}
+  recordOperation(...args: any[]): void {}
+  recordPipelineStart(...args: any[]): void {}
+  recordPipelineEnd(...args: any[]): void {}
+  getPipelineEntries(...args: any[]): any[] { return []; }
+  subscribe(...args: any[]): void {}
+  updateConfig(...args: any[]): void {}
+  async destroy(): Promise<void> {}
+}
+
+try {
+  DebugCenterType = require('rcc-debugcenter').DebugCenter;
+} catch {
+  DebugCenterType = SimpleDebugCenter;
+}
+
+import {
+  PipelineExecutionContext,
+  ExecutionContextFactory,
+  ExecutionContextOptions,
+  ExecutionError,
+  PipelineStage,
+  ErrorCategory,
+  ErrorSeverity
+} from '../interfaces/ModularInterfaces';
+import { PipelineTracker } from '../framework/PipelineTracker';
 
 /**
  * Base IO Tracking Configuration
@@ -18,55 +48,6 @@ interface BaseIOTrackingConfig {
   autoRecord?: boolean;
   saveIndividualFiles?: boolean;
   saveSessionFiles?: boolean;
-}
-
-/**
- * Debug Center Interface
- * 调试中心接口
- */
-interface DebugCenter {
-  recordOperation(
-    trackingId: string,
-    moduleId: string,
-    operationId: string,
-    inputData?: unknown,
-    outputData?: unknown,
-    operationType?: string,
-    success?: boolean,
-    error?: string,
-    stage?: string
-  ): void;
-  getPipelineEntries(config: { pipelineId: string; limit: number }): ModuleIOEntry[];
-  getIOFiles?(): string[];
-}
-
-/**
- * Module I/O Entry Interface
- * 模块I/O条目接口
- */
-interface ModuleIOEntry {
-  timestamp: number;
-  operationId: string;
-  moduleId: string;
-  inputData?: unknown;
-  outputData?: unknown;
-  operationType: string;
-  success: boolean;
-  error?: string;
-  stage?: string;
-  duration?: number;
-}
-
-/**
- * Error Info Interface
- * 错误信息接口
- */
-interface ErrorInfo {
-  error: Error;
-  source: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  timestamp: number;
-  context?: Record<string, unknown>;
 }
 
 /**
@@ -152,7 +133,7 @@ export interface PipelineModuleConfig {
   name: string;
   version: string;
   description: string;
-  type: 'provider' | 'scheduler' | 'tracker' | 'pipeline';
+  type: 'provider' | 'scheduler' | 'tracker' | 'pipeline' | 'debuggable-pipeline';
 
   // Pipeline-specific settings
   providerName?: string;
@@ -167,17 +148,166 @@ export interface PipelineModuleConfig {
   debugBaseDirectory?: string;
   enableIOTracking?: boolean;
   ioTrackingConfig?: IOTrackingConfig;
+
+  // Enhanced debug configuration
+  enableTracing?: boolean;
+  tracerConfig?: Partial<any>;
+  recordingConfig?: Partial<BaseModuleRecordingConfig>;
+  enablePerformanceMetrics?: boolean;
+  enableEnhancedErrorHandling?: boolean;
+  errorRecoveryAttempts?: number;
 }
 
 /**
- * Pipeline Base Module with enhanced debug capabilities and strict type safety
- * 具有增强调试功能和严格类型安全的流水线基础模块
+ * Execution operation options
+ * 执行操作选项
  */
-export class PipelineBaseModule extends BaseModule {
+export interface ExecutionOptions {
+  /** Custom execution ID */
+  executionId?: string;
+
+  /** Custom trace ID */
+  traceId?: string;
+
+  /** Custom session ID */
+  sessionId?: string;
+
+  /** Request timeout in milliseconds */
+  timeout?: number;
+
+  /** Enable retry on failure */
+  enableRetry?: boolean;
+
+  /** Maximum retry attempts */
+  maxRetries?: number;
+
+  /** Retry delay in milliseconds */
+  retryDelay?: number;
+
+  /** Additional metadata */
+  metadata?: Record<string, any>;
+
+  /** Parent execution context */
+  parentContext?: PipelineExecutionContext;
+
+  /** Stage-specific configuration */
+  stageConfig?: Record<string, any>;
+}
+
+/**
+ * Execution result with comprehensive information
+ * 执行结果，包含完整信息
+ */
+export interface ExecutionResult<T = any> {
+  /** Execution ID */
+  executionId: string;
+
+  /** Request ID */
+  requestId: string;
+
+  /** Trace ID */
+  traceId: string;
+
+  /** Execution status */
+  status: 'success' | 'failed' | 'timeout' | 'cancelled';
+
+  /** Execution result data */
+  data?: T;
+
+  /** Error information if failed */
+  error?: ExecutionError;
+
+  /** Execution timing */
+  timing: {
+    startTime: number;
+    endTime: number;
+    duration: number;
+  };
+
+  /** Execution context */
+  context: PipelineExecutionContext;
+
+  /** Performance metrics */
+  metrics?: ExecutionMetrics;
+
+  /** Trace summary */
+  traceSummary?: TraceSummary;
+}
+
+/**
+ * Execution metrics for performance analysis
+ * 执行指标，用于性能分析
+ */
+export interface ExecutionMetrics {
+  /** Memory usage */
+  memoryUsage?: {
+    start: number;
+    end: number;
+    peak: number;
+  };
+
+  /** CPU usage */
+  cpuUsage?: {
+    start: number;
+    end: number;
+    average: number;
+  };
+
+  /** Network requests */
+  networkRequests?: number;
+
+  /** Database queries */
+  databaseQueries?: number;
+
+  /** External service calls */
+  externalServiceCalls?: number;
+}
+
+/**
+ * Trace summary for analysis
+ * 跟踪摘要，用于分析
+ */
+export interface TraceSummary {
+  totalStages: number;
+  completedStages: number;
+  failedStages: number;
+  stageTransitions: Array<{
+    from: string;
+    to: string;
+    duration: number;
+  }>;
+  errors: ExecutionError[];
+}
+
+/**
+ * Pipeline metrics interface
+ * 流水线指标接口
+ */
+export interface PipelineMetrics {
+  debugEnabled: boolean;
+  ioTrackingEnabled: boolean;
+  debugConfig: Record<string, unknown>;
+  pipelineEntries?: any[];
+  ioFiles?: string[];
+  executionStats?: {
+    totalExecutions: number;
+    successfulExecutions: number;
+    failedExecutions: number;
+    averageExecutionTime: number;
+  };
+}
+
+/**
+ * Unified Pipeline Base Module with enhanced debug capabilities and strict type safety
+ * 统一流水线基础模块，具有增强调试功能和严格类型安全
+ */
+export class UnifiedPipelineBaseModule extends BaseModule {
   protected config: any;
   protected pipelineConfig: PipelineModuleConfig;
   protected errorHandler: any;
   protected debugCenter: any | null = null;
+  protected tracker: PipelineTracker;
+  protected contextFactory: ExecutionContextFactory;
   protected twoPhaseDebugSystem: any | null;
 
   constructor(config: PipelineModuleConfig) {
@@ -194,6 +324,12 @@ export class PipelineBaseModule extends BaseModule {
 
     this.pipelineConfig = { ...config };
 
+    // Initialize execution context factory
+    this.contextFactory = ExecutionContextFactory.getInstance();
+
+    // Initialize tracker
+    this.tracker = new PipelineTracker();
+
     // Initialize two-phase debug system
     this.twoPhaseDebugSystem = null;
 
@@ -206,15 +342,17 @@ export class PipelineBaseModule extends BaseModule {
       description: `Error handler for ${config.name}`
     });
 
-    // Initialize debug center if two-phase debug is enabled
-    if (config.enableTwoPhaseDebug) {
+    // Initialize debug center if tracing is enabled
+    if (config.enableTracing || config.enableTwoPhaseDebug) {
       this.initializeDebugCenter(config);
     }
 
-    this.logInfo('Pipeline base module initialized', { config: this.getSafeConfig() }, 'constructor');
+    // Configure tracker with debug center
+    if (config.enableTracing !== false) {
+      this.tracker.setDebugCenter(this.debugCenter);
+    }
 
-    // Store debug center reference if available
-    this.debugCenter = this.getDebugCenter();
+    this.logInfo('Unified pipeline base module initialized', { config: this.getSafeConfig() }, 'constructor');
   }
 
   /**
@@ -247,6 +385,14 @@ export class PipelineBaseModule extends BaseModule {
 
     this.setDebugConfig(debugConfig);
 
+    // Initialize debug center for tracing
+    this.debugCenter = new (DebugCenterType as any)({
+      enabled: config.enableTracing !== false,
+      baseDirectory: config.recordingConfig?.basePath || config.debugBaseDirectory || '~/.rcc/debug-logs',
+      maxLogEntries: 1000,
+      recordStack: true
+    });
+
     if (config.enableIOTracking) {
       this.enableTwoPhaseDebug(
         true,
@@ -254,6 +400,26 @@ export class PipelineBaseModule extends BaseModule {
         config.ioTrackingConfig
       );
     }
+  }
+
+  /**
+   * Override initialize to set up enhanced features
+   */
+  public async initialize(): Promise<void> {
+    await super.initialize();
+
+    // Initialize tracker
+    await this.tracker.initialize();
+
+    // Set up trace event listeners
+    this.setupTraceListeners();
+
+    // Enable recording if configured
+    if (this.pipelineConfig.recordingConfig?.enabled) {
+      this.setRecordingConfig(this.pipelineConfig.recordingConfig);
+    }
+
+    this.logInfo('Unified pipeline base module initialized with enhanced features', { config: this.pipelineConfig });
   }
 
   /**
@@ -289,10 +455,50 @@ export class PipelineBaseModule extends BaseModule {
   }
 
   /**
+   * Set recording configuration
+   * 设置录制配置
+   */
+  public setRecordingConfig(config: Partial<BaseModuleRecordingConfig>): void {
+    // Use DebugCenter's updateConfig method instead of non-existent setRecordingConfig
+    if (this.debugCenter && typeof this.debugCenter.updateConfig === 'function') {
+      this.debugCenter.updateConfig({
+        enabled: config.enabled !== false,
+        level: 'debug',
+        recordStack: true,
+        maxLogEntries: 1000,
+        consoleOutput: true,
+        trackDataFlow: true,
+        enableFileLogging: config.enabled || false,
+        maxFileSize: 10 * 1024 * 1024, // 10MB
+        maxLogFiles: 5,
+        baseDirectory: config.basePath || '~/.rcc/debug-logs',
+        pipelineIO: {
+          enabled: config.enabled || false,
+          autoRecordPipelineStart: true,
+          autoRecordPipelineEnd: true,
+          pipelineSessionFileName: 'pipeline-session.jsonl',
+          pipelineDirectory: (config.basePath || '~/.rcc/debug-logs') + '/pipeline-logs',
+          recordAllOperations: true,
+          includeModuleContext: true,
+          includeTimestamp: true,
+          includeDuration: true,
+          maxPipelineOperationsPerFile: 2000
+        },
+        eventBus: {
+          enabled: true,
+          maxSubscribers: 100,
+          eventQueueSize: 10000
+        }
+      });
+    }
+    this.logInfo('Recording config set', { config }, 'setRecordingConfig');
+  }
+
+  /**
    * Get debug center instance
    * 获取调试中心实例
    */
-  protected getDebugCenter(): DebugCenter | null {
+  protected getDebugCenter(): any | null {
     return this.debugCenter;
   }
 
@@ -317,9 +523,19 @@ export class PipelineBaseModule extends BaseModule {
     // Reinitialize debug center if debug configuration changed
     if (newConfig.enableTwoPhaseDebug !== undefined ||
         newConfig.enableIOTracking !== undefined ||
-        newConfig.debugBaseDirectory !== undefined) {
+        newConfig.debugBaseDirectory !== undefined ||
+        newConfig.enableTracing !== undefined) {
       this.initializeDebugCenter(this.pipelineConfig);
       this.debugCenter = this.getDebugCenter();
+    }
+
+    // Update tracker configuration if tracing config changed
+    if (newConfig.tracerConfig || newConfig.enableTracing !== undefined) {
+      this.tracker.updateConfig({
+        ...this.tracker.getConfig(),
+        ...newConfig.tracerConfig,
+        enabled: newConfig.enableTracing ?? this.tracker.getConfig().enabled
+      });
     }
 
     this.logInfo('Pipeline configuration updated', {
@@ -355,6 +571,112 @@ export class PipelineBaseModule extends BaseModule {
       defaultModel: this.pipelineConfig.defaultModel,
       type: this.pipelineConfig.type
     };
+  }
+
+  /**
+   * Execute operation with full tracing and error handling
+   * 执行操作并带有完整的跟踪和错误处理
+   */
+  public async executeWithTracing<T>(
+    operation: (context: PipelineExecutionContext) => Promise<T>,
+    stage: PipelineStage,
+    request?: any,
+    options?: ExecutionOptions
+  ): Promise<ExecutionResult<T>> {
+    const startTime = Date.now();
+    const moduleInfo = {
+      moduleId: this.info.id,
+      moduleName: this.info.name,
+      moduleType: this.info.type,
+      providerName: this.pipelineConfig.providerName,
+      endpoint: this.pipelineConfig.endpoint
+    };
+
+    // Create execution context
+    const contextOptions: ExecutionContextOptions = {
+      executionId: options?.executionId,
+      traceId: options?.traceId,
+      sessionId: options?.sessionId,
+      metadata: options?.metadata,
+      inheritFrom: options?.parentContext
+    };
+
+    // Convert string literal stage to proper PipelineStage enum
+    const properStage = this.convertToPipelineStage(stage);
+    const rawContext = this.tracker.createContext(moduleInfo, properStage, request, contextOptions);
+
+    // Convert to proper PipelineExecutionContext
+    const context = this.convertToPipelineExecutionContext(rawContext, properStage, contextOptions);
+
+    this.logDebug('Starting execution with tracing', {
+      executionId: context.executionId,
+      requestId: context.requestId,
+      traceId: context.traceId,
+      stage: context.stage
+    });
+
+    try {
+      // Record request if provided
+      if (request) {
+        await this.tracker.recordRequest(context, request, properStage);
+      }
+
+      // Record memory and CPU usage if metrics enabled
+      const metrics = this.pipelineConfig.enablePerformanceMetrics
+        ? await this.collectPerformanceMetrics()
+        : undefined;
+
+      // Execute operation with timeout and retry logic
+      const result = await this.executeWithTimeoutAndRetry(
+        () => operation(context),
+        options?.timeout || this.pipelineConfig.executionTimeout || 30000,
+        options?.enableRetry,
+        options?.maxRetries,
+        options?.retryDelay
+      );
+
+      // Record successful response
+      await this.tracker.recordResponse(context, result, properStage);
+
+      // Complete context
+      this.tracker.completeContext(context, result);
+
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      const executionResult: ExecutionResult<T> = {
+        executionId: context.executionId,
+        requestId: context.requestId,
+        traceId: context.traceId,
+        status: 'success',
+        data: result,
+        timing: {
+          startTime,
+          endTime,
+          duration
+        },
+        context,
+        metrics,
+        traceSummary: this.generateTraceSummary(context)
+      };
+
+      this.logDebug('Execution completed successfully', {
+        executionId: context.executionId,
+        duration,
+        dataType: typeof result
+      });
+
+      return executionResult;
+
+    } catch (error) {
+      return await this.handleExecutionError(
+        error as Error,
+        context,
+        startTime,
+        stage,
+        options
+      );
+    }
   }
 
   /**
@@ -440,6 +762,128 @@ export class PipelineBaseModule extends BaseModule {
 
       throw error;
     }
+  }
+
+  /**
+   * Execute with timeout and retry logic
+   * 执行带超时和重试逻辑
+   */
+  private async executeWithTimeoutAndRetry<T>(
+    operation: () => Promise<T>,
+    timeout: number,
+    enableRetry: boolean = false,
+    maxRetries: number = 3,
+    retryDelay: number = 1000
+  ): Promise<T> {
+    const executeWithTimeout = async (): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error(`Operation timed out after ${timeout}ms`));
+        }, timeout);
+
+        operation()
+          .then(resolve)
+          .catch(reject)
+          .finally(() => clearTimeout(timer));
+      });
+    };
+
+    let lastError: Error;
+
+    for (let attempt = 0; attempt <= (enableRetry ? maxRetries : 0); attempt++) {
+      try {
+        return await executeWithTimeout();
+      } catch (error) {
+        lastError = error as Error;
+
+        if (attempt === (enableRetry ? maxRetries : 0)) {
+          throw lastError;
+        }
+
+        // Exponential backoff
+        const delay = retryDelay * Math.pow(2, attempt);
+        this.logWarn(`Operation failed, retrying in ${delay}ms`, {
+          attempt: attempt + 1,
+          maxRetries,
+          error: lastError.message
+        });
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /**
+   * Handle execution errors with comprehensive error handling
+   * 处理执行错误并提供全面的错误处理
+   */
+  private async handleExecutionError<T>(
+    error: Error,
+    context: PipelineExecutionContext,
+    startTime: number,
+    stage: PipelineStage,
+    options?: ExecutionOptions
+  ): Promise<ExecutionResult<T>> {
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    // Determine error category
+    const category = this.categorizeError(error);
+    const severity = this.determineSeverity(error, options?.maxRetries);
+
+    // Record error
+    const executionError = await this.recordError(
+      error,
+      category,
+      severity,
+      this.isErrorRecoverable(error)
+    );
+
+    // Handle with error center if enabled
+    if (this.pipelineConfig.enableEnhancedErrorHandling) {
+      this.errorHandler.handleError({
+        error,
+        source: this.info.id,
+        severity: severity,
+        timestamp: Date.now(),
+        context: {
+          executionId: context.executionId,
+          requestId: context.requestId,
+          traceId: context.traceId,
+          stage: context.stage
+        }
+      });
+    }
+
+    // Complete context with error
+    this.tracker.completeContext(context, undefined, executionError);
+
+    const executionResult: ExecutionResult<T> = {
+      executionId: context.executionId,
+      requestId: context.requestId,
+      traceId: context.traceId,
+      status: this.getErrorStatus(error),
+      error: executionError,
+      timing: {
+        startTime,
+        endTime,
+        duration
+      },
+      context,
+      traceSummary: this.generateTraceSummary(context)
+    };
+
+    this.logError('Execution failed', {
+      executionId: context.executionId,
+      error: error.message,
+      category,
+      severity,
+      duration
+    });
+
+    return executionResult;
   }
 
   /**
@@ -551,7 +995,7 @@ export class PipelineBaseModule extends BaseModule {
     this.logError('Pipeline error occurred', errorContext, 'handlePipelineError');
 
     // Create error info for error handling center
-    const errorInfo: ErrorInfo = {
+    const errorInfo = {
       error: error,
       source: this.info.id,
       severity: 'high',
@@ -651,15 +1095,328 @@ export class PipelineBaseModule extends BaseModule {
   }
 
   /**
+   * Collect performance metrics
+   * 收集性能指标
+   */
+  private async collectPerformanceMetrics(): Promise<ExecutionMetrics> {
+    try {
+      const memUsage = process.memoryUsage();
+      const cpuUsage = process.cpuUsage();
+
+      return {
+        memoryUsage: {
+          start: memUsage.heapUsed,
+          end: memUsage.heapUsed,
+          peak: memUsage.heapUsed
+        },
+        cpuUsage: {
+          start: cpuUsage.user,
+          end: cpuUsage.user,
+          average: cpuUsage.user
+        }
+      };
+    } catch (error) {
+      this.logWarn('Failed to collect performance metrics', { error: error });
+      return {};
+    }
+  }
+
+  /**
+   * Generate trace summary for analysis
+   * 生成跟踪摘要用于分析
+   */
+  private generateTraceSummary(context: PipelineExecutionContext): TraceSummary {
+    const stageTransitions: Array<{ from: string; to: string; duration: number }> = [];
+
+    if (context.parent) {
+      const parentStage = context.parent.stage;
+      const currentStage = context.stage;
+      const transitionTime = context.timing.startTime - context.parent.timing.startTime;
+
+      stageTransitions.push({
+        from: parentStage,
+        to: currentStage,
+        duration: transitionTime
+      });
+    }
+
+    return {
+      totalStages: context.timing.stageTimings.size,
+      completedStages: Array.from(context.timing.stageTimings.values()).filter(t => t.status === 'completed').length,
+      failedStages: Array.from(context.timing.stageTimings.values()).filter(t => t.status === 'failed').length,
+      stageTransitions,
+      errors: context.error ? [{
+        errorId: context.error.errorId,
+        message: context.error.message,
+        stack: context.error.stack,
+        category: context.error.category as ErrorCategory,
+        severity: context.error.severity as ErrorSeverity,
+        recoverable: context.error.recoverable,
+        timestamp: context.error.timestamp,
+        context: (context.error as any).context || {}
+      }] : []
+    };
+  }
+
+  private categorizeError(error: Error): ErrorCategory {
+    const message = error.message.toLowerCase();
+    const stack = error.stack?.toLowerCase() || '';
+
+    if (message.includes('timeout') || message.includes('timed out')) {
+      return ErrorCategory.TIMEOUT;
+    }
+    if (message.includes('network') || message.includes('connection') || message.includes('econnrefused')) {
+      return ErrorCategory.NETWORK;
+    }
+    if (message.includes('auth') || message.includes('unauthorized') || message.includes('forbidden')) {
+      return ErrorCategory.AUTHENTICATION;
+    }
+    if (message.includes('validation') || message.includes('invalid')) {
+      return ErrorCategory.VALIDATION;
+    }
+    if (message.includes('rate limit') || message.includes('too many requests')) {
+      return ErrorCategory.RATE_LIMIT;
+    }
+    if (message.includes('provider') || stack.includes('provider')) {
+      return ErrorCategory.PROVIDER;
+    }
+    if (message.includes('system') || message.includes('memory') || message.includes('internal')) {
+      return ErrorCategory.SYSTEM;
+    }
+
+    return ErrorCategory.PROCESSING;
+  }
+
+  private determineSeverity(error: Error, maxRetries?: number): ErrorSeverity {
+    // If it's a system-level error or we've exhausted retries, it's fatal
+    if (error.message.includes('system') || error.message.includes('memory') || maxRetries === 0) {
+      return ErrorSeverity.FATAL;
+    }
+
+    // Network and auth errors are errors
+    const category = this.categorizeError(error);
+    if (category === ErrorCategory.NETWORK || category === ErrorCategory.AUTHENTICATION) {
+      return ErrorSeverity.ERROR;
+    }
+
+    // Validation errors are warnings
+    if (category === ErrorCategory.VALIDATION) {
+      return ErrorSeverity.WARNING;
+    }
+
+    return ErrorSeverity.ERROR;
+  }
+
+  private isErrorRecoverable(error: Error): boolean {
+    const category = this.categorizeError(error);
+    return category !== ErrorCategory.SYSTEM && category !== ErrorCategory.PROCESSING;
+  }
+
+  /**
+   * Record error with tracker
+   * 使用跟踪器记录错误
+   */
+  private async recordError(
+    error: Error,
+    category: ErrorCategory,
+    severity: ErrorSeverity,
+    recoverable: boolean
+  ): Promise<any> {
+    return {
+      errorId: this.generateErrorId(),
+      message: error.message,
+      stack: error.stack,
+      category,
+      severity,
+      recoverable,
+      timestamp: Date.now()
+    };
+  }
+
+  private generateErrorId(): string {
+    return `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Convert stage to proper PipelineStage enum
+   */
+  private convertToPipelineStage(stage: PipelineStage | string): PipelineStage {
+    // Handle string inputs
+    if (typeof stage === 'string') {
+      switch (stage) {
+        case 'initialization':
+          return PipelineStage.REQUEST_INIT;
+        case 'request_processing':
+          return PipelineStage.REQUEST_INIT;
+        case 'provider_selection':
+          return PipelineStage.PIPELINE_SELECTION;
+        case 'provider_call':
+          return PipelineStage.PROVIDER_EXECUTION;
+        case 'response_processing':
+          return PipelineStage.RESPONSE_PROCESSING;
+        case 'error_handling':
+          return PipelineStage.ERROR_HANDLING;
+        case 'completion':
+          return PipelineStage.COMPLETION;
+        default:
+          return PipelineStage.REQUEST_INIT;
+      }
+    }
+
+    // If it's already a PipelineStage enum, return it as-is
+    return stage;
+  }
+
+  /**
+   * Convert raw context to proper PipelineExecutionContext
+   */
+  private convertToPipelineExecutionContext(rawContext: any, stage: PipelineStage, options?: ExecutionContextOptions): PipelineExecutionContext {
+    const executionId = options?.executionId || rawContext.executionId;
+    const traceId = options?.traceId || rawContext.traceId;
+    const sessionId = options?.sessionId || this.generateSessionId();
+    const requestId = rawContext.requestId;
+
+    const context: PipelineExecutionContext = {
+      executionId,
+      traceId,
+      sessionId,
+      requestId,
+      virtualModelId: rawContext.module?.moduleId || 'unknown',
+      providerId: rawContext.module?.providerName || 'unknown',
+      startTime: rawContext.timing?.startTime || Date.now(),
+      stage,
+      timing: {
+        startTime: rawContext.timing?.startTime || Date.now(),
+        endTime: undefined,
+        duration: undefined,
+        stageTimings: new Map([[stage, {
+          startTime: Date.now(),
+          status: 'running'
+        }]]),
+        status: 'pending'
+      },
+      metadata: options?.metadata || rawContext.metadata || {},
+      ioRecords: [],
+      parentContext: options?.inheritFrom || options?.parent,
+      debugConfig: options?.debugConfig,
+      routingDecision: undefined,
+      performanceMetrics: undefined
+    };
+
+    return context;
+  }
+
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  private getErrorStatus(error: Error): 'failed' | 'timeout' | 'cancelled' {
+    if (error.message.includes('timed out') || error.message.includes('timeout')) {
+      return 'timeout';
+    }
+    if (error.message.includes('cancelled') || error.message.includes('abort')) {
+      return 'cancelled';
+    }
+    return 'failed';
+  }
+
+  private setupTraceListeners(): void {
+    // Set up debug center event listeners if available
+    if (this.debugCenter && typeof this.debugCenter.subscribe === 'function') {
+      this.debugCenter.subscribe('error', (event: any) => {
+        this.handleTraceError(event);
+      });
+
+      this.debugCenter.subscribe('complete', (event: any) => {
+        this.handleTraceCompletion(event);
+      });
+    }
+
+    // Set up tracker event listeners if available
+    if (this.tracker && typeof this.tracker.subscribe === 'function') {
+      this.tracker.subscribe('stageChanged', (event: any) => {
+        this.handleStageChange(event);
+      });
+    }
+  }
+
+  private handleTraceError(event: any): void {
+    if (event.error) {
+      this.logError('Trace error event', {
+        executionId: event.executionId,
+        error: event.error.message || event.error,
+        category: event.category,
+        severity: event.severity
+      });
+    }
+  }
+
+  private handleTraceCompletion(event: any): void {
+    this.logDebug('Trace completion event', {
+      executionId: event.executionId,
+      requestId: event.requestId,
+      duration: event.duration || event.timestamp
+    });
+  }
+
+  private handleStageChange(event: any): void {
+    this.logDebug('Stage change event', {
+      executionId: event.executionId,
+      fromStage: event.fromStage,
+      toStage: event.toStage,
+      duration: event.duration
+    });
+  }
+
+  /**
+   * Get tracer instance
+   * 获取跟踪器实例
+   */
+  public getTracker(): PipelineTracker {
+    return this.tracker;
+  }
+
+  /**
+   * Get execution statistics
+   * 获取执行统计
+   */
+  public getExecutionStatistics() {
+    return this.tracker.getStatistics();
+  }
+
+  /**
+   * Get active execution contexts
+   * 获取活动执行上下文
+   */
+  public getActiveExecutionContexts(): PipelineExecutionContext[] {
+    return this.tracker.getActiveContexts();
+  }
+
+  /**
+   * Get trace chains
+   * 获取跟踪链
+   */
+  public getTraceChains() {
+    return this.tracker.getActiveTraceChains();
+  }
+
+  /**
    * Get pipeline metrics with proper typing
    * 获取流水线指标，具有适当的类型
    */
   public getPipelineMetrics(): PipelineMetrics {
     const debugConfig = this.getDebugConfig();
+    const stats = this.getExecutionStatistics();
     const baseMetrics = {
       debugEnabled: debugConfig?.enabled ?? false,
       ioTrackingEnabled: this.pipelineConfig.enableIOTracking ?? false,
-      debugConfig: (debugConfig as unknown as Record<string, unknown>) ?? {}
+      debugConfig: (debugConfig as unknown as Record<string, unknown>) ?? {},
+      executionStats: stats ? {
+        totalExecutions: stats.total || 0,
+        successfulExecutions: stats.successful || 0,
+        failedExecutions: stats.failed || 0,
+        averageExecutionTime: stats.averageTime || 0
+      } : undefined
     };
 
     if (this.debugCenter && this.debugCenter.getPipelineEntries) {
@@ -682,11 +1439,21 @@ export class PipelineBaseModule extends BaseModule {
    */
   public async destroy(): Promise<void> {
     try {
-      this.logInfo('Destroying pipeline base module', { moduleId: this.info.id }, 'destroy');
+      this.logInfo('Destroying unified pipeline base module', { moduleId: this.info.id }, 'destroy');
 
-      // Perform cleanup specific to pipeline modules
-      if (this.errorHandler) {
-        await this.cleanupErrorHandler();
+      // Destroy tracker
+      if (this.tracker) {
+        await this.tracker.destroy();
+      }
+
+      // Destroy debug center
+      if (this.debugCenter && typeof this.debugCenter.destroy === 'function') {
+        await this.debugCenter.destroy();
+      }
+
+      // Destroy error handler
+      if (this.errorHandler && typeof this.errorHandler.destroy === 'function') {
+        await this.errorHandler.destroy();
       }
 
       // Call parent destroy method
@@ -698,41 +1465,16 @@ export class PipelineBaseModule extends BaseModule {
         moduleId: this.info.id
       };
 
-      this.logError('Failed to destroy pipeline base module', errorContext, 'destroy');
+      this.logError('Failed to destroy unified pipeline base module', errorContext, 'destroy');
       throw error;
     }
   }
 
   /**
-   * Clean up error handler resources
-   * 清理错误处理器资源
+   * Abstract methods to be implemented by subclasses
    */
-  private async cleanupErrorHandler(): Promise<void> {
-    try {
-      if (typeof this.errorHandler.destroy === 'function') {
-        await this.errorHandler.destroy();
-      }
-    } catch (error) {
-      this.logError('Error during error handler cleanup', {
-        error: error instanceof Error ? { message: error.message } : String(error)
-      }, 'cleanupErrorHandler');
-      // Don't throw - continue with cleanup
-    }
-  }
-
-  /**
-   * Process method - abstract method to be implemented by subclasses
-   */
-  public async process(request: any): Promise<any> {
-    throw new Error('Process method must be implemented by subclass');
-  }
-
-  /**
-   * Process response method - optional implementation
-   */
-  public async processResponse?(response: any): Promise<any> {
-    return response;
-  }
+  public abstract process(request: any): Promise<any>;
+  public abstract processResponse?(response: any): Promise<any>;
 
   /**
    * Handle messages (required by BaseModule abstract class)
@@ -764,6 +1506,31 @@ export class PipelineBaseModule extends BaseModule {
           message: 'Pipeline configuration updated'
         };
 
+      case 'getStats':
+        return {
+          success: true,
+          data: this.getExecutionStatistics()
+        };
+
+      case 'getActiveContexts':
+        return {
+          success: true,
+          data: this.getActiveExecutionContexts()
+        };
+
+      case 'getTraceChains':
+        return {
+          success: true,
+          data: this.getTraceChains()
+        };
+
+      case 'updateConfig':
+        this.updatePipelineConfig(message.payload);
+        return {
+          success: true,
+          message: 'Configuration updated'
+        };
+
       default:
         // Handle unknown message types
         this.warn(`Unknown message type: ${message.type}`, { message }, 'handleMessage');
@@ -778,14 +1545,6 @@ export class PipelineBaseModule extends BaseModule {
   }
 }
 
-/**
- * Pipeline metrics interface
- * 流水线指标接口
- */
-export interface PipelineMetrics {
-  debugEnabled: boolean;
-  ioTrackingEnabled: boolean;
-  debugConfig: Record<string, unknown>;
-  pipelineEntries?: ModuleIOEntry[];
-  ioFiles?: string[];
-}
+// Export the old class names as aliases for backward compatibility
+export { UnifiedPipelineBaseModule as PipelineBaseModule };
+export { UnifiedPipelineBaseModule as DebuggablePipelineModule };

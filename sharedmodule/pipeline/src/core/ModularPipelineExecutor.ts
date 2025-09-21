@@ -25,6 +25,15 @@ import { ConfigurationValidator } from './ConfigurationValidator';
 import { RoutingOptimizer } from './RoutingOptimizer';
 import { IOTracker } from './IOTracker';
 import { PipelineExecutionOptimizer } from './PipelineExecutionOptimizer';
+import { ErrorHandlingCenter } from 'rcc-errorhandling';
+import {
+  StrategyManager,
+  RetryStrategy,
+  FallbackStrategy,
+  CircuitBreakerStrategy,
+  StrategyContext,
+  IErrorHandlingStrategy
+} from './strategies';
 import { v4 as uuidv4 } from 'uuid';
 
 export class ModularPipelineExecutor implements IModularPipelineExecutor {
@@ -43,6 +52,13 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
 
   private routingConfig: RoutingOptimizationConfig;
   private debugConfig: DebugConfig;
+
+  // Strategic error handling components
+  private errorHandlingCenter!: ErrorHandlingCenter;
+  private strategyManager!: StrategyManager;
+  private retryStrategy!: RetryStrategy;
+  private fallbackStrategy!: FallbackStrategy;
+  private circuitBreakerStrategy!: CircuitBreakerStrategy;
 
   constructor(
     moduleFactory: ModuleFactory,
@@ -81,6 +97,71 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
     // 初始化优化组件
     this.routingOptimizer = new RoutingOptimizer(this.routingConfig);
     this.ioTracker = new IOTracker(this.debugConfig);
+
+    // 初始化策略化错误处理系统
+    this.initializeErrorHandlingStrategies();
+  }
+
+  /**
+   * 初始化策略化错误处理系统
+   */
+  private initializeErrorHandlingStrategies(): void {
+    // 创建错误处理中心
+    this.errorHandlingCenter = new ErrorHandlingCenter({
+      id: 'pipeline-error-handler',
+      name: 'Pipeline Error Handler',
+      version: '1.0.0',
+      type: 'error-handler',
+      description: 'Strategic error handling for pipeline execution'
+    });
+
+    // 创建策略管理器
+    this.strategyManager = new StrategyManager(this.errorHandlingCenter);
+
+    // 创建重试策略 - Provider超时自动重试机制
+    this.retryStrategy = new RetryStrategy({
+      enabled: true,
+      priority: 1,
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 30000,
+      backoffMultiplier: 2,
+      jitter: true
+    }, this.errorHandlingCenter);
+
+    // 创建降级策略 - 认证失败token refresh机制
+    this.fallbackStrategy = new FallbackStrategy({
+      enabled: true,
+      priority: 2,
+      maxFallbackAttempts: 3,
+      authErrorPatterns: [
+        '401',
+        '403',
+        'authentication failed',
+        'unauthorized',
+        'token expired',
+        'invalid token',
+        'access denied'
+      ],
+      enableGracefulDegradation: true
+    }, this.errorHandlingCenter);
+
+    // 创建熔断器策略 - 第三方服务失败保护
+    this.circuitBreakerStrategy = new CircuitBreakerStrategy({
+      enabled: true,
+      priority: 0,
+      failureThreshold: 5,
+      recoveryTimeout: 60000,
+      monitoringPeriod: 60000,
+      requestVolumeThreshold: 10,
+      halfOpenAttempts: 3,
+      successThreshold: 2
+    }, this.errorHandlingCenter);
+
+    // 注册策略到管理器
+    this.strategyManager.registerStrategy(this.circuitBreakerStrategy);
+    this.strategyManager.registerStrategy(this.retryStrategy);
+    this.strategyManager.registerStrategy(this.fallbackStrategy);
   }
 
   /**
@@ -410,6 +491,11 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
       if (this.ioTracker) this.ioTracker.destroy();
       if (this.executionOptimizer) this.executionOptimizer.destroy();
 
+      // 销毁策略化错误处理系统
+      if (this.strategyManager) {
+        this.strategyManager.resetAllStrategies();
+      }
+
       this.isInitialized = false;
     } catch (error) {
       console.error('销毁执行器时发生错误:', error);
@@ -445,8 +531,51 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
    * 重置统计信息
    */
   async resetStatistics(): Promise<void> {
-    // 这里可以重置各种统计信息
+    // 重置策略统计信息
+    this.strategyManager.resetAllStrategies();
     console.log('Statistics reset');
+  }
+
+  /**
+   * 使用策略处理错误
+   */
+  private async handleWithErrorStrategies(
+    error: Error,
+    context: PipelineExecutionContext,
+    operationName: string
+  ): Promise<ErrorHandlingResult> {
+    const strategyContext: StrategyContext = {
+      operationId: `${context.executionId}-${operationName}`,
+      moduleId: context.providerId || 'pipeline',
+      pipelineContext: context,
+      startTime: Date.now(),
+      attempt: 0,
+      maxAttempts: 3,
+      lastError: error
+    };
+
+    return await this.strategyManager.handleError(error, strategyContext);
+  }
+
+  /**
+   * 获取策略健康状态
+   */
+  getStrategyHealth(): any {
+    return this.strategyManager.getHealth();
+  }
+
+  /**
+   * 获取策略指标
+   */
+  getStrategyMetrics(): any {
+    return this.strategyManager.getMetrics();
+  }
+
+  /**
+   * 获取策略执行报告
+   */
+  getStrategyReport(): any {
+    return this.strategyManager.getExecutionReport();
   }
 
   /**
@@ -549,29 +678,77 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
    */
   private async executeProvider(request: any, context: PipelineExecutionContext): Promise<PipelineExecutionStep> {
     const startTime = Date.now();
-    try {
-      const response = await this.provider.executeRequest(request, context);
+    let attempt = 0;
+    const maxAttempts = 3;
 
-      return {
-        moduleId: this.provider.moduleId,
-        moduleName: this.provider.moduleName,
-        stepType: 'request',
-        startTime,
-        endTime: Date.now(),
-        input: request,
-        output: response
-      };
-    } catch (error) {
-      return {
-        moduleId: this.provider.moduleId,
-        moduleName: this.provider.moduleName,
-        stepType: 'request',
-        startTime,
-        endTime: Date.now(),
-        input: request,
-        error: error instanceof Error ? error : new Error(String(error))
-      };
+    while (attempt <= maxAttempts) {
+      try {
+        const response = await this.provider.executeRequest(request, context);
+
+        // Notify circuit breaker of success
+        this.circuitBreakerStrategy.handleSuccess();
+
+        return {
+          moduleId: this.provider.moduleId,
+          moduleName: this.provider.moduleName,
+          stepType: 'request',
+          startTime,
+          endTime: Date.now(),
+          input: request,
+          output: response,
+          attempt: attempt + 1
+        };
+
+      } catch (error) {
+        attempt++;
+
+        const providerError = error instanceof Error ? error : new Error(String(error));
+
+        // Try to handle error with strategies
+        const strategyResult = await this.handleWithErrorStrategies(
+          providerError,
+          context,
+          'provider-execution'
+        );
+
+        if (strategyResult.success && strategyResult.handled) {
+          // Strategy handled the error successfully
+          if (strategyResult.result) {
+            return {
+              moduleId: this.provider.moduleId,
+              moduleName: this.provider.moduleName,
+              stepType: 'request',
+              startTime,
+              endTime: Date.now(),
+              input: request,
+              output: strategyResult.result,
+              attempt: attempt,
+              strategyApplied: strategyResult.strategy,
+              strategyAction: strategyResult.action
+            };
+          } else if (attempt <= maxAttempts) {
+            // Strategy suggests retry (like retry strategy)
+            continue;
+          }
+        }
+
+        // If strategies couldn't handle the error or we've exhausted attempts
+        return {
+          moduleId: this.provider.moduleId,
+          moduleName: this.provider.moduleName,
+          stepType: 'request',
+          startTime,
+          endTime: Date.now(),
+          input: request,
+          error: providerError,
+          attempt: attempt,
+          strategyResult: strategyResult
+        };
+      }
     }
+
+    // This should not be reached, but just in case
+    throw new Error('Provider execution failed after all attempts');
   }
 
   /**

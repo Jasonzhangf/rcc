@@ -21,6 +21,7 @@ import { ModularPipelineExecutor } from './ModularPipelineExecutor';
 import { RoutingOptimizer } from './RoutingOptimizer';
 import { IOTracker } from './IOTracker';
 import { PipelineExecutionOptimizer } from './PipelineExecutionOptimizer';
+import { UnifiedPipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
 
 /**
  * 组装器配置
@@ -61,7 +62,7 @@ interface MonitoringConfig {
 /**
  * 增强版流水线组装器类
  */
-export class EnhancedPipelineAssembler {
+export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
   private executor: IModularPipelineExecutor | null = null;
   private moduleFactory: ModuleFactory;
   private configValidator: ConfigurationValidator;
@@ -80,6 +81,13 @@ export class EnhancedPipelineAssembler {
   private monitoringInterval: NodeJS.Timeout | null = null;
 
   constructor(config?: Partial<AssemblerConfig>) {
+    super({
+      id: 'enhanced-pipeline-assembler',
+      name: 'Enhanced Pipeline Assembler',
+      version: '1.0.0',
+      description: 'Enhanced pipeline assembler with routing optimization, IO tracking, and execution optimization'
+    } as PipelineModuleConfig);
+
     this.config = {
       autoDiscovery: true,
       enableOptimization: true,
@@ -185,16 +193,16 @@ export class EnhancedPipelineAssembler {
 
       this.isInitialized = true;
 
-      console.log('✅ Enhanced Pipeline Assembler 初始化完成');
-      console.log(`📊 配置统计:`);
-      console.log(`  - 虚拟模型: ${wrapper.virtualModels.length}`);
-      console.log(`  - 模块: ${wrapper.modules.length}`);
-      console.log(`  - 路由策略: ${wrapper.routing.strategy}`);
-      console.log(`  - 优化功能: ${this.config.enableOptimization ? '启用' : '禁用'}`);
-      console.log(`  - 监控功能: ${this.config.enableMonitoring ? '启用' : '禁用'}`);
+      this.logInfo('Enhanced Pipeline Assembler initialized successfully', {
+        virtualModels: wrapper.virtualModels.length,
+        modules: wrapper.modules.length,
+        routingStrategy: wrapper.routing.strategy,
+        optimization: this.config.enableOptimization,
+        monitoring: this.config.enableMonitoring
+      }, 'initialization');
 
     } catch (error) {
-      console.error('❌ Enhanced Pipeline Assembler 初始化失败:', error);
+      this.logError('Enhanced Pipeline Assembler initialization failed', error, 'initialization');
       throw error;
     }
   }
@@ -323,12 +331,12 @@ export class EnhancedPipelineAssembler {
       try {
         await this.discoverProviders();
       } catch (error) {
-        console.error('自动发现失败:', error);
+        this.logError('Auto discovery failed', error, 'provider-discovery');
       }
     }, this.config.scanInterval);
 
     // 立即执行一次发现
-    this.discoverProviders().catch(console.error);
+    this.discoverProviders().catch(error => this.logError('Discover providers failed', error, 'provider-discovery'));
   }
 
   /**
@@ -339,7 +347,7 @@ export class EnhancedPipelineAssembler {
       return;
     }
 
-    console.log('🔍 开始提供商发现...');
+    this.logInfo('Starting provider discovery', {}, 'provider-discovery');
 
     // 这里应该实现实际的提供商发现逻辑
     // 包括扫描网络、检查配置文件、连接注册中心等
@@ -356,14 +364,14 @@ export class EnhancedPipelineAssembler {
     ];
 
     for (const provider of discoveredProviders) {
-      console.log(`✅ 发现提供商: ${provider.name} (${provider.type})`);
+      this.logInfo('Provider discovered and loaded', { name: provider.name, type: provider.type, id: provider.id }, 'provider-discovery');
 
       // 如果有执行器，可以动态注册新提供商
       if (this.executor) {
         try {
           await this.registerDiscoveredProvider(provider);
         } catch (error) {
-          console.error(`注册提供商失败: ${provider.id}`, error);
+          this.logError('Failed to register provider', { providerId: provider.id, error: error.message || error }, 'provider-registration');
         }
       }
     }
@@ -375,7 +383,7 @@ export class EnhancedPipelineAssembler {
   private async registerDiscoveredProvider(provider: any): Promise<void> {
     // 这里应该实现提供商注册逻辑
     // 包括添加到虚拟模型配置、更新路由表等
-    console.log(`📝 注册提供商: ${provider.id}`);
+    this.logInfo('Registering provider', { providerId: provider.id }, 'provider-registration');
   }
 
   /**
@@ -391,11 +399,11 @@ export class EnhancedPipelineAssembler {
         await this.checkSystemHealth();
         await this.collectMetrics();
       } catch (error) {
-        console.error('监控检查失败:', error);
+        this.logError('Monitoring check failed', error, 'monitoring');
       }
     }, this.monitoringConfig.metricsInterval);
 
-    console.log('📊 系统监控已启动');
+    this.logInfo('System monitoring started', {}, 'monitoring');
   }
 
   /**
@@ -412,7 +420,7 @@ export class EnhancedPipelineAssembler {
       // 检查各模块状态
       for (const [moduleId, moduleStatus] of Object.entries(status.modules || {})) {
         if (moduleStatus.status === 'error') {
-          console.warn(`⚠️ 模块 ${moduleId} 状态异常:`, moduleStatus.statistics);
+          this.logWarn('Module status abnormal', { moduleId, statistics: moduleStatus.statistics }, 'monitoring');
         }
       }
 
@@ -420,12 +428,12 @@ export class EnhancedPipelineAssembler {
       if (this.ioTracker) {
         const analysis = this.ioTracker.getPerformanceAnalysis();
         if (analysis.averageStepTime > this.monitoringConfig.alertThresholds.responseTime) {
-          console.warn(`⚠️ 平均步骤时间过长: ${analysis.averageStepTime}ms`);
+          this.logWarn('Average step time too long', { averageTime: analysis.averageStepTime }, 'performance-monitoring');
         }
       }
 
     } catch (error) {
-      console.error('健康检查失败:', error);
+      this.logError('Health check failed', error, 'health-check');
     }
   }
 
@@ -446,14 +454,14 @@ export class EnhancedPipelineAssembler {
           const metrics = this.routingOptimizer.getPerformanceMetrics();
           const health = this.routingOptimizer.getHealthStatus();
           const healthData: any = health;
-          console.log('📈 路由指标:', {
+          this.logInfo('Routing metrics collected', {
             providers: healthData instanceof Map ? healthData.size : Object.keys(healthData.providers || {}).length,
             healthyProviders: healthData instanceof Map ?
               Array.from(healthData.values()).filter((h: any) => h.isHealthy).length :
               Object.values(healthData.providers || {}).filter((h: any) => h.isHealthy).length
-          });
+          }, 'metrics-collection');
         } catch (routingError) {
-          console.warn('⚠️ 路由指标收集失败:', routingError);
+          this.logWarn('Routing metrics collection failed', { error: routingError.message || routingError }, 'metrics-collection');
         }
       }
 
@@ -461,18 +469,18 @@ export class EnhancedPipelineAssembler {
       if (this.ioTracker) {
         try {
           const analysis = this.ioTracker.getPerformanceAnalysis();
-          console.log('📊 性能指标:', {
+          this.logInfo('Performance metrics collected', {
             averageStepTime: analysis.averageStepTime,
             throughput: 'N/A',
             bottleneck: 'N/A'
-          });
+          }, 'metrics-collection');
         } catch (trackingError) {
-          console.warn('⚠️ 性能指标收集失败:', trackingError);
+          this.logWarn('Performance metrics collection failed', { error: trackingError.message || trackingError }, 'metrics-collection');
         }
       }
 
     } catch (error) {
-      console.error('指标收集失败:', error);
+      this.logError('Metrics collection failed', error, 'metrics-collection');
     }
   }
 
@@ -539,7 +547,7 @@ export class EnhancedPipelineAssembler {
     }
 
     // 这里应该实现动态添加虚拟模型的逻辑
-    console.log(`➕ 添加虚拟模型: ${virtualModel.name}`);
+    this.logInfo('Adding virtual model', { name: virtualModel.name }, 'model-management');
 
     // 需要重新初始化执行器以应用新配置
     // 注意：这会影响正在进行的请求
@@ -562,7 +570,7 @@ export class EnhancedPipelineAssembler {
       this.ioTracker = new IOTracker(this.debugConfig);
     }
 
-    console.log('⚙️ 配置已更新');
+    this.logInfo('Configuration updated', {}, 'configuration-management');
   }
 
   /**
@@ -604,10 +612,10 @@ export class EnhancedPipelineAssembler {
       }
 
       this.isInitialized = false;
-      console.log('🛑 Enhanced Pipeline Assembler 已停止');
+      this.logInfo('Enhanced Pipeline Assembler stopped', {}, 'shutdown');
 
     } catch (error) {
-      console.error('停止组装器时发生错误:', error);
+      this.logError('Stop assembler error', error, 'shutdown');
       throw error;
     }
   }

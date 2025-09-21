@@ -12,6 +12,7 @@ import { Pipeline } from './Pipeline';
 import { RequestAnalyzer, RequestAnalyzerConfig } from '../routing/RequestAnalyzer';
 import { RoutingRulesEngine, RoutingRulesEngineConfig } from '../routing/RoutingRulesEngine';
 import { RoutingCapabilities, RequestAnalysisResult, RoutingDecision } from '../routing/RoutingCapabilities';
+import { UnifiedPipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
 
 // Define operation type locally
 type OperationType = 'chat' | 'streamChat' | 'healthCheck';
@@ -74,7 +75,7 @@ export interface SchedulerOptions {
  * Virtual Model Scheduler Manager - Direct pipeline pool management
  * 虚拟模型调度器管理器 - 直接流水线池管理
  */
-export class VirtualModelSchedulerManager {
+export class VirtualModelSchedulerManager extends UnifiedPipelineBaseModule {
   private config: ManagerConfig;
   private pipelinePools: Map<string, PipelinePoolData> = new Map();
   private pipelineTracker: PipelineTracker;
@@ -103,6 +104,13 @@ export class VirtualModelSchedulerManager {
   }
 
   constructor(config: ManagerConfig, pipelineTracker: PipelineTracker) {
+    super({
+      id: 'virtual-model-scheduler-manager',
+      name: 'Virtual Model Scheduler Manager',
+      version: '1.0.0',
+      description: 'Manages all pipeline pools directly with routing capabilities'
+    } as PipelineModuleConfig);
+
     this.config = config;
     this.pipelineTracker = pipelineTracker;
 
@@ -133,7 +141,7 @@ export class VirtualModelSchedulerManager {
    * 初始化路由系统
    */
   private initializeRoutingSystem(): void {
-    console.log('🛣️ Initializing routing system...');
+    this.logInfo('Initializing routing system', {}, 'routing-initialization');
 
     try {
       // 创建请求分析器
@@ -142,10 +150,10 @@ export class VirtualModelSchedulerManager {
       // 创建路由规则引擎
       this.routingEngine = new RoutingRulesEngine(this.config.routingEngineConfig);
 
-      console.log('✅ Routing system initialized successfully');
+      this.logInfo('Routing system initialized successfully', {}, 'routing-initialization');
 
     } catch (error) {
-      console.error('❌ Failed to initialize routing system:', error);
+      this.logError('Failed to initialize routing system', error, 'routing-initialization');
       throw new Error(`Routing system initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -154,7 +162,7 @@ export class VirtualModelSchedulerManager {
    * 初始化流水线池 - 接收PipelineAssembler传递的pools并注册到路由系统
    */
   initialize(pipelinePools: Map<string, PipelinePool>): void {
-    console.log('🚀 Initializing VirtualModelSchedulerManager with pipeline pools...');
+    this.logInfo('Initializing VirtualModelSchedulerManager with pipeline pools', { poolCount: pipelinePools.size }, 'initialization');
 
     try {
       // 添加所有流水线池
@@ -173,10 +181,10 @@ export class VirtualModelSchedulerManager {
       }
 
       this._isInitialized = true;
-      console.log(`✅ VirtualModelSchedulerManager initialized with ${pipelinePools.size} pipeline pools`);
+      this.logInfo('VirtualModelSchedulerManager initialized successfully', { poolCount: pipelinePools.size, routingEnabled: this.config.enableRouting, internalAPIEnabled: this.config.enableInternalAPI }, 'initialization');
 
     } catch (error) {
-      console.error('❌ Failed to initialize VirtualModelSchedulerManager:', error);
+      this.logError('Failed to initialize VirtualModelSchedulerManager', error, 'initialization');
       throw error;
     }
   }
@@ -186,18 +194,18 @@ export class VirtualModelSchedulerManager {
    */
   private registerPipelinePoolsWithRoutingEngine(pipelinePools: Map<string, PipelinePool>): void {
     if (!this.routingEngine) {
-      console.warn('⚠️ Routing engine not available, skipping registration');
+      this.logWarn('Routing engine not available, skipping registration', {}, 'routing-registration');
       return;
     }
 
-    console.log('📝 Registering pipeline pools with routing engine...');
+    this.logInfo('Registering pipeline pools with routing engine', {}, 'routing-registration');
 
     for (const [virtualModelId, pool] of pipelinePools) {
       if (pool.routingCapabilities) {
         this.routingEngine.registerPipelinePool(virtualModelId, pool.routingCapabilities);
-        console.log(`✅ Registered pipeline pool ${virtualModelId} with routing capabilities`);
+        this.logInfo('Registered pipeline pool with routing capabilities', { virtualModelId }, 'routing-registration');
       } else {
-        console.warn(`⚠️ Pipeline pool ${virtualModelId} has no routing capabilities, using defaults`);
+        this.logWarn('Pipeline pool has no routing capabilities, using defaults', { virtualModelId }, 'routing-registration');
 
         // 使用默认的路由能力
         const defaultCapabilities: RoutingCapabilities = {
@@ -222,7 +230,7 @@ export class VirtualModelSchedulerManager {
         };
 
         this.routingEngine.registerPipelinePool(virtualModelId, defaultCapabilities);
-        console.log(`✅ Registered pipeline pool ${virtualModelId} with default capabilities`);
+        this.logInfo('Registered pipeline pool with default capabilities', { virtualModelId }, 'routing-registration');
       }
     }
   }
@@ -236,21 +244,21 @@ export class VirtualModelSchedulerManager {
     }
 
     const port = this.config.internalAPIPort || 8080;
-    console.log(`🌐 Starting internal API server on port ${port}...`);
+    this.logInfo('Starting internal API server', { port }, 'api-server');
 
     try {
       // 注意：这里简化实现，实际项目中需要使用适当的HTTP服务器库
       // 例如：express, fastify, 或者 Node.js 的 http 模块
-      console.log(`⚠️ Internal API server placeholder - would start on port ${port}`);
+      this.logInfo('Internal API server placeholder', { port }, 'api-server');
 
       // 在实际实现中，这里会启动HTTP服务器并设置路由
       // this.internalAPIServer = createServer(this.handleInternalAPIRequest.bind(this));
       // this.internalAPIServer.listen(port);
 
-      console.log('✅ Internal API server placeholder started');
+      this.logInfo('Internal API server placeholder started', {}, 'api-server');
 
     } catch (error) {
-      console.error('❌ Failed to start internal API server:', error);
+      this.logError('Failed to start internal API server', error, 'api-server');
       throw new Error(`Internal API server startup failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -263,7 +271,7 @@ export class VirtualModelSchedulerManager {
       throw new Error('VirtualModelSchedulerManager not initialized');
     }
 
-    console.log('🎯 Processing routing request...');
+    this.logInfo('Processing routing request', { virtualModelId: request?.model }, 'request-processing');
 
     try {
       // 如果启用了路由系统，使用智能路由
@@ -275,7 +283,7 @@ export class VirtualModelSchedulerManager {
       }
 
     } catch (error) {
-      console.error('❌ Request handling failed:', error);
+      this.logError('Request handling failed', error, 'request-processing');
       throw new Error(`Request handling failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -288,7 +296,7 @@ export class VirtualModelSchedulerManager {
       throw new Error('Routing components not available');
     }
 
-    console.log('🧠 Using smart routing...');
+    this.logInfo('Using smart routing', {}, 'request-processing');
 
     // 分析请求
     const analysisResult = await this.requestAnalyzer.analyzeRequest(request, context?.metadata);
@@ -300,7 +308,7 @@ export class VirtualModelSchedulerManager {
       this.config.routingStrategy
     );
 
-    console.log(`🎯 Routing decision: ${routingDecision.targetVirtualModelId} (score: ${routingDecision.matchResult.matchScore.toFixed(2)})`);
+    this.logInfo('Routing decision made', { targetVirtualModelId: routingDecision.targetVirtualModelId, score: routingDecision.matchResult.matchScore }, 'request-processing');
 
     // 执行请求
     return await this.executeRoutingDecision(routingDecision, request, context);
@@ -346,7 +354,7 @@ export class VirtualModelSchedulerManager {
    * 使用回退路由处理请求
    */
   private async routeWithFallback(request: any): Promise<any> {
-    console.log('🔄 Using fallback routing...');
+    this.logInfo('Using fallback routing', {}, 'request-processing');
 
     // 简单的轮询选择第一个可用的流水线池
     const availablePools = Array.from(this.pipelinePools.values());
@@ -580,7 +588,7 @@ export class VirtualModelSchedulerManager {
         try {
           // Perform health check directly on providers in the pipeline
           if (!poolData.pool.activePipeline) {
-            console.warn(`No active pipeline for health check on virtual model ${virtualModelId}`);
+            this.logWarn('No active pipeline for health check on virtual model', { virtualModelId }, 'health-check');
             continue;
           }
 
@@ -589,7 +597,7 @@ export class VirtualModelSchedulerManager {
           const targets = this.getPipelineTargets(pipeline);
 
           if (targets.length === 0) {
-            console.warn(`No targets found for health check on virtual model ${virtualModelId}`);
+            this.logWarn('No targets found for health check on virtual model', { virtualModelId }, 'health-check');
             continue;
           }
 
@@ -597,19 +605,19 @@ export class VirtualModelSchedulerManager {
           for (const target of targets) {
             try {
               const healthResult = await target.provider.healthCheck();
-              console.log(`Health check passed for ${target.provider.getProviderInfo().name} (${virtualModelId}):`, healthResult.status);
+              this.logInfo('Health check passed', { provider: target.provider.getProviderInfo().name, virtualModelId, status: healthResult.status }, 'health-check');
             } catch (error) {
-              console.warn(`Health check failed for ${target.provider.getProviderInfo().name} (${virtualModelId}):`, error);
+              this.logWarn('Health check failed', { provider: target.provider.getProviderInfo().name, virtualModelId, error: error.message || error }, 'health-check');
             }
           }
         } catch (error) {
-          console.warn(`Health check failed for virtual model ${virtualModelId}:`, error);
+          this.logWarn('Health check failed for virtual model', { virtualModelId, error: error.message || error }, 'health-check');
         }
       }
 
       this.metrics.lastHealthCheck = Date.now();
     } catch (error) {
-      console.error('Health check failed:', error);
+      this.logError('Health check failed', error, 'health-check');
     }
   }
 
@@ -629,7 +637,7 @@ export class VirtualModelSchedulerManager {
       // Fallback: return empty array
       return [];
     } catch (error) {
-      console.warn('Could not access pipeline targets for health check:', error);
+      this.logWarn('Could not access pipeline targets for health check', { error: error.message || error }, 'health-check');
       return [];
     }
   }
@@ -691,7 +699,7 @@ export class VirtualModelSchedulerManager {
    * 销毁管理器并清理资源
    */
   destroy(): void {
-    console.log('🧹 Destroying VirtualModelSchedulerManager...');
+    this.logInfo('Destroying VirtualModelSchedulerManager', {}, 'shutdown');
 
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
@@ -705,7 +713,7 @@ export class VirtualModelSchedulerManager {
     // 停止内部API服务器
     if (this.internalAPIServer) {
       // this.internalAPIServer.close();
-      console.log('🛑 Internal API server stopped');
+      this.logInfo('Internal API server stopped', {}, 'shutdown');
     }
 
     // Destroy all pipelines in all pipeline pools
@@ -719,6 +727,6 @@ export class VirtualModelSchedulerManager {
     this.metrics.virtualModelMetrics.clear();
     this._isInitialized = false;
 
-    console.log('✅ VirtualModelSchedulerManager destroyed');
+    this.logInfo('VirtualModelSchedulerManager destroyed', {}, 'shutdown');
   }
 }

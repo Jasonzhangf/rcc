@@ -1,0 +1,86 @@
+{
+  "module": "basemodule",
+  "sourceReadme": "README.md",
+  "lastUpdated": "2025-09-21T17:30:00Z",
+  "structure": {
+    "src/": {
+      "type": "directory",
+      "purpose": "Source code directory",
+      "description": "Module source code",
+      "category": "source",
+      "allowed": true
+    },
+    "src/index.ts": {
+      "type": "file",
+      "purpose": "Module entry point",
+      "description": "Main module exports and initialization",
+      "category": "source",
+      "allowed": true
+    },
+    "src/BaseModule.ts": {
+      "type": "file",
+      "purpose": "Core module implementation",
+      "description": "BaseModule class implementation",
+      "category": "source",
+      "allowed": true
+    },
+    "src/interfaces/": {
+      "type": "directory",
+      "purpose": "Type definitions",
+      "description": "Module interfaces and types",
+      "category": "source",
+      "allowed": true
+    },
+    "src/interfaces/IModule.ts": {
+      "type": "file",
+      "purpose": "Module interface",
+      "description": "IModule interface definition",
+      "category": "source",
+      "allowed": true
+    },
+    "src/utils/": {
+      "type": "directory",
+      "purpose": "Utility functions",
+      "description": "Module utility functions",
+      "category": "source",
+      "allowed": true
+    },
+    "tests/": {
+      "type": "directory",
+      "purpose": "Test files",
+      "description": "Module test suite",
+      "category": "test",
+      "allowed": true
+    },
+    "tests/BaseModule.test.ts": {
+      "type": "file",
+      "purpose": "Main module tests",
+      "description": "BaseModule unit tests",
+      "category": "test",
+      "allowed": true
+    },
+    "tests/integration/": {
+      "type": "directory",
+      "purpose": "Integration tests",
+      "description": "Integration test files",
+      "category": "test",
+      "allowed": true
+    },
+    "package.json": {
+      "type": "file",
+      "purpose": "Module configuration",
+      "description": "Package configuration and dependencies",
+      "category": "config",
+      "required": true,
+      "allowed": true
+    },
+    "README.md": {
+      "type": "file",
+      "purpose": "Module documentation",
+      "description": "Module README documentation",
+      "category": "docs",
+      "required": true,
+      "allowed": true
+    }
+  }
+}

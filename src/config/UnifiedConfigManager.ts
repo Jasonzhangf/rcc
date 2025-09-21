@@ -273,8 +273,8 @@ export class UnifiedConfigManager extends EventEmitter {
     ];
 
     // Add user config if available
-    if (process.env.HOME) {
-      possiblePaths.push(path.join(process.env.HOME, CONFIG_FILE_NAMES.USER));
+    if ((process.env as any).HOME) {
+      possiblePaths.push(path.join((process.env as any).HOME, CONFIG_FILE_NAMES.USER));
     }
 
     // Add system-wide configs

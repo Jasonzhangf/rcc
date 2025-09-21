@@ -3,14 +3,18 @@
  * RCC流水线系统的标准接口
  */
 
+import { ProtocolType } from './ModularInterfaces';
+
 /**
  * Standard Request Interface
  */
 export interface StandardRequest {
-  protocol: string;
+  protocol: ProtocolType;
   payload: any;
   metadata?: {
     traceId?: string;
+    sessionId?: string;
+    requestId?: string;
     timestamp?: number;
     source?: string;
     target?: string;
@@ -22,14 +26,18 @@ export interface StandardRequest {
  * Standard Response Interface
  */
 export interface StandardResponse {
-  protocol: string;
+  protocol: ProtocolType;
   payload: any;
   metadata?: {
     traceId?: string;
+    sessionId?: string;
+    requestId?: string;
     timestamp?: number;
+    processingTime?: number;
     duration?: number;
     source?: string;
     target?: string;
+    transformerName?: string;
     [key: string]: any;
   };
 }
@@ -38,7 +46,7 @@ export interface StandardResponse {
  * Standard Error Response Interface
  */
 export interface StandardErrorResponse {
-  protocol: string;
+  protocol: ProtocolType;
   error: {
     code: string;
     message: string;
@@ -47,7 +55,10 @@ export interface StandardErrorResponse {
   };
   metadata?: {
     traceId?: string;
+    sessionId?: string;
+    requestId?: string;
     timestamp?: number;
+    processingTime?: number;
     source?: string;
     target?: string;
     [key: string]: any;

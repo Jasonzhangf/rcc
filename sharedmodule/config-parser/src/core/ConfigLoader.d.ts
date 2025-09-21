@@ -70,6 +70,6 @@ export declare class ConfigLoader extends BaseModule {
     /**
      * 处理系统消息
      */
-    protected handleMessage(message: any): Promise<any>;
+    handleMessage(message: any): Promise<any>;
 }
 //# sourceMappingURL=ConfigLoader.d.ts.map

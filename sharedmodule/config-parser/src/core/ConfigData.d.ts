@@ -53,6 +53,8 @@ export interface VirtualModelTarget {
 export interface VirtualModelConfig {
     /** 虚拟模型ID */
     id: string;
+    /** 虚拟模型名称 */
+    name: string;
     /** 目标配置列表 */
     targets: VirtualModelTarget[];
     /** 是否启用 */

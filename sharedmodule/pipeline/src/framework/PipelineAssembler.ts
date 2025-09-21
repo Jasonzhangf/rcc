@@ -11,6 +11,7 @@ import { BaseProvider } from './BaseProvider';
 import { VirtualModelSchedulerManager, ManagerConfig } from './VirtualModelSchedulerManager';
 import { EnhancedPipelineAssembler } from '../core/EnhancedPipelineAssembler';
 import { RoutingOptimizationConfig, DebugConfig } from '../interfaces/ModularInterfaces';
+import { UnifiedPipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
 // Import types from our interfaces module
 import {
   PipelineWrapper,
@@ -126,7 +127,7 @@ export interface AssemblyResult {
  * Pipeline Assembler - Core service for assembling pipelines from configuration
  * 流水线组装器 - 从配置组装流水线的核心服务
  */
-export class PipelineAssembler {
+export class PipelineAssembler extends UnifiedPipelineBaseModule {
   private config: AssemblerConfig;
   private moduleScanner: ModuleScanner;
   private pipelineTracker: PipelineTracker;
@@ -146,6 +147,13 @@ export class PipelineAssembler {
   private modularExecutor?: any; // IModularPipelineExecutor
 
   constructor(config: AssemblerConfig, pipelineTracker: PipelineTracker) {
+    super({
+      id: 'pipeline-assembler',
+      name: 'Pipeline Assembler',
+      version: '1.0.0',
+      description: 'Assembles pipelines from configuration and discovered providers'
+    } as PipelineModuleConfig);
+
     this.config = {
       enableAutoDiscovery: true,
       fallbackStrategy: 'first-available',
@@ -160,7 +168,7 @@ export class PipelineAssembler {
     // Initialize pipeline wrapper if provided
     if (this.config.pipelineWrapper) {
       this.pipelineWrapper = this.config.pipelineWrapper;
-      console.log('📦 PipelineWrapper provided for modular pipeline support');
+      this.logInfo('PipelineWrapper provided for modular pipeline support', { wrapperId: this.config.pipelineWrapper.id }, 'initialization');
     }
 
     // Initialize configuration modules if enabled
@@ -175,7 +183,7 @@ export class PipelineAssembler {
    */
   private initializeConfigModules(): void {
     try {
-      console.log('🔧 Initializing configuration modules...');
+      this.logInfo('Initializing configuration modules', {}, 'initialization');
 
       // Create configuration module instances
       this.configLoader = new ConfigLoader({
@@ -202,9 +210,9 @@ export class PipelineAssembler {
         description: 'RCC Pipeline Configuration Generator Module'
       });
 
-      console.log('✅ Configuration modules initialized successfully');
+      this.logInfo('Configuration modules initialized successfully', {}, 'initialization');
     } catch (error) {
-      console.error('❌ Failed to initialize configuration modules:', error);
+      this.logError('Failed to initialize configuration modules', error, 'initialization');
       // Don't throw - allow fallback to traditional assembly
     }
   }
@@ -219,11 +227,11 @@ export class PipelineAssembler {
     }
 
     try {
-      console.log('📖 Loading configuration and generating pipeline table...');
+      this.logInfo('Loading configuration and generating pipeline table', { configPath }, 'config-loading');
 
       // Find configuration file
       const configPath = this.config.configFilePath || this.getDefaultConfigPath();
-      console.log('📁 Configuration file path:', configPath);
+      this.logInfo('Configuration file path determined', { configPath }, 'config-loading');
 
       // Initialize config modules
       await this.configLoader.initialize();
@@ -232,18 +240,18 @@ export class PipelineAssembler {
 
       // Load configuration
       const rawData = await this.configLoader!.loadFromFile(configPath);
-      console.log('📋 Configuration file loaded successfully');
+      this.logInfo('Configuration file loaded successfully', { configPath }, 'config-loading');
 
       // Parse configuration
       this.currentConfigData = await this.configParser!.parseConfig(rawData);
-      console.log('🔍 Configuration parsed successfully');
+      this.logInfo('Configuration parsed successfully', {}, 'config-loading');
 
       // Generate pipeline table
       this.currentPipelineTable = await this.pipelineConfigGenerator!.generatePipelineTable(this.currentConfigData);
       if (this.currentPipelineTable) {
-        console.log(`🗂️  Pipeline table generated with ${this.currentPipelineTable.getEntries().length} entries`);
+        this.logInfo('Pipeline table generated successfully', { entries: this.currentPipelineTable.getEntries().length }, 'config-loading');
       } else {
-        console.log('🗂️  Pipeline table generated but is undefined');
+        this.logWarn('Pipeline table generated but is undefined', {}, 'config-loading');
       }
 
       // Save pipeline table to file if output path specified
@@ -253,7 +261,7 @@ export class PipelineAssembler {
 
       return this.currentConfigData || null;
     } catch (error) {
-      console.error('❌ Failed to load configuration and generate pipeline table:', error);
+      this.logError('Failed to load configuration and generate pipeline table', error, 'config-loading');
       return null;
     }
   }
@@ -301,9 +309,9 @@ export class PipelineAssembler {
       const tableData = pipelineTable.toJSON();
       await fs.promises.writeFile(outputPath, JSON.stringify(tableData, null, 2));
 
-      console.log(`💾 Pipeline table saved to: ${outputPath}`);
+      this.logInfo('Pipeline table saved to file', { outputPath }, 'config-persistence');
     } catch (error) {
-      console.error('❌ Failed to save pipeline table:', error);
+      this.logError('Failed to save pipeline table', error, 'config-persistence');
     }
   }
 
@@ -348,18 +356,18 @@ export class PipelineAssembler {
    * 从流水线表加载配置
    */
   async loadFromPipelineTable(pipelineTable: PipelineTable): Promise<AssemblyResult> {
-    console.log('🚀 Starting pipeline assembly from pipeline table...');
+    this.logInfo('Starting pipeline assembly from pipeline table', {}, 'assembly-process');
 
     try {
       // Convert pipeline table to virtual model configs
       const virtualModelConfigs = this.convertPipelineTableToVirtualModelConfigs(pipelineTable);
-      console.log(`📋 Converted pipeline table to ${virtualModelConfigs.length} virtual model configs`);
+      this.logInfo('Converted pipeline table to virtual model configs', { count: virtualModelConfigs.length }, 'assembly-process');
 
       // Use existing assembly logic
       return await this.assemblePipelines(virtualModelConfigs);
 
     } catch (error) {
-      console.error('❌ Failed to load from pipeline table:', error);
+      this.logError('Failed to load from pipeline table', error, 'assembly-process');
 
       return {
         success: false,
@@ -378,7 +386,7 @@ export class PipelineAssembler {
    * 从PipelineWrapper组装流水线（模块化方法）
    */
   async assemblePipelinesFromWrapper(wrapper: PipelineWrapper): Promise<AssemblyResult> {
-    console.log('🚀 Starting modular pipeline assembly from PipelineWrapper...');
+    this.logInfo('Starting modular pipeline assembly from PipelineWrapper', { wrapperId: wrapper.id }, 'assembly-process');
 
     if (!this.config.enableModularPipeline) {
       throw new Error('Modular pipeline is not enabled. Set enableModularPipeline: true in config.');
@@ -411,13 +419,12 @@ export class PipelineAssembler {
       result.warnings.push(...assemblyResult.warnings);
       result.success = assemblyResult.success;
 
-      console.log(`🎯 Modular pipeline assembly completed. Success: ${result.success}`);
-      console.log(`📊 Results: ${result.pipelinePools.size} pools, ${result.errors.length} errors, ${result.warnings.length} warnings`);
+      this.logInfo('Modular pipeline assembly completed', { success: result.success, pools: result.pipelinePools.size, errors: result.errors.length, warnings: result.warnings.length }, 'assembly-process');
 
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('❌ Modular assembly error:', errorMessage);
+      this.logError('Modular assembly error', error, 'assembly-process');
 
       result.success = false;
       result.errors.push({
@@ -485,7 +492,7 @@ export class PipelineAssembler {
    * 使用PipelineWrapper组装模块化流水线
    */
   private async assembleModularPipelines(wrapper: PipelineWrapper): Promise<AssemblyResult> {
-    console.log('🏗️  Assembling modular pipelines from PipelineWrapper...');
+    this.logInfo('Assembling modular pipelines from PipelineWrapper', { wrapperId: wrapper.id, virtualModels: wrapper.virtualModels.length, modules: wrapper.modules.length }, 'assembly-process');
 
     const result: AssemblyResult = {
       success: true,
@@ -508,7 +515,7 @@ export class PipelineAssembler {
           }
 
           result.pipelinePools.set(virtualModel.id, pool);
-          console.log(`✅ Assembled modular pipeline pool for: ${virtualModel.id}`);
+          this.logInfo('Assembled modular pipeline pool', { virtualModelId: virtualModel.id, pipelineCount: pool.pipelines.size }, 'assembly-process');
 
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -516,7 +523,7 @@ export class PipelineAssembler {
             virtualModelId: virtualModel.id,
             error: errorMessage
           });
-          console.error(`❌ Failed to assemble modular pipeline for ${virtualModel.id}:`, errorMessage);
+          this.logError('Failed to assemble modular pipeline', { virtualModelId: virtualModel.id, error: errorMessage }, 'assembly-process');
         }
       }
 
@@ -525,7 +532,7 @@ export class PipelineAssembler {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('❌ Modular pipeline assembly failed:', errorMessage);
+      this.logError('Modular pipeline assembly failed', { error: errorMessage }, 'assembly-process');
 
       result.success = false;
       result.errors.push({
@@ -542,7 +549,7 @@ export class PipelineAssembler {
    * 为单个虚拟模型组装模块化流水线池
    */
   private async assembleModularPipelinePool(virtualModel: any, wrapper: PipelineWrapper): Promise<PipelinePool> {
-    console.log(`🏗️  Assembling modular pipeline pool for: ${virtualModel.id}`);
+    this.logInfo('Assembling modular pipeline pool', { virtualModelId: virtualModel.id }, 'assembly-process');
 
     const pipelines = new Map<string, Pipeline>();
 
@@ -552,7 +559,7 @@ export class PipelineAssembler {
       if (modularPipeline) {
         const pipelineId = `modular_${virtualModel.id}`;
         pipelines.set(pipelineId, modularPipeline);
-        console.log(`✅ Created modular pipeline: ${pipelineId}`);
+        this.logInfo('Created modular pipeline', { pipelineId }, 'assembly-process');
       }
 
       const pool: PipelinePool = {
@@ -571,11 +578,11 @@ export class PipelineAssembler {
         isActive: true
       };
 
-      console.log(`✅ Modular pipeline pool assembled for ${virtualModel.id}: ${pipelines.size} pipelines`);
+      this.logInfo('Modular pipeline pool assembled', { virtualModelId: virtualModel.id, pipelineCount: pipelines.size }, 'assembly-process');
       return pool;
 
     } catch (error) {
-      console.error(`❌ Failed to assemble modular pipeline pool for ${virtualModel.id}:`, error);
+      this.logError('Failed to assemble modular pipeline pool', { virtualModelId: virtualModel.id, error: error.message || error }, 'assembly-process');
 
       return {
         virtualModelId: virtualModel.id,
@@ -601,7 +608,7 @@ export class PipelineAssembler {
    */
   private async createModularPipeline(virtualModel: any, wrapper: PipelineWrapper): Promise<Pipeline | null> {
     try {
-      console.log(`🔧 Creating modular pipeline for ${virtualModel.id}`);
+      this.logInfo('Creating modular pipeline', { virtualModelId: virtualModel.id }, 'assembly-process');
 
       // 初始化模块化执行器（如果尚未初始化）
       if (!this.modularExecutor) {
@@ -614,11 +621,11 @@ export class PipelineAssembler {
       // 创建模块化流水线实例
       const pipeline = new Pipeline(pipelineConfig, this.pipelineTracker);
 
-      console.log(`✅ Created modular pipeline for ${virtualModel.id}`);
+      this.logInfo('Created modular pipeline', { virtualModelId: virtualModel.id }, 'assembly-process');
       return pipeline;
 
     } catch (error) {
-      console.error(`❌ Failed to create modular pipeline for ${virtualModel.id}:`, error);
+      this.logError('Failed to create modular pipeline', { virtualModelId: virtualModel.id, error: error.message || error }, 'assembly-process');
       return null;
     }
   }
@@ -644,9 +651,9 @@ export class PipelineAssembler {
       // 初始化执行器
       await this.modularExecutor.initialize(wrapper);
 
-      console.log('✅ Modular executor initialized successfully');
+      this.logInfo('Modular executor initialized successfully', {}, 'initialization');
     } catch (error) {
-      console.error('❌ Failed to initialize modular executor:', error);
+      this.logError('Failed to initialize modular executor', error, 'initialization');
       throw error;
     }
   }
@@ -798,7 +805,7 @@ export class PipelineAssembler {
    * 从虚拟模型配置组装流水线
    */
   async assemblePipelines(virtualModelConfigs?: VirtualModelConfig[]): Promise<AssemblyResult> {
-    console.log('🚀 Starting pipeline assembly process...');
+    this.logInfo('Starting pipeline assembly process', {}, 'assembly-process');
 
     const result: AssemblyResult = {
       success: true,
@@ -809,22 +816,22 @@ export class PipelineAssembler {
 
     // If config module integration is enabled and no explicit configs provided, load from config file
     if (this.config.enableConfigModuleIntegration && (!virtualModelConfigs || virtualModelConfigs.length === 0)) {
-      console.log('📖 No explicit virtual model configs provided - loading from configuration file...');
+      this.logInfo('No explicit virtual model configs provided - loading from configuration file', {}, 'assembly-process');
 
       const configData = await this.loadConfigurationAndGeneratePipelineTable();
       if (configData && this.currentPipelineTable) {
         // Convert pipeline table to virtual model configs and proceed
         virtualModelConfigs = this.convertPipelineTableToVirtualModelConfigs(this.currentPipelineTable);
-        console.log(`✅ Loaded ${virtualModelConfigs.length} virtual model configurations from pipeline table`);
+        this.logInfo('Loaded virtual model configurations from pipeline table', { count: virtualModelConfigs.length }, 'assembly-process');
       } else {
-        console.warn('⚠️  Failed to load configuration from file - falling back to empty configs');
+        this.logWarn('Failed to load configuration from file - falling back to empty configs', {}, 'assembly-process');
         virtualModelConfigs = [];
       }
     }
 
     // Ensure we have virtual model configs to work with
     if (!virtualModelConfigs || virtualModelConfigs.length === 0) {
-      console.warn('⚠️  No virtual model configurations available - creating empty assembly');
+      this.logWarn('No virtual model configurations available - creating empty assembly', {}, 'assembly-process');
       return {
         success: false,
         pipelinePools: new Map(),
@@ -838,7 +845,7 @@ export class PipelineAssembler {
 
     try {
       // Step 1: Discover available providers
-      console.log('🔍 Discovering available providers...');
+      this.logInfo('Discovering available providers', {}, 'provider-discovery');
       const providers = await this.discoverProviders();
 
       if (providers.size === 0) {
@@ -850,10 +857,10 @@ export class PipelineAssembler {
         return result;
       }
 
-      console.log(`✅ Discovered ${providers.size} providers: ${Array.from(providers.keys()).join(', ')}`);
+      this.logInfo('Provider discovery completed', { providerCount: providers.size, providers: Array.from(providers.keys()) }, 'provider-discovery');
 
       // Step 2: Assemble pipeline for each virtual model
-      console.log('🏗️  Assembling pipelines for virtual models...');
+      this.logInfo('Assembling pipelines for virtual models', {}, 'assembly-process');
 
       for (const virtualModelConfig of virtualModelConfigs) {
         try {
@@ -869,7 +876,7 @@ export class PipelineAssembler {
           this.pipelinePools.set(virtualModelConfig.id, pool);
           result.pipelinePools.set(virtualModelConfig.id, pool);
 
-          console.log(`✅ Assembled pipeline pool for virtual model: ${virtualModelConfig.id}`);
+          this.logInfo('Assembled pipeline pool for virtual model', { virtualModelId: virtualModelConfig.id }, 'assembly-process');
 
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -878,24 +885,23 @@ export class PipelineAssembler {
             error: errorMessage
           });
 
-          console.error(`❌ Failed to assemble pipeline for virtual model ${virtualModelConfig.id}:`, errorMessage);
+          this.logError('Failed to assemble pipeline for virtual model', { virtualModelId: virtualModelConfig.id, error: errorMessage }, 'assembly-process');
         }
       }
 
       // Step 3: Validate overall assembly
       result.success = result.errors.length < virtualModelConfigs.length; // At least one succeeded
 
-      console.log(`🎯 Pipeline assembly completed. Success: ${result.success}`);
-      console.log(`📊 Results: ${result.pipelinePools.size} pools, ${result.errors.length} errors, ${result.warnings.length} warnings`);
+      this.logInfo('Pipeline assembly completed', { success: result.success, pools: result.pipelinePools.size, errors: result.errors.length, warnings: result.warnings.length }, 'assembly-process');
 
       // 如果有可用的scheduler并且组装成功，初始化scheduler
       if (result.success && this.virtualModelScheduler) {
-        console.log('🔄 Initializing VirtualModelSchedulerManager with assembled pipeline pools...');
+        this.logInfo('Initializing VirtualModelSchedulerManager with assembled pipeline pools', {}, 'initialization');
         try {
           this.virtualModelScheduler.initialize(result.pipelinePools);
-          console.log('✅ VirtualModelSchedulerManager initialized successfully');
+          this.logInfo('VirtualModelSchedulerManager initialized successfully', {}, 'initialization');
         } catch (error) {
-          console.warn('⚠️ Failed to initialize VirtualModelSchedulerManager:', error);
+          this.logWarn('Failed to initialize VirtualModelSchedulerManager', { error: error.message || error }, 'initialization');
         }
       }
 
@@ -903,7 +909,7 @@ export class PipelineAssembler {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('❌ Critical assembly error:', errorMessage);
+      this.logError('Critical assembly error', { error: errorMessage }, 'assembly-process');
 
       result.success = false;
       result.errors.push({
@@ -921,7 +927,7 @@ export class PipelineAssembler {
    */
   private async discoverProviders(): Promise<Map<string, BaseProvider>> {
     const options = this.config.providerDiscoveryOptions || {};
-    console.log('🔍 Provider discovery options:', options);
+    this.logInfo('Provider discovery started', { options }, 'provider-discovery');
 
     const discoveredProviders = await this.moduleScanner.scan(options);
     const providers = new Map<string, BaseProvider>();
@@ -931,9 +937,9 @@ export class PipelineAssembler {
         providers.set(discovered.info.id, discovered.instance);
         this.discoveredProviders.set(discovered.info.id, discovered.instance);
 
-        console.log(`✅ Provider discovered and loaded: ${discovered.info.id} (${discovered.info.name})`);
+        this.logInfo('Provider discovered and loaded', { id: discovered.info.id, name: discovered.info.name, type: discovered.info.type }, 'provider-discovery');
       } else {
-        console.warn(`⚠️  Provider ${discovered.info.id} unavailable:`, discovered.error);
+        this.logWarn('Provider unavailable', { id: discovered.info.id, error: discovered.error }, 'provider-discovery');
       }
     }
 
@@ -948,14 +954,14 @@ export class PipelineAssembler {
     virtualModel: VirtualModelConfig,
     providers: Map<string, BaseProvider>
   ): Promise<PipelinePool> {
-    console.log(`🏗️  Assembling pipeline pool for virtual model: ${virtualModel.id}`);
+    this.logInfo('Assembling pipeline pool for virtual model', { virtualModelId: virtualModel.id }, 'assembly-process');
 
     const pipelines = new Map<string, Pipeline>();
 
     try {
       // Validate virtual model configuration
       if (!virtualModel.targets || virtualModel.targets.length === 0) {
-        console.warn(`⚠️  Virtual model ${virtualModel.id} has no targets - creating minimal pipeline`);
+        this.logWarn('Virtual model has no targets - creating minimal pipeline', { virtualModelId: virtualModel.id }, 'assembly-process');
 
         // Create a minimal pipeline with available providers
         const fallbackPipeline = await this.createFallbackPipeline(virtualModel, providers);
@@ -969,7 +975,7 @@ export class PipelineAssembler {
             const provider = providers.get(targetConfig.providerId);
 
             if (!provider) {
-              console.warn(`⚠️  Provider ${targetConfig.providerId} not found for target in ${virtualModel.id}`);
+              this.logWarn('Provider not found for target', { providerId: targetConfig.providerId, virtualModelId: virtualModel.id }, 'assembly-process');
               continue;
             }
 
@@ -978,11 +984,11 @@ export class PipelineAssembler {
               const pipelineId = `${virtualModel.id}_${targetConfig.providerId}_${targetConfig.modelId}`;
               pipelines.set(pipelineId, pipeline);
 
-              console.log(`✅ Created pipeline: ${pipelineId}`);
+              this.logInfo('Created pipeline', { pipelineId }, 'assembly-process');
             }
 
           } catch (error) {
-            console.error(`❌ Failed to assemble pipeline for target ${targetConfig.providerId}:${targetConfig.modelId}:`, error);
+            this.logError('Failed to assemble pipeline for target', { providerId: targetConfig.providerId, modelId: targetConfig.modelId, error: error.message || error }, 'assembly-process');
           }
         }
       }
@@ -1009,11 +1015,11 @@ export class PipelineAssembler {
         isActive: true
       };
 
-      console.log(`✅ Pipeline pool assembled for ${virtualModel.id}: ${pipelines.size} pipelines, health: ${pool.healthStatus}`);
+      this.logInfo('Pipeline pool assembled', { virtualModelId: virtualModel.id, pipelineCount: pipelines.size, healthStatus: pool.healthStatus }, 'assembly-process');
       return pool;
 
     } catch (error) {
-      console.error(`❌ Failed to assemble pipeline pool for ${virtualModel.id}:`, error);
+      this.logError('Failed to assemble pipeline pool', { virtualModelId: virtualModel.id, error: error.message || error }, 'assembly-process');
 
       return {
         virtualModelId: virtualModel.id,
@@ -1255,7 +1261,7 @@ export class PipelineAssembler {
       return new Pipeline(pipelineConfig, this.pipelineTracker);
 
     } catch (error) {
-      console.error(`❌ Failed to create pipeline from target ${targetConfig.providerId}:${targetConfig.modelId}:`, error);
+      this.logError('Failed to create pipeline from target', { providerId: targetConfig.providerId, modelId: targetConfig.modelId, error: error.message || error }, 'assembly-process');
       return null;
     }
   }
@@ -1333,7 +1339,7 @@ export class PipelineAssembler {
    * 重新加载provider并重新组装流水线
    */
   async reloadProviders(): Promise<void> {
-    console.log('🔄 Reloading providers and reassembling pipelines...');
+    this.logInfo('Reloading providers and reassembling pipelines', {}, 'reload-process');
 
     // Clear existing pools temporarily
     const existingPools = new Map(this.pipelinePools);
@@ -1343,7 +1349,7 @@ export class PipelineAssembler {
     try {
       // Rediscover providers
       const providers = await this.discoverProviders();
-      console.log(`✅ Rediscovered ${providers.size} providers`);
+      this.logInfo('Providers rediscovered', { count: providers.size }, 'reload-process');
 
       // Reassemble pipelines for existing virtual models
       for (const [virtualModelId, oldPool] of existingPools.entries()) {
@@ -1353,16 +1359,16 @@ export class PipelineAssembler {
           const newPool = await this.assemblePipelinePool(virtualModelConfig, providers);
 
           this.pipelinePools.set(virtualModelId, newPool);
-          console.log(`✅ Reassembled pipeline pool for ${virtualModelId}`);
+          this.logInfo('Pipeline pool reassembled', { virtualModelId }, 'reload-process');
         } catch (error) {
-          console.error(`❌ Failed to reassemble pipeline pool for ${virtualModelId}:`, error);
+          this.logError('Failed to reassemble pipeline pool', { virtualModelId, error: error.message || error }, 'reload-process');
         }
       }
 
-      console.log('✅ Provider reload and pipeline reassembly completed');
+      this.logInfo('Provider reload and pipeline reassembly completed', {}, 'reload-process');
 
     } catch (error) {
-      console.error('❌ Provider reload failed:', error);
+      this.logError('Provider reload failed', error, 'reload-process');
       // Restore previous state on failure
       this.pipelinePools = existingPools;
       throw error;
@@ -1413,7 +1419,7 @@ export class PipelineAssembler {
    * 设置虚拟模型调度器
    */
   setVirtualModelScheduler(scheduler: VirtualModelSchedulerManager): void {
-    console.log('🔗 Setting VirtualModelSchedulerManager for PipelineAssembler');
+    this.logInfo('Setting VirtualModelSchedulerManager for PipelineAssembler', {}, 'initialization');
     this.virtualModelScheduler = scheduler;
   }
 
@@ -1469,7 +1475,7 @@ export class PipelineAssembler {
    * 清理资源
    */
   destroy(): void {
-    console.log('🧹 Destroying Pipeline Assembler...');
+    this.logInfo('Destroying Pipeline Assembler', {}, 'shutdown');
 
     // Destroy all pipelines in pools
     for (const pool of this.pipelinePools.values()) {
@@ -1483,6 +1489,6 @@ export class PipelineAssembler {
     this.pipelinePools.clear();
     this.discoveredProviders.clear();
 
-    console.log('✅ Pipeline Assembler destroyed');
+    this.logInfo('Pipeline Assembler destroyed', {}, 'shutdown');
   }
 }

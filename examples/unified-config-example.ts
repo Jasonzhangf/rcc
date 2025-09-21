@@ -6,13 +6,10 @@
 import {
   createConfigManager,
   createValidator,
-  createMigrator,
   ConfigValidator,
-  ConfigMigrator,
   ConfigManagerFactory,
   type UnifiedConfig,
-  type ConfigValidationResult,
-  type MigrationResult
+  type ConfigValidationResult
 } from '../src/config/index.js';
 
 /**
@@ -100,62 +97,11 @@ async function validationExample() {
 }
 
 /**
- * 配置迁移示例
+ * 配置迁移示例 - 已移除 (ConfigMigrator was unused)
  */
-async function migrationExample() {
-  console.log('\n🔄 Configuration Migration Example');
-
-  const migrator = createMigrator({
-    backup: true,
-    dryRun: false,
-    autoFixErrors: true,
-    generateReport: true
-  });
-
-  try {
-    // 检查是否需要迁移
-    const needsMigration = await MigrationUtils.needsMigration('./old-config.json');
-    console.log(`Needs migration: ${needsMigration}`);
-
-    if (needsMigration) {
-      // 执行迁移
-      const result: MigrationResult = await migrator.migrateConfigFile(
-        './old-config.json',
-        './new-config.json'
-      );
-
-      console.log('Migration Result:', {
-        success: result.success,
-        originalPath: result.originalPath,
-        newPath: result.newPath,
-        backupPath: result.backupPath,
-        changes: result.changes.length,
-        warnings: result.warnings.length
-      });
-
-      // 显示变更详情
-      if (result.changes.length > 0) {
-        console.log('\n📋 Changes made:');
-        result.changes.forEach(change => {
-          console.log(`   • ${change.type}: ${change.path} - ${change.reason}`);
-        });
-      }
-
-      // 显示迁移报告
-      if (result.report) {
-        console.log('\n📊 Migration Report:');
-        console.log(`   Source version: ${result.report.sourceVersion}`);
-        console.log(`   Target version: ${result.report.targetVersion}`);
-        console.log(`   Total changes: ${result.report.totalChanges}`);
-        console.log(`   Breaking changes: ${result.report.breakingChanges}`);
-        console.log(`   Compatible changes: ${result.report.compatibleChanges}`);
-      }
-    }
-
-  } catch (error) {
-    console.error('❌ Migration failed:', error);
-  }
-}
+// async function migrationExample() {
+//   Migration example removed as ConfigMigrator was unused
+// }
 
 /**
  * 配置模板生成示例
@@ -336,25 +282,8 @@ async function batchManagementExample() {
     }
   });
 
-  // 批量迁移配置
-  const migrator = createMigrator({
-    backup: true,
-    dryRun: true, // 预览模式
-    generateReport: true
-  });
-
-  try {
-    const migrationResults = await migrator.batchMigrate('./configs', '*.json');
-
-    console.log('\n🔄 Batch migration results:');
-    migrationResults.forEach(result => {
-      const status = result.success ? '✅' : '❌';
-      console.log(`${status} ${result.originalPath}: ${result.changes.length} changes`);
-    });
-
-  } catch (error) {
-    console.error('❌ Batch migration failed:', error);
-  }
+  // 批量迁移配置 - 已移除 (ConfigMigrator was unused)
+  console.log('\n🔄 Batch migration functionality removed (ConfigMigrator was unused)');
 }
 
 /**
@@ -457,7 +386,7 @@ async function runAllExamples() {
   const examples = [
     basicUsageExample,
     validationExample,
-    migrationExample,
+    // migrationExample, // Removed - ConfigMigrator was unused
     templateExample,
     advancedConfigExample,
     dependencyValidationExample,
@@ -492,7 +421,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 export {
   basicUsageExample,
   validationExample,
-  migrationExample,
+  // migrationExample, // Removed - ConfigMigrator was unused
   templateExample,
   advancedConfigExample,
   dependencyValidationExample,

@@ -11,57 +11,20 @@ import {
   ProtocolType,
   ProtocolConversion,
   PipelineExecutionContext,
-  ModuleConfig
+  ModuleConfig,
+  ProtocolTransformer
 } from '../interfaces/ModularInterfaces';
+import {
+  StandardRequest,
+  StandardResponse,
+  StandardErrorResponse
+} from '../interfaces/StandardInterfaces';
 
 // 重新导出类型以便其他模块使用
 export type { ProtocolType } from '../interfaces/ModularInterfaces';
+export type { ProtocolTransformer } from '../interfaces/ModularInterfaces';
 import * as fs from 'fs';
 import * as path from 'path';
-
-// 简化的标准接口定义
-interface StandardRequest {
-  protocol: ProtocolType;
-  payload: any;
-  metadata: {
-    traceId?: string;
-    sessionId?: string;
-    requestId?: string;
-    timestamp?: number;
-    [key: string]: any;
-  };
-}
-
-interface StandardResponse {
-  protocol: ProtocolType;
-  payload: any;
-  metadata: {
-    traceId?: string;
-    sessionId?: string;
-    requestId?: string;
-    timestamp?: number;
-    processingTime?: number;
-    transformerName?: string;
-    [key: string]: any;
-  };
-}
-
-interface StandardErrorResponse {
-  protocol: ProtocolType;
-  error: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  metadata: {
-    traceId?: string;
-    sessionId?: string;
-    requestId?: string;
-    timestamp?: number;
-    processingTime?: number;
-    [key: string]: any;
-  };
-}
 
 // 简化的映射表接口
 interface MappingTable {
@@ -83,36 +46,6 @@ export interface TransformContext {
   direction: 'request' | 'response';
   traceId?: string;
   timestamp?: number;
-}
-
-/**
- * 转换器接口
- */
-export interface ProtocolTransformer {
-  readonly name: string;
-  readonly sourceProtocol: ProtocolType;
-  readonly targetProtocol: ProtocolType;
-  readonly version: string;
-
-  /**
-   * 转换请求
-   */
-  transformRequest(request: any): StandardRequest;
-
-  /**
-   * 转换响应
-   */
-  transformResponse(response: StandardResponse): any;
-
-  /**
-   * 验证输入协议
-   */
-  validateInput(request: any): { isValid: boolean; errors: string[] };
-
-  /**
-   * 验证输出协议
-   */
-  validateOutput(response: any): { isValid: boolean; errors: string[] };
 }
 
 /**

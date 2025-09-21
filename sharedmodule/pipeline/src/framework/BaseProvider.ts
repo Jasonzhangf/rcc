@@ -3,7 +3,7 @@
  * Provider基类（包含标准OpenAI处理）
  */
 
-import { PipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
+import { UnifiedPipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
 import { ErrorHandlingCenter as ErrorHandlingCenterImpl } from 'rcc-errorhandling';
 import {
   OpenAIChatRequest,
@@ -58,7 +58,7 @@ export interface CompatibilityModule {
   mapResponse: (response: any) => any;
 }
 
-export abstract class BaseProvider extends PipelineBaseModule {
+export abstract class BaseProvider extends UnifiedPipelineBaseModule {
   protected endpoint?: string;
   protected supportedModels: string[];
   protected defaultModel?: string;

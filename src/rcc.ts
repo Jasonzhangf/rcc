@@ -25,7 +25,7 @@ import {
 } from './types';
 
 // Import wrapper generation functions from config-parser
-import { generateAllWrappers } from '../sharedmodule/config-parser/src/index';
+import { generateAllWrappers } from 'rcc-config-parser';
 import { WrapperGenerator, ConfigValidator } from './utils/config-validation';
 
 // Get current directory for ES modules
@@ -651,7 +651,9 @@ async function setupDebugSystem(
 
     return { systemStartSessionId, debugCenter };
   } catch (error) {
-    console.log(`⚠️  Two-phase debug initialization failed: ${error.message}`);
+    console.log(
+      `⚠️  Two-phase debug initialization failed: ${error instanceof Error ? error.message : String(error)}`
+    );
     return { systemStartSessionId: '', debugCenter: null };
   }
 }
@@ -808,8 +810,8 @@ program
       process.on('SIGTERM', shutdown);
     } catch (error) {
       console.error('\n❌ RCC System Startup Failed:');
-      console.error(`   Error: ${error.message}`);
-      if (options.verbose && error.stack) {
+      console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
+      if (options.verbose && error instanceof Error && error.stack) {
         console.error('   Stack:', error.stack);
       }
       process.exit(1);

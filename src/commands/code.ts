@@ -1,4 +1,5 @@
 import { CLICommand } from '../types/cli-types';
+import type { ChildProcess } from 'child_process';
 
 const codeCommand: CLICommand = {
   name: 'code',
@@ -25,9 +26,10 @@ const codeCommand: CLICommand = {
     'rcc code --config ~/.route-claudecode/config/v4/single-provider/lmstudio-v4-4008.json',
   ],
   async execute({ args, options, logger }) {
-    const port = options.port || 4008; // Default port 4008
+    const port = (options['port'] as number) || 4008; // Default port 4008
     const configPath =
-      options.config || `~/.route-claudecode/config/v4/single-provider/lmstudio-v4-${port}.json`;
+      (options['config'] as string) ||
+      `~/.route-claudecode/config/v4/single-provider/lmstudio-v4-${port}.json`;
 
     try {
       const fs = await import('fs/promises');
@@ -60,12 +62,12 @@ const codeCommand: CLICommand = {
         // Start the service
         const child = spawn(
           'node',
-          ['start-rcc-system.mjs', '--config', configPath, '--port', port],
+          ['start-rcc-system.mjs', '--config', configPath, '--port', String(port)],
           {
             detached: true,
             stdio: 'ignore',
           }
-        );
+        ) as ChildProcess;
 
         // Create PID file
         const pidData = {
@@ -86,8 +88,8 @@ const codeCommand: CLICommand = {
       logger.info('Configuring local environment for Claude...');
 
       // Set environment variables
-      process.env.ANTHROPIC_BASE_URL = `http://localhost:${port}`;
-      process.env.ANTHROPIC_API_KEY = 'rcc4-proxy-key';
+      (process.env as any).ANTHROPIC_BASE_URL = `http://localhost:${port}`;
+      (process.env as any).ANTHROPIC_API_KEY = 'rcc4-proxy-key';
 
       // Execute Claude command
       const claudeArgs = args.length > 0 ? args : ['--print', '列出本目录中所有文件夹'];

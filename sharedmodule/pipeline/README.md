@@ -3191,10 +3191,6 @@ curl http://localhost:8080/api/v1/pipeline/debug/logs
   - 提供阶段工厂和管理器接口
   - 支持阶段状态和数据管理
 
-- **`ILogEntries.ts`** - 日志条目接口，集成rcc-basemodule的PipelineIOEntry
-  - 定义日志条目的标准格式和I/O跟踪接口
-  - 提供日志类型和级别定义
-
 - **`IAuthManager.ts`** - 认证管理器接口
   - 定义认证管理的标准接口
   - 支持多种认证方式的抽象
@@ -3249,8 +3245,7 @@ RCC Pipeline Module (sharedmodule/pipeline)
 ├── 跟踪层 (Tracking Layer)
 │   ├── PipelineTracker (请求跟踪器)
 │   ├── IRequestContext (请求上下文接口)
-│   ├── IPipelineStage (流水线阶段接口)
-│   └── ILogEntries (日志条目接口)
+│   └── IPipelineStage (流水线阶段接口)
 ├── 提供者层 (Provider Layer)
 │   ├── BaseProvider (基础提供者抽象)
 │   ├── QwenProvider (Qwen AI提供者)

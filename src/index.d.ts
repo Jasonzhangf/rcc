@@ -3,6 +3,12 @@
  * TypeScript Declaration File for Main Entry Module
  */
 
+import { DebugCenterModule } from 'rcc-debugcenter';
+
+declare global {
+  var debugCenter: DebugCenterModule;
+  var systemStartSessionId: string;
+}
 export * from './config';
 
 export {

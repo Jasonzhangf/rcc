@@ -5,6 +5,7 @@
  */
 
 import { PipelineStage, ErrorCategory, ErrorSeverity, ExecutionContextFactory, ExecutionContextOptions, ModuleInfo, PipelineExecutionContext } from '../core/PipelineExecutionContext';
+import { StandardRequest, StandardResponse } from './StandardInterfaces';
 
 // Re-export core types for convenience
 export { PipelineStage, ErrorCategory, ErrorSeverity, ExecutionContextFactory, ExecutionContextOptions, ModuleInfo, PipelineExecutionContext } from '../core/PipelineExecutionContext';
@@ -471,11 +472,11 @@ export interface ProtocolTransformer {
   /**
    * 转换请求
    */
-  transformRequest(request: any): any;
+  transformRequest(request: any): StandardRequest;
   /**
    * 转换响应
    */
-  transformResponse(response: any): any;
+  transformResponse(response: StandardResponse): any;
   /**
    * 验证输入
    */

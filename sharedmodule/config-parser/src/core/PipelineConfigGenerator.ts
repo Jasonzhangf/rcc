@@ -112,7 +112,7 @@ export class PipelineConfigGenerator extends BaseModule {
   /**
    * 初始化生成器
    */
-  public async initialize(): Promise<void> {
+  public override async initialize(): Promise<void> {
     await super.initialize();
 
     this.logInfo('PipelineConfigGenerator initialized successfully');
@@ -164,7 +164,9 @@ export class PipelineConfigGenerator extends BaseModule {
     record.endTime = Date.now();
     record.status = error ? 'failed' : 'completed';
     record.output = output;
-    record.error = error;
+    if (error) {
+      record.error = error;
+    }
 
     if (record.performance) {
       record.performance.processingTime = record.endTime - record.startTime;
@@ -263,7 +265,7 @@ export class PipelineConfigGenerator extends BaseModule {
   /**
    * 销毁生成器
    */
-  public async destroy(): Promise<void> {
+  public override async destroy(): Promise<void> {
     this.logInfo('Destroying PipelineConfigGenerator');
 
     // 清理执行记录

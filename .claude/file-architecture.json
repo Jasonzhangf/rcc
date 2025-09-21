@@ -1,0 +1,268 @@
+{
+  "module": "rcc-root",
+  "sourceReadme": "PROJECT_STRUCTURE.md",
+  "lastUpdated": "2025-09-21T16:30:00Z",
+  "structure": {
+    ".claude/": {
+      "type": "directory",
+      "purpose": "Claude Code configuration and scripts",
+      "description": "Claude Code相关配置和脚本",
+      "category": "config",
+      "allowed": true
+    },
+    "config/": {
+      "type": "directory",
+      "purpose": "Project configuration files",
+      "description": "项目配置文件目录",
+      "category": "config",
+      "allowed": true
+    },
+    "system-config/": {
+      "type": "directory",
+      "purpose": "Internal system configuration for modules",
+      "description": "内部系统配置目录",
+      "category": "config",
+      "allowed": true
+    },
+    "src/": {
+      "type": "directory",
+      "purpose": "Main source code",
+      "description": "主要源代码目录",
+      "category": "source",
+      "allowed": true
+    },
+    "sharedmodule/": {
+      "type": "directory",
+      "purpose": "RCC modules directory",
+      "description": "RCC模块目录",
+      "category": "source",
+      "allowed": true
+    },
+    "docs/": {
+      "type": "directory",
+      "purpose": "Project documentation",
+      "description": "项目文档目录",
+      "category": "docs",
+      "allowed": true
+    },
+    "examples/": {
+      "type": "directory",
+      "purpose": "Example code",
+      "description": "示例代码目录",
+      "category": "source",
+      "allowed": true
+    },
+    "tests/": {
+      "type": "directory",
+      "purpose": "Test files",
+      "description": "测试文件目录",
+      "category": "test",
+      "allowed": true
+    },
+    "tools/": {
+      "type": "directory",
+      "purpose": "Development tools",
+      "description": "开发工具目录",
+      "category": "scripts",
+      "allowed": true
+    },
+    "scripts/": {
+      "type": "directory",
+      "purpose": "Build and automation scripts",
+      "description": "构建和自动化脚本",
+      "category": "scripts",
+      "allowed": true
+    },
+    "archives/": {
+      "type": "directory",
+      "purpose": "Archive files",
+      "description": "归档文件目录",
+      "category": "data",
+      "allowed": true
+    },
+    "tmp/": {
+      "type": "directory",
+      "purpose": "Temporary files",
+      "description": "临时文件目录",
+      "category": "data",
+      "allowed": true
+    },
+    "dist/": {
+      "type": "directory",
+      "purpose": "Build output",
+      "description": "构建输出目录",
+      "category": "build",
+      "allowed": true
+    },
+    "types/": {
+      "type": "directory",
+      "purpose": "TypeScript definitions",
+      "description": "TypeScript类型定义",
+      "category": "source",
+      "allowed": true
+    },
+    "node_modules/": {
+      "type": "directory",
+      "purpose": "Node.js dependencies",
+      "description": "Node.js依赖目录",
+      "category": "build",
+      "allowed": true
+    },
+    ".git/": {
+      "type": "directory",
+      "purpose": "Git version control",
+      "description": "Git版本控制目录",
+      "category": "config",
+      "allowed": true
+    },
+    ".rcc/": {
+      "type": "directory",
+      "purpose": "RCC configuration (temporary)",
+      "description": "RCC配置目录（临时保留）",
+      "category": "config",
+      "allowed": true
+    },
+    ".codebuddy/": {
+      "type": "directory",
+      "purpose": "CodeBuddy configuration",
+      "description": "CodeBuddy配置目录",
+      "category": "config",
+      "allowed": true
+    },
+    ".iflow/": {
+      "type": "directory",
+      "purpose": "iFlow configuration",
+      "description": "iFlow配置目录",
+      "category": "config",
+      "allowed": true
+    },
+    "package.json": {
+      "type": "file",
+      "purpose": "Project dependencies and scripts",
+      "description": "项目依赖和脚本配置",
+      "category": "config",
+      "required": true,
+      "allowed": true
+    },
+    "package-lock.json": {
+      "type": "file",
+      "purpose": "Dependency lock file",
+      "description": "依赖版本锁定文件",
+      "category": "config",
+      "allowed": true
+    },
+    "README.md": {
+      "type": "file",
+      "purpose": "Main project documentation",
+      "description": "项目主文档",
+      "category": "docs",
+      "required": true,
+      "allowed": true
+    },
+    "CLAUDE.md": {
+      "type": "file",
+      "purpose": "Development guidelines and rules",
+      "description": "开发指引和规则",
+      "category": "docs",
+      "allowed": true
+    },
+    "rules.md": {
+      "type": "file",
+      "purpose": "Project rules and guidelines",
+      "description": "项目规则和指南",
+      "category": "docs",
+      "allowed": true
+    },
+    "todo.md": {
+      "type": "file",
+      "purpose": "Task and todo list",
+      "description": "任务清单",
+      "category": "docs",
+      "allowed": true
+    },
+    "LICENSE": {
+      "type": "file",
+      "purpose": "Project license",
+      "description": "项目许可证",
+      "category": "docs",
+      "allowed": true
+    },
+    "PROJECT_STRUCTURE.md": {
+      "type": "file",
+      "purpose": "Project structure documentation",
+      "description": "项目结构文档",
+      "category": "docs",
+      "allowed": true
+    },
+    "README_STANDARD_TEMPLATE.md": {
+      "type": "file",
+      "purpose": "README standard template",
+      "description": "README标准模板",
+      "category": "docs",
+      "allowed": true
+    },
+    "tsconfig.json": {
+      "type": "file",
+      "purpose": "TypeScript configuration",
+      "description": "TypeScript配置文件",
+      "category": "config",
+      "allowed": true
+    },
+    "tsconfig.build.json": {
+      "type": "file",
+      "purpose": "TypeScript build configuration",
+      "description": "TypeScript构建配置",
+      "category": "config",
+      "allowed": true
+    },
+    "tsconfig.declaration.json": {
+      "type": "file",
+      "purpose": "TypeScript declaration configuration",
+      "description": "TypeScript声明配置",
+      "category": "config",
+      "allowed": true
+    },
+    "rollup.config.js": {
+      "type": "file",
+      "purpose": "Rollup build configuration",
+      "description": "Rollup构建配置",
+      "category": "config",
+      "allowed": true
+    },
+    "rollup.config.esm.js": {
+      "type": "file",
+      "purpose": "Rollup ESM configuration",
+      "description": "Rollup ESM配置",
+      "category": "config",
+      "allowed": true
+    },
+    "rollup.config.mjs": {
+      "type": "file",
+      "purpose": "Rollup configuration module",
+      "description": "Rollup配置模块",
+      "category": "config",
+      "allowed": true
+    },
+    "rcc": {
+      "type": "file",
+      "purpose": "RCC executable script",
+      "description": "RCC可执行脚本",
+      "category": "scripts",
+      "allowed": true
+    },
+    "rcc.mjs": {
+      "type": "file",
+      "purpose": "RCC main module",
+      "description": "RCC主模块",
+      "category": "source",
+      "allowed": true
+    },
+    "CODEBUDDY.md": {
+      "type": "file",
+      "purpose": "CodeBuddy documentation",
+      "description": "CodeBuddy相关文档",
+      "category": "docs",
+      "allowed": true
+    }
+  }
+}

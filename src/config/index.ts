@@ -16,7 +16,7 @@ export {
 
 export { ConfigValidator } from './ConfigValidator.js';
 
-export { ConfigMigrator, MigrationUtils } from './ConfigMigrator.js';
+// ConfigMigrator removed as it was unused
 
 // Utility exports
 export { CONFIG_FILE_NAMES, CONFIG_SEARCH_PATHS, unifiedConfigSchema } from '../types/config.js';
@@ -31,12 +31,7 @@ export type {
   UnifiedConfigType,
 } from '../types/config.js';
 
-export type {
-  MigrationOptions,
-  MigrationResult,
-  ConfigChange,
-  MigrationReport,
-} from './ConfigMigrator.js';
+// ConfigMigrator types removed as they were unused
 
 // Convenience factory functions
 export function createConfigManager(
@@ -51,8 +46,4 @@ export function createValidator(): ConfigValidator {
   return new ConfigValidator();
 }
 
-export function createMigrator(
-  options?: import('./ConfigMigrator.js').MigrationOptions
-): ConfigMigrator {
-  return new ConfigMigrator(options);
-}
+// createMigrator removed as ConfigMigrator was unused

@@ -10,11 +10,8 @@ import chalk from 'chalk';
 import {
   UnifiedConfigManager,
   ConfigValidator,
-  ConfigMigrator,
-  MigrationUtils,
   createConfigManager,
   createValidator,
-  createMigrator,
 } from './index.js';
 
 /**
@@ -56,7 +53,6 @@ export class ConfigCLI {
   private setupCommands(): void {
     this.setupValidateCommand();
     this.setupInitCommand();
-    this.setupMigrateCommand();
     this.setupShowCommand();
     this.setupEditCommand();
     this.setupTemplateCommand();
@@ -165,92 +161,7 @@ export class ConfigCLI {
       });
   }
 
-  /**
-   * 设置迁移命令
-   */
-  private setupMigrateCommand(): void {
-    this.program
-      .command('migrate')
-      .description('Migrate old configuration to new format')
-      .option('-i, --input <path>', 'Input configuration file')
-      .option('-o, --output <path>', 'Output configuration file')
-      .option('-b, --no-backup', 'Skip creating backup')
-      .option('-s, --scan <directory>', 'Scan directory for old configurations')
-      .option('-p, --pattern <pattern>', 'File pattern for scanning', '*config*.json')
-      .action(async (options) => {
-        try {
-          console.log(chalk.blue('🚀 Migrating configuration...'));
-
-          const migrator = createMigrator({
-            backup: options.backup,
-            dryRun: options.dryRun,
-            autoFixErrors: true,
-            generateReport: true,
-          });
-
-          if (options.scan) {
-            // Batch migration
-            console.log(chalk.blue(`📁 Scanning directory: ${options.scan}`));
-            const results = await migrator.batchMigrate(options.scan, options.pattern);
-
-            console.log(chalk.green(`✅ Migration completed for ${results.length} files:`));
-
-            for (const result of results) {
-              const status = result.success ? chalk.green('✅') : chalk.red('❌');
-              console.log(`${status} ${result.originalPath} → ${result.newPath}`);
-
-              if (!result.success) {
-                console.log(chalk.red(`   Error: ${result.validation.errors[0]?.message}`));
-              }
-            }
-          } else if (options.input) {
-            // Single file migration
-            const result = await migrator.migrateConfigFile(options.input, options.output);
-
-            console.log(chalk.green(`✅ Migration completed:`));
-            console.log(`   From: ${result.originalPath}`);
-            console.log(`   To: ${result.newPath}`);
-
-            if (result.backupPath) {
-              console.log(`   Backup: ${result.backupPath}`);
-            }
-
-            this.displayValidationResults(result.validation, options);
-
-            if (result.report) {
-              console.log(chalk.blue(`\n📊 Migration Report:`));
-              console.log(`   Total changes: ${result.report.totalChanges}`);
-              console.log(`   Breaking changes: ${result.report.breakingChanges}`);
-              console.log(`   Compatible changes: ${result.report.compatibleChanges}`);
-
-              if (result.report.requiredActions.length > 0) {
-                console.log(chalk.yellow('\n⚠️ Required Actions:'));
-                for (const action of result.report.requiredActions) {
-                  console.log(`   • ${action}`);
-                }
-              }
-
-              if (result.report.recommendations.length > 0) {
-                console.log(chalk.blue('\n💡 Recommendations:'));
-                for (const recommendation of result.report.recommendations) {
-                  console.log(`   • ${recommendation}`);
-                }
-              }
-            }
-          } else {
-            console.log(chalk.red('❌ Please specify either --input or --scan option'));
-            process.exit(1);
-          }
-        } catch (error) {
-          console.error(
-            chalk.red(
-              `❌ Migration failed: ${error instanceof Error ? error.message : String(error)}`
-            )
-          );
-          process.exit(1);
-        }
-      });
-  }
+  // setupMigrateCommand removed as ConfigMigrator was unused
 
   /**
    * 设置显示命令
@@ -579,7 +490,7 @@ export class ConfigCLI {
 
     for (const configPath of possiblePaths) {
       const expandedPath = configPath.startsWith('~')
-        ? path.join(process.env.HOME || '', configPath.slice(1))
+        ? path.join((process.env as any).HOME || '', configPath.slice(1))
         : path.resolve(configPath);
 
       if (this.fileExists(expandedPath)) {
@@ -594,7 +505,7 @@ export class ConfigCLI {
    * 获取当前环境
    */
   private getEnvironment(): 'development' | 'staging' | 'production' {
-    const env = process.env.NODE_ENV || 'development';
+    const env = (process.env as any).NODE_ENV || 'development';
     switch (env.toLowerCase()) {
       case 'staging':
         return 'staging';
@@ -623,7 +534,7 @@ export class ConfigCLI {
    */
   private async writeConfigFile(config: any, filePath: string): Promise<void> {
     const expandedPath = filePath.startsWith('~')
-      ? path.join(process.env.HOME || '', filePath.slice(1))
+      ? path.join((process.env as any).HOME || '', filePath.slice(1))
       : path.resolve(filePath);
 
     const dir = path.dirname(expandedPath);

@@ -8,6 +8,7 @@ import { PipelineTarget } from './Pipeline';
 import { VirtualModelConfig } from '../types/virtual-model';
 import QwenProvider from '../providers/qwen';
 import IFlowProvider from '../providers/iflow';
+import { UnifiedPipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
 
 export interface ProviderDiscoveryOptions {
   enabledProviders?: string[]; // Specific providers to enable, if empty enable all
@@ -34,12 +35,19 @@ export interface DiscoveredProvider {
   error?: string;
 }
 
-export class ModuleScanner {
+export class ModuleScanner extends UnifiedPipelineBaseModule {
   private availableProviders: Map<string, ProviderInfo> = new Map();
   private providerInstances: Map<string, BaseProvider> = new Map();
   private isInitialized: boolean = false;
 
   constructor() {
+    super({
+      id: 'module-scanner',
+      name: 'Module Scanner',
+      version: '1.0.0',
+      description: 'Discovers and manages available providers'
+    } as PipelineModuleConfig);
+
     this.initializeProviderRegistry();
   }
 
@@ -185,13 +193,13 @@ export class ModuleScanner {
           ProviderClass = IFlowProvider;
           break;
         default:
-          console.warn(`Unknown provider ${providerInfo.id}`);
+          this.logWarn('Unknown provider', { providerId: providerInfo.id }, 'provider-scanning');
           return null;
       }
 
       // Configuration must be provided from config file - no hardcoded defaults
       if (!providerConfig) {
-        console.error(`Provider ${providerInfo.id} requires configuration from config file`);
+        this.logError('Provider requires configuration from config file', { providerId: providerInfo.id }, 'provider-scanning');
         return null;
       }
 
@@ -202,7 +210,7 @@ export class ModuleScanner {
 
       return provider as BaseProvider;
     } catch (error) {
-      console.error(`Failed to load provider ${providerInfo.id}:`, error);
+      this.logError('Failed to load provider', { providerId: providerInfo.id, error: error.message || error }, 'provider-scanning');
       return null;
     }
   }
@@ -284,7 +292,7 @@ export class ModuleScanner {
     virtualModel.targets.forEach(targetConfig => {
       const provider = this.getProvider(targetConfig.providerId);
       if (!provider) {
-        console.warn(`Provider ${targetConfig.providerId} not found for virtual model ${virtualModel.id}`);
+        this.logWarn('Provider not found for virtual model', { providerId: targetConfig.providerId, virtualModelId: virtualModel.id }, 'target-creation');
         return;
       }
 

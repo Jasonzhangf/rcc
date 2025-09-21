@@ -169,6 +169,6 @@ export declare class ConfigParser extends BaseModule {
     /**
      * 处理系统消息
      */
-    protected handleMessage(message: any): Promise<any>;
+    handleMessage(message: any): Promise<any>;
 }
 //# sourceMappingURL=ConfigParser.d.ts.map

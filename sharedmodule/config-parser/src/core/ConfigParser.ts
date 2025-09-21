@@ -46,7 +46,7 @@ export class ConfigParser extends BaseModule {
   /**
    * 初始化解析器
    */
-  public async initialize(): Promise<void> {
+  public override async initialize(): Promise<void> {
     await super.initialize();
 
     this.logInfo('ConfigParser initialized successfully');
@@ -223,6 +223,7 @@ export class ConfigParser extends BaseModule {
 
       const virtualModel: VirtualModelConfig = {
         id: vmId,
+        name: vmId, // Use ID as name
         targets: targets,
         enabled: (rawVm as any).enabled !== false,
         priority: (rawVm as any).priority || 1
@@ -614,7 +615,7 @@ export class ConfigParser extends BaseModule {
   /**
    * 销毁解析器
    */
-  public async destroy(): Promise<void> {
+  public override async destroy(): Promise<void> {
     const operationId = `destroy-config-parser-${Date.now()}`;
     this.startIOTracking(operationId, null, 'destroy');
 
@@ -783,24 +784,15 @@ export class ConfigParser extends BaseModule {
       const transformedVm: VirtualModelConfig = {
         id: vmId,
         name: vmConfig.id, // Use ID as name for now
-        modelId: vmConfig.targets[0]?.modelId || '', // Use first target as primary
-        provider: vmConfig.targets[0]?.providerId || '', // Use first target as primary
-        enabled: vmConfig.enabled,
         targets: vmConfig.targets.map(target => ({
           providerId: target.providerId,
           modelId: target.modelId,
-          weight: vmConfig.weight || 1.0,
           enabled: true,
+          weight: vmConfig.weight || 1.0,
           keyIndex: target.keyIndex || 0
         })),
-        capabilities: ['chat', 'function-calling'], // Default capabilities
-        metadata: {
-          priority: vmConfig.priority,
-          weight: vmConfig.weight,
-          targetCount: vmConfig.targets.length
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        enabled: vmConfig.enabled,
+        priority: vmConfig.priority
       };
 
       transformed.push(transformedVm);
@@ -929,7 +921,7 @@ export class ConfigParser extends BaseModule {
   /**
    * 处理系统消息
    */
-  protected async handleMessage(message: any): Promise<any> {
+  public override async handleMessage(message: any): Promise<any> {
     switch (message.type) {
       case 'module_registered':
         // 处理模块注册消息，记录模块信息

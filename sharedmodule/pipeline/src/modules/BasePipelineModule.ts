@@ -1,17 +1,25 @@
-import { BaseModule, ModuleInfo, ValidationRule } from 'rcc-basemodule';
+import { UnifiedPipelineBaseModule, PipelineModuleConfig } from './PipelineBaseModule';
+import { ModuleInfo, ValidationRule } from 'rcc-basemodule';
 
 /**
  * Abstract base class for all pipeline modules
  * Extends BaseModule with pipeline-specific functionality
  */
-export abstract class BasePipelineModule extends BaseModule {
-  protected moduleName: string;
+export abstract class BasePipelineModule extends UnifiedPipelineBaseModule {
   protected validationRules: ValidationRule[] = [];
 
   constructor(info: ModuleInfo) {
-    super(info);
-    this.moduleName = info.name || info.id || 'unknown';
-    this.logInfo(`BasePipelineModule initialized: ${this.moduleName}`);
+    // Convert ModuleInfo to PipelineModuleConfig for the unified base class
+    const pipelineConfig: PipelineModuleConfig = {
+      id: info.id,
+      name: info.name,
+      version: info.version || '1.0.0',
+      description: info.description || 'Pipeline module',
+      type: info.type as any || 'pipeline'
+    };
+
+    super(pipelineConfig);
+    this.logInfo(`BasePipelineModule initialized: ${info.name}`);
   }
 
   /**
@@ -22,16 +30,7 @@ export abstract class BasePipelineModule extends BaseModule {
    */
   abstract process(request: any): Promise<any>;
 
-  /**
-   * Configure method - Configure the module with settings
-   * @param config - Configuration object
-   * @returns Promise<void>
-   */
-  override configure(config: any): Promise<void> {
-    super.configure(config);
-    return Promise.resolve();
-  }
-
+  
   /**
    * Process response method - Handle response processing
    * @param response - Input response data
@@ -39,39 +38,7 @@ export abstract class BasePipelineModule extends BaseModule {
    */
   abstract processResponse?(response: any): Promise<any>;
 
-  /**
-   * Get module ID
-   * @returns string - Module ID
-   */
-  getId(): string {
-    return this.getInfo().id;
-  }
-
-  /**
-   * Get module name
-   * @returns string - Module name
-   */
-  getName(): string {
-    return this.moduleName;
-  }
-
-  /**
-   * Get module type
-   * @returns string - Module type
-   */
-  getType(): string {
-    return this.getInfo().type;
-  }
-
-  /**
-   * Check if module is configured
-   * @returns boolean - Whether module is configured
-   */
-  isConfigured(): boolean {
-    const config = this.getConfig();
-    return config !== undefined && Object.keys(config).length > 0;
-  }
-
+  
   /**
    * Log input data at input port
    * @param data - Input data
@@ -148,57 +115,4 @@ export abstract class BasePipelineModule extends BaseModule {
     };
   }
 
-  /**
-   * Handle messages (required by BaseModule abstract class)
-   */
-  public async handleMessage(message: any): Promise<any> {
-    switch (message.type) {
-      case 'getInfo':
-        return {
-          success: true,
-          data: this.getInfo()
-        };
-
-      case 'getName':
-        return {
-          success: true,
-          data: this.getName()
-        };
-
-      case 'getType':
-        return {
-          success: true,
-          data: this.getType()
-        };
-
-      case 'getId':
-        return {
-          success: true,
-          data: this.getId()
-        };
-
-      case 'getHealth':
-        return {
-          success: true,
-          data: this.getHealth()
-        };
-
-      case 'isConfigured':
-        return {
-          success: true,
-          data: this.isConfigured()
-        };
-
-      default:
-        // Handle unknown message types
-        this.warn(`Unknown message type: ${message.type}`, { message }, 'handleMessage');
-        return {
-          messageId: message.id,
-          correlationId: message.correlationId || '',
-          success: false,
-          error: `Unknown message type: ${message.type}`,
-          timestamp: Date.now()
-        };
-    }
   }
-}

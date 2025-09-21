@@ -4,29 +4,7 @@
  */
 
 import { PipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
-// Simple mock implementation for ErrorHandlingCenter
-class SimpleErrorHandlingCenter {
-  constructor(config: any) {
-    // Mock implementation
-  }
-
-  handleError(error: any): void {
-    // Mock implementation
-    console.error('Error handled:', error);
-  }
-
-  async destroy(): Promise<void> {
-    // Mock implementation
-  }
-}
-
-// Use mock if import fails
-let ErrorHandlingCenter: any;
-try {
-  ErrorHandlingCenter = require('rcc-errorhandling').ErrorHandlingCenter;
-} catch {
-  ErrorHandlingCenter = SimpleErrorHandlingCenter;
-}
+import { ErrorHandlingCenter as ErrorHandlingCenterImpl } from 'rcc-errorhandling';
 import {
   OpenAIChatRequest,
   OpenAIChatResponse

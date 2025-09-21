@@ -4,22 +4,7 @@
  */
 
 import { BaseModule, BaseModuleRecordingConfig } from 'rcc-basemodule';
-// Simple mock implementations
-
-class SimpleErrorHandlingCenter {
-  constructor(config: any) {
-    // Mock implementation
-  }
-
-  handleError(error: any): void {
-    // Mock implementation
-    console.error('Error handled:', error);
-  }
-
-  async destroy(): Promise<void> {
-    // Mock implementation
-  }
-}
+import { default as ErrorHandlingCenter } from 'rcc-errorhandling';
 
 class SimpleDebugCenter {
   constructor(config: any) {
@@ -55,14 +40,9 @@ class SimpleDebugCenter {
   }
 }
 
-// Use mocks if imports fail
-let ErrorHandlingCenterType: any;
+// Use real ErrorHandlingCenter
+const ErrorHandlingCenterType = ErrorHandlingCenter;
 let DebugCenterType: any;
-try {
-  ErrorHandlingCenterType = require('rcc-errorhandling').ErrorHandlingCenter;
-} catch {
-  ErrorHandlingCenterType = SimpleErrorHandlingCenter;
-}
 try {
   DebugCenterType = require('rcc-debugcenter').DebugCenter;
 } catch {

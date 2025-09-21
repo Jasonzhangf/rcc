@@ -324,9 +324,9 @@ export interface IProviderModule extends IPipelineModule {
   executeStreamingRequest(request: any, context: PipelineExecutionContext): AsyncGenerator<any>;
 
   /**
-   * 获取提供商信息
+   * 获取模块化提供商信息
    */
-  getProviderInfo(): ProviderInfo;
+  getModularProviderInfo(): ProviderInfo;
 
   /**
    * 检查健康状态

@@ -75,7 +75,7 @@ export class BaseProvider {
 export { LLMSwitchModule } from './modules/LLMSwitchModule';
 export { WorkflowModule } from './modules/WorkflowModule';
 export { CompatibilityModule } from './modules/CompatibilityModule';
-export { ProviderModule } from './modules/ProviderModule';
+// ProviderModule has been removed - real providers are now used directly
 export { BasePipelineModule } from './modules/BasePipelineModule';
 
 // Version info

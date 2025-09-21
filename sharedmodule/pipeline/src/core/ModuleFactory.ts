@@ -8,7 +8,8 @@ import { IModuleFactory, ILLMSwitch, IWorkflowModule, ICompatibilityModule, IPro
 import { LLMSwitchModule } from '../modules/LLMSwitchModule';
 import { WorkflowModule } from '../modules/WorkflowModule';
 import { CompatibilityModule } from '../modules/CompatibilityModule';
-import { ProviderModule } from '../modules/ProviderModule';
+import QwenProvider from '../providers/qwen';
+import IFlowProvider from '../providers/iflow';
 
 export class ModuleFactory implements IModuleFactory {
   private moduleRegistry: Map<string, new (config: ModuleConfig) => any> = new Map();
@@ -25,7 +26,7 @@ export class ModuleFactory implements IModuleFactory {
     this.registerModuleType('llmswitch', LLMSwitchModule);
     this.registerModuleType('workflow', WorkflowModule);
     this.registerModuleType('compatibility', CompatibilityModule);
-    this.registerModuleType('provider', ProviderModule);
+    // Provider modules are dynamically registered based on configuration
   }
 
   /**
@@ -93,15 +94,28 @@ export class ModuleFactory implements IModuleFactory {
    * 创建Provider模块实例
    */
   async createProviderModule(config: ModuleConfig): Promise<IProviderModule> {
-    const moduleClass = this.moduleRegistry.get('provider');
-    if (!moduleClass) {
-      throw new Error('未找到Provider模块实现');
+    if (!config.type || !config.config) {
+      throw new Error('Provider module configuration missing type or config');
     }
 
     try {
-      const module = new moduleClass(config);
-      await module.initialize(config);
-      return module as IProviderModule;
+      let provider: IProviderModule;
+
+      // 根据类型创建对应的Provider实例
+      switch (config.type.toLowerCase()) {
+        case 'qwen':
+          provider = new QwenProvider(config.config);
+          break;
+        case 'iflow':
+          provider = new IFlowProvider(config.config);
+          break;
+        default:
+          throw new Error(`Unsupported provider type: ${config.type}`);
+      }
+
+      // 初始化Provider
+      await provider.initialize(config);
+      return provider;
     } catch (error) {
       throw new Error(`创建Provider模块失败: ${error instanceof Error ? error.message : String(error)}`);
     }

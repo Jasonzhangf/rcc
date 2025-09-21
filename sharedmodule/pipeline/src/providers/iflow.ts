@@ -3,30 +3,9 @@
  * 使用iflow现有OAuth凭据文件的iFlow Provider - TypeScript版本
  */
 
-import { BaseProvider } from '../framework/BaseProvider';
-// Simple mock implementation for ErrorHandlingCenter
-class SimpleErrorHandlingCenter {
-  constructor(config: any) {
-    // Mock implementation
-  }
-
-  handleError(error: any): void {
-    // Mock implementation
-    console.error('Error handled:', error);
-  }
-
-  async destroy(): Promise<void> {
-    // Mock implementation
-  }
-}
-
-// Use mock if import fails
-let ErrorHandlingCenter: any;
-try {
-  ErrorHandlingCenter = require('rcc-errorhandling').ErrorHandlingCenter;
-} catch {
-  ErrorHandlingCenter = SimpleErrorHandlingCenter;
-}
+import { BaseProvider, ProviderConfig } from '../framework/BaseProvider';
+import { IProviderModule, ProtocolType, PipelineExecutionContext, ModuleConfig, PipelineStage, ProviderInfo } from '../interfaces/ModularInterfaces';
+import { ErrorHandlingCenter as ErrorHandlingCenterImpl } from 'rcc-errorhandling';
 import { OpenAIChatRequest, OpenAIChatResponse } from '../framework/OpenAIInterface';
 import axios from 'axios';
 import * as crypto from 'crypto';
@@ -89,7 +68,12 @@ interface OAuthTokens {
   scope: string;
 }
 
-class IFlowProvider extends BaseProvider {
+class IFlowProvider extends BaseProvider implements IProviderModule {
+  readonly moduleId: string = 'iflow-provider';
+  readonly moduleName: string = 'iFlow AI Provider';
+  readonly moduleVersion: string = '1.0.0';
+  protected isInitialized: boolean = false;
+  protected maxTokens: number = 262144;
   private credentialsPath: string;
   private accessToken: string = '';
   private refreshToken: string = '';
@@ -134,6 +118,26 @@ class IFlowProvider extends BaseProvider {
 
     // 在初始化时预加载token，而不是等到第一次请求
     this.preloadTokens();
+  }
+
+  /**
+   * 初始化模块 (实现IPipelineModule接口)
+   */
+  async initialize(config?: ModuleConfig): Promise<void> {
+    // 构造函数已经完成初始化，这里只需要标记为已初始化
+    this.isInitialized = true;
+    this.logInfo('IFlowProvider initialized successfully', { moduleId: this.moduleId }, 'initialize');
+  }
+
+  /**
+   * 销毁模块 (实现IPipelineModule接口)
+   */
+  async destroy(): Promise<void> {
+    this.isInitialized = false;
+    this.accessToken = '';
+    this.refreshToken = '';
+    this.tokenExpiry = 0;
+    this.logInfo('IFlowProvider destroyed successfully', { moduleId: this.moduleId }, 'destroy');
   }
 
   /**
@@ -894,7 +898,143 @@ class IFlowProvider extends BaseProvider {
     }
   }
 
-  
+  // ===== IProviderModule Interface Implementation =====
+
+  /**
+   * 执行请求 (实现IProviderModule接口)
+   */
+  async executeRequest(request: any, context: PipelineExecutionContext): Promise<any> {
+    if (!this.isInitialized) {
+      throw new Error('IFlowProvider not initialized');
+    }
+
+    try {
+      // 转换为IFlow格式并执行
+      const iflowRequest = this.convertToIFlowRequest(request);
+      return await this.executeChat(iflowRequest);
+    } catch (error) {
+      this.error('Request execution failed', error, 'executeRequest');
+      throw error;
+    }
   }
+
+  /**
+   * 执行流式请求 (实现IProviderModule接口)
+   */
+  async *executeStreamingRequest(request: any, context: PipelineExecutionContext): AsyncGenerator<any> {
+    if (!this.isInitialized) {
+      throw new Error('IFlowProvider not initialized');
+    }
+
+    try {
+      // 转换为IFlow格式并执行
+      const iflowRequest = this.convertToIFlowRequest(request);
+      yield* this.executeStreamChat(iflowRequest);
+    } catch (error) {
+      this.error('Streaming request execution failed', error, 'executeStreamingRequest');
+      throw error;
+    }
+  }
+
+  /**
+   * 获取提供商信息 (实现IProviderModule接口)
+   */
+  getModularProviderInfo(): ProviderInfo {
+    return {
+      id: 'iflow',
+      name: 'IFlow AI Provider',
+      type: ProtocolType.OPENAI,
+      endpoint: this.endpoint,
+      models: this.supportedModels,
+      capabilities: {
+        streaming: true,
+        functions: true,
+        vision: false,
+        maxTokens: this.maxTokens || 262144
+      },
+      authentication: {
+        type: this.hasValidAuthentication() ? 'oauth' : 'api-key',
+        required: true
+      }
+    };
+  }
+
+  // Keep BaseProvider's original getProviderInfo accessible if needed
+  getBaseProviderInfo() {
+    const info = this.getInfo();
+    return {
+      name: info.name.replace(' Provider', ''),
+      endpoint: this.endpoint,
+      supportedModels: this.supportedModels,
+      defaultModel: this.defaultModel,
+      capabilities: this.getCapabilities(),
+      type: 'provider'
+    };
+  }
+
+  /**
+   * 检查健康状态 (实现IProviderModule接口)
+   */
+  async checkHealth(): Promise<{
+    isHealthy: boolean;
+    responseTime: number;
+    error?: string;
+  }> {
+    const startTime = Date.now();
+
+    try {
+      // 简单的健康检查：检查认证和连接
+      const isHealthy = this.hasValidAuthentication();
+      const responseTime = Date.now() - startTime;
+
+      return {
+        isHealthy,
+        responseTime,
+        error: isHealthy ? undefined : 'No valid authentication'
+      };
+    } catch (error) {
+      const responseTime = Date.now() - startTime;
+      return {
+        isHealthy: false,
+        responseTime,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * 获取模块状态 (实现IPipelineModule接口)
+   */
+  async getStatus(): Promise<{
+    isInitialized: boolean;
+    isRunning: boolean;
+    lastError?: Error;
+    statistics: {
+      requestsProcessed: number;
+      averageResponseTime: number;
+      errorRate: number;
+    };
+  }> {
+    const healthResult = await this.checkHealth();
+
+    return {
+      isInitialized: this.isInitialized,
+      isRunning: healthResult.isHealthy,
+      lastError: healthResult.isHealthy ? undefined : new Error(healthResult.error || 'Unknown error'),
+      statistics: {
+        requestsProcessed: 0, // TODO: Implement request tracking
+        averageResponseTime: healthResult.responseTime,
+        errorRate: healthResult.isHealthy ? 0 : 100
+      }
+    };
+  }
+
+  /**
+   * 检查是否有有效认证
+   */
+  private hasValidAuthentication(): boolean {
+    return !!(this.accessToken || this.apiKey);
+  }
+}
 
 export default IFlowProvider;

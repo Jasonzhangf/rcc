@@ -2675,7 +2675,7 @@ let MessageCenter$2 = class MessageCenter {
  * Debug Event Bus - 事件驱动的调试通信总线
  * Event-driven debug communication bus
  */
-let DebugEventBus$2 = class DebugEventBus {
+class DebugEventBus {
     constructor() {
         this.subscribers = new Map();
         this.eventQueue = [];
@@ -2792,7 +2792,7 @@ let DebugEventBus$2 = class DebugEventBus {
             this.eventQueue = this.eventQueue.slice(-this.maxQueueSize);
         }
     }
-};
+}
 
 /**
  * Abstract base class for all modules
@@ -2851,7 +2851,7 @@ let BaseModule$2 = class BaseModule {
             maxLogFiles: 5
         };
         // Initialize debug event bus
-        this.eventBus = DebugEventBus$2.getInstance();
+        this.eventBus = DebugEventBus.getInstance();
     }
     /**
      * Static factory method to create an instance of the module
@@ -8116,129 +8116,6 @@ class MessageCenter {
 }
 
 /**
- * Debug Event Bus - 事件驱动的调试通信总线
- * Event-driven debug communication bus
- */
-class DebugEventBus {
-    constructor() {
-        this.subscribers = new Map();
-        this.eventQueue = [];
-        this.maxQueueSize = 10000;
-    }
-    static getInstance() {
-        if (!DebugEventBus.instance) {
-            DebugEventBus.instance = new DebugEventBus();
-        }
-        return DebugEventBus.instance;
-    }
-    /**
-     * Publish a debug event
-     * @param event - Debug event to publish
-     */
-    publish(event) {
-        // Add to queue
-        if (this.eventQueue.length >= this.maxQueueSize) {
-            this.eventQueue.shift(); // Remove oldest event
-        }
-        this.eventQueue.push(event);
-        // Process event immediately
-        this.processEvent(event);
-    }
-    /**
-     * Process a single event
-     * @param event - Event to process
-     */
-    processEvent(event) {
-        const subscribers = this.subscribers.get(event.type) || [];
-        const allSubscribers = this.subscribers.get('*') || [];
-        // Notify type-specific subscribers
-        subscribers.forEach(callback => {
-            try {
-                callback(event);
-            }
-            catch (error) {
-                console.error('Error in debug event subscriber:', error);
-            }
-        });
-        // Notify wildcard subscribers
-        allSubscribers.forEach(callback => {
-            try {
-                callback(event);
-            }
-            catch (error) {
-                console.error('Error in debug event subscriber:', error);
-            }
-        });
-    }
-    /**
-     * Subscribe to debug events
-     * @param eventType - Event type to subscribe to ('*' for all events)
-     * @param callback - Callback function
-     */
-    subscribe(eventType, callback) {
-        if (!this.subscribers.has(eventType)) {
-            this.subscribers.set(eventType, []);
-        }
-        this.subscribers.get(eventType).push(callback);
-    }
-    /**
-     * Unsubscribe from debug events
-     * @param eventType - Event type to unsubscribe from
-     * @param callback - Callback function to remove
-     */
-    unsubscribe(eventType, callback) {
-        const subscribers = this.subscribers.get(eventType);
-        if (subscribers) {
-            const index = subscribers.indexOf(callback);
-            if (index > -1) {
-                subscribers.splice(index, 1);
-            }
-        }
-    }
-    /**
-     * Get recent events from the queue
-     * @param limit - Maximum number of events to return
-     * @param type - Optional event type filter
-     */
-    getRecentEvents(limit = 100, type) {
-        let events = [...this.eventQueue];
-        if (type) {
-            events = events.filter(event => event.type === type);
-        }
-        return events.slice(-limit);
-    }
-    /**
-     * Clear the event queue
-     */
-    clear() {
-        this.eventQueue = [];
-        this.subscribers.clear();
-    }
-    /**
-     * Get queue statistics
-     */
-    getStats() {
-        return {
-            queueSize: this.eventQueue.length,
-            subscriberCount: Array.from(this.subscribers.values()).reduce((sum, subs) => sum + subs.length, 0),
-            eventTypes: Array.from(this.subscribers.keys()),
-            maxQueueSize: this.maxQueueSize
-        };
-    }
-    /**
-     * Set maximum queue size
-     * @param size - Maximum queue size
-     */
-    setMaxQueueSize(size) {
-        this.maxQueueSize = Math.max(100, size);
-        // Trim queue if necessary
-        if (this.eventQueue.length > this.maxQueueSize) {
-            this.eventQueue = this.eventQueue.slice(-this.maxQueueSize);
-        }
-    }
-}
-
-/**
  * Abstract base class for all modules
  * Provides foundational functionality for module management, connections, validation, debug, and messaging
  */
@@ -8294,8 +8171,8 @@ class BaseModule {
             maxFileSize: 10485760, // 10MB
             maxLogFiles: 5
         };
-        // Initialize debug event bus
-        this.eventBus = DebugEventBus.getInstance();
+        // Debug event bus functionality moved to rcc-debugcenter package
+        // This module now uses external debug handler pattern
     }
     /**
      * Static factory method to create an instance of the module
@@ -8336,6 +8213,13 @@ class BaseModule {
         return { ...this.debugConfig };
     }
     /**
+     * Set external debug handler for integration with DebugCenter
+     * @param handler - External debug event handler
+     */
+    setExternalDebugHandler(handler) {
+        this.externalDebugHandler = handler;
+    }
+    /**
      * Start a pipeline session
      * @param sessionId - Session ID
      * @param pipelineConfig - Pipeline configuration
@@ -8358,7 +8242,10 @@ class BaseModule {
                 }
             }
         };
-        this.eventBus.publish(event);
+        // Send to external debug handler if available
+        if (this.externalDebugHandler) {
+            this.externalDebugHandler(event);
+        }
         // Log locally for backward compatibility
         this.logInfo('Pipeline session started', {
             sessionId,
@@ -8387,7 +8274,10 @@ class BaseModule {
                 }
             }
         };
-        this.eventBus.publish(event);
+        // Send to external debug handler if available
+        if (this.externalDebugHandler) {
+            this.externalDebugHandler(event);
+        }
         this.currentSessionId = undefined;
         // Log locally for backward compatibility
         this.logInfo('Pipeline session ended', {
@@ -8896,6 +8786,52 @@ class BaseModule {
                     data: { pong: true, moduleId: this.info.id },
                     timestamp: Date.now()
                 };
+            case 'module_registered':
+                // Handle module registration messages
+                this.debug('info', 'Module registration received', {
+                    moduleId: message.payload?.moduleId,
+                    moduleName: message.payload?.moduleName,
+                    moduleType: message.payload?.moduleType
+                }, 'handleMessage');
+                // Call the module lifecycle method
+                if (message.payload?.moduleId) {
+                    this.onModuleRegistered(message.payload.moduleId);
+                }
+                return {
+                    messageId: message.id,
+                    correlationId: message.correlationId || '',
+                    success: true,
+                    data: {
+                        received: true,
+                        acknowledged: true,
+                        moduleId: this.info.id,
+                        timestamp: Date.now()
+                    },
+                    timestamp: Date.now()
+                };
+            case 'server-initialized':
+            case 'server-started':
+            case 'pipeline_started':
+            case 'pipeline_completed':
+            case 'request_started':
+            case 'request_completed':
+                // Handle common system messages silently
+                this.debug('info', 'System message received', {
+                    type: message.type,
+                    messageId: message.id
+                }, 'handleMessage');
+                return {
+                    messageId: message.id,
+                    correlationId: message.correlationId || '',
+                    success: true,
+                    data: {
+                        received: true,
+                        acknowledged: true,
+                        moduleId: this.info.id,
+                        timestamp: Date.now()
+                    },
+                    timestamp: Date.now()
+                };
             default:
                 this.debug('warn', 'Unhandled message type', { type: message.type }, 'handleMessage');
                 return {
@@ -8951,7 +8887,10 @@ class BaseModule {
                 }
             }
         };
-        this.eventBus.publish(event);
+        // Send to external debug handler if available
+        if (this.externalDebugHandler) {
+            this.externalDebugHandler(event);
+        }
         // Log locally for backward compatibility
         this.debug('debug', `I/O tracking started: ${operationId}`, {
             sessionId: this.currentSessionId,
@@ -8988,7 +8927,10 @@ class BaseModule {
                 }
             }
         };
-        this.eventBus.publish(event);
+        // Send to external debug handler if available
+        if (this.externalDebugHandler) {
+            this.externalDebugHandler(event);
+        }
         // Log locally for backward compatibility
         this.debug('debug', `I/O tracking ended: ${operationId}`, {
             sessionId: this.currentSessionId,
@@ -8999,5 +8941,5 @@ class BaseModule {
     }
 }
 
-export { ActionPriority$2 as ActionPriority, ActionStatus$2 as ActionStatus, ActionType$2 as ActionType, AnnotationType$2 as AnnotationType, BaseModule, ConditionOperator$2 as ConditionOperator, ConfigValidator, ConfigValidator as ConfigurationValidation, CycleRecorder, CycleRecorder as CycleRecording, DebugEventBus, ErrorImpact$2 as ErrorImpact, ErrorRecorder, ErrorRecorder as ErrorRecording, ErrorRecoverability$2 as ErrorRecoverability, ErrorSeverity$2 as ErrorSeverity, ErrorSource$2 as ErrorSource, ErrorType$2 as ErrorType, FieldTruncator as FieldTruncation, FieldTruncator, GlobalConfigManager, GlobalConfigManager as GlobalConfiguration, HandlingStatus$2 as HandlingStatus, LogicalOperator$2 as LogicalOperator, MessageCenter, MessageProcessor, ModuleRegistry, PathResolver as PathResolution, PathResolver, PolicyType$2 as PolicyType, RecordingManager, RequestContextManager, RequestContextManager as RequestContextTracking, RequestManager, ResponseActionType$2 as ResponseActionType, ResponseStatus$2 as ResponseStatus, RuleType$2 as RuleType, StatisticsTracker };
+export { ActionPriority$2 as ActionPriority, ActionStatus$2 as ActionStatus, ActionType$2 as ActionType, AnnotationType$2 as AnnotationType, BaseModule, ConditionOperator$2 as ConditionOperator, ConfigValidator, ConfigValidator as ConfigurationValidation, CycleRecorder, CycleRecorder as CycleRecording, ErrorImpact$2 as ErrorImpact, ErrorRecorder, ErrorRecorder as ErrorRecording, ErrorRecoverability$2 as ErrorRecoverability, ErrorSeverity$2 as ErrorSeverity, ErrorSource$2 as ErrorSource, ErrorType$2 as ErrorType, FieldTruncator as FieldTruncation, FieldTruncator, GlobalConfigManager, GlobalConfigManager as GlobalConfiguration, HandlingStatus$2 as HandlingStatus, LogicalOperator$2 as LogicalOperator, MessageCenter, MessageProcessor, ModuleRegistry, PathResolver as PathResolution, PathResolver, PolicyType$2 as PolicyType, RecordingManager, RequestContextManager, RequestContextManager as RequestContextTracking, RequestManager, ResponseActionType$2 as ResponseActionType, ResponseStatus$2 as ResponseStatus, RuleType$2 as RuleType, StatisticsTracker };
 //# sourceMappingURL=index.esm.js.map

@@ -21,16 +21,16 @@ export class ConfigurationValidator implements IConfigurationValidator {
     const warnings: string[] = [];
 
     try {
-      // 验证虚拟模型配置
-      if (!wrapper.virtualModels || wrapper.virtualModels.length === 0) {
-        errors.push('virtualModels不能为空');
+      // 验证动态路由配置
+      if (!wrapper.dynamicRouting || wrapper.dynamicRouting.length === 0) {
+        errors.push('dynamicRouting不能为空');
       } else {
-        wrapper.virtualModels.forEach((vm, index) => {
-          if (!vm.id) {
-            errors.push(`virtualModels[${index}].id不能为空`);
+        wrapper.dynamicRouting.forEach((dr, index) => {
+          if (!dr.id) {
+            errors.push(`dynamicRouting[${index}].id不能为空`);
           }
-          if (!vm.targets || vm.targets.length === 0) {
-            errors.push(`virtualModels[${index}].targets不能为空`);
+          if (!dr.targets || dr.targets.length === 0) {
+            errors.push(`dynamicRouting[${index}].targets不能为空`);
           }
         });
       }

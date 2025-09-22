@@ -35,20 +35,20 @@ export interface ProviderConfig {
 }
 
 /**
- * Virtual model target configuration
+ * Dynamic routing target configuration
  */
-export interface VirtualModelTarget {
+export interface DynamicRoutingTarget {
   providerId: string;
   modelId: string;
   keyIndex?: number;
   [key: string]: any;
 }
 
-export interface VirtualModelConfig {
+export interface DynamicRoutingConfig {
   id: string;
   name?: string;
   enabled: boolean;
-  targets: VirtualModelTarget[];
+  targets: DynamicRoutingTarget[];
   capabilities?: string[];
   maxTokens?: number;
   temperature?: number;
@@ -91,7 +91,7 @@ export interface RccConfig {
     [key: string]: any;
   };
   providers: Record<string, ProviderConfig>;
-  virtualModels: Record<string, VirtualModelConfig>;
+  dynamicRouting: Record<string, DynamicRoutingConfig>;
   pipeline: PipelineConfig;
   debugging?: {
     enabled?: boolean;
@@ -175,7 +175,7 @@ export interface ServerModuleConfig {
   };
   timeout: number;
   bodyLimit: string;
-  enableVirtualModels: boolean;
+  enableDynamicRouting: boolean;
   enablePipeline: boolean;
   debug: DebugOptions;
   monitoring: {
@@ -186,7 +186,7 @@ export interface ServerModuleConfig {
   };
   parsedConfig: {
     providers: Record<string, ProviderConfig>;
-    virtualModels: Record<string, VirtualModelConfig>;
+    dynamicRouting: Record<string, DynamicRoutingConfig>;
     pipeline: PipelineConfig;
   };
   basePath: string;
@@ -213,8 +213,8 @@ export interface ServerModuleModule {
   initialize: () => Promise<void>;
   start: () => Promise<void>;
   stop: () => Promise<void>;
-  setVirtualModelSchedulerManager?: (manager: any) => void;
-  // NOTE: registerVirtualModel removed - ServerModule is pure forwarding only
+  setDynamicManager?: (manager: any) => void;
+  // NOTE: registerDynamicRouting removed - ServerModule is pure forwarding only
   setDebugConfig?: (config: DebugOptions) => void;
   enableTwoPhaseDebug?: (enabled: boolean, baseDir: string, options: any) => void;
   pipelineTracker?: any;
@@ -235,13 +235,13 @@ export interface DebugCenterModule {
  */
 export interface PipelineModule {
   Pipeline: any;
-  VirtualModelSchedulerManager: {
+  DynamicManager: {
     new (
       pools: Map<any, any>,
       config: any,
       tracker: any
     ): {
-      getVirtualModelMappings: () => any[];
+      getDynamicRoutingMappings: () => any[];
     };
   };
   PipelineAssembler: {
@@ -320,7 +320,7 @@ export interface StartupStats {
   configPath: string;
   debugPath: string;
   providersCount: number;
-  virtualModelsCount: number;
+  dynamicRoutingCount: number;
   serverStartTime: number;
   pipelineInitTime?: number;
   debugInitTime?: number;
@@ -395,7 +395,7 @@ export interface ServerWrapper {
 }
 
 export interface PipelineWrapper {
-  virtualModels: VirtualModelConfig[];
+  dynamicRouting: DynamicRoutingConfig[];
   modules: {
     id: string;
     type: string;
@@ -417,7 +417,7 @@ export interface PipelineWrapper {
     createdAt: string;
     updatedAt: string;
     providerCount: number;
-    virtualModelCount: number;
+    dynamicRoutingCount: number;
   };
 }
 
@@ -445,7 +445,7 @@ export interface WrapperGenerationResult {
   metadata?: {
     generationTime: number;
     providerCount: number;
-    virtualModelCount: number;
+    dynamicRoutingCount: number;
     configVersion: string;
   };
 }

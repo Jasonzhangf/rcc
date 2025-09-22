@@ -209,12 +209,12 @@ describe('Debug System Integration', () => {
   describe('多组件协作调试', () => {
     test('应该在PipelineExecutor中集成所有调试组件', async () => {
       const wrapper: PipelineWrapper = {
-        virtualModels: [
+        dynamicRouting: [
           {
-            id: 'test-model',
-            name: 'Test Model',
-            description: 'Test virtual model',
-            targets: [{ providerId: 'test-provider', modelId: 'test-model' }]
+            id: 'test-routing',
+            name: 'Test Routing',
+            description: 'Test dynamic routing',
+            targets: [{ providerId: 'test-provider', weight: 1 }]
           }
         ],
         modules: [

@@ -7,9 +7,7 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorHandlingResult,
-  ErrorSeverity
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
 import {
@@ -19,7 +17,9 @@ import {
   StrategyHealth,
   StrategyMetrics,
   CircuitBreakerStrategyConfig,
-  CircuitBreakerState
+  CircuitBreakerState,
+  ErrorHandlingResult,
+  ErrorSeverity
 } from './StrategyInterfaces';
 
 /**
@@ -528,7 +528,7 @@ export class CircuitBreakerStrategy implements IErrorHandlingStrategy {
    * 更新策略健康状态
    */
   private updateHealth(): void {
-    this.health.lastExecutionTime = Date.now();
+    this.health.lastExecution = Date.now();
     this.health.averageResponseTime = this.metrics.averageExecutionTime;
     this.health.successRate = this.metrics.successRate;
 
@@ -556,7 +556,7 @@ export class CircuitBreakerStrategy implements IErrorHandlingStrategy {
   getHealth(): StrategyHealth {
     return {
       ...this.health,
-      lastExecutionTime: this.health.lastExecutionTime
+      lastExecution: this.health.lastExecution
     };
   }
 

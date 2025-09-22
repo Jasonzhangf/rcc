@@ -4,7 +4,7 @@
  * 负责将配置数据转换为流水线表格式
  */
 
-import { ConfigData, VirtualModelConfig } from './ConfigData';
+import { ConfigData, DynamicRoutingConfig } from './ConfigData';
 import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import { PipelineExecutionRecord } from '../types';
 import os from 'os';
@@ -15,8 +15,8 @@ import { v4 as uuidv4 } from 'uuid';
  * 流水线表条目
  */
 export interface PipelineTableEntry {
-  /** 虚拟模型ID */
-  virtualModelId: string;
+  /** 路由ID */
+  routingId: string;
   /** 目标供应商ID */
   providerId: string;
   /** 目标模型ID */
@@ -69,10 +69,10 @@ export class PipelineTable {
   }
 
   /**
-   * 根据虚拟模型ID获取条目
+   * 根据路由ID获取条目
    */
-  public getEntriesByVirtualModel(virtualModelId: string): PipelineTableEntry[] {
-    return this.entries.filter(entry => entry.virtualModelId === virtualModelId);
+  public getEntriesByRouting(routingId: string): PipelineTableEntry[] {
+    return this.entries.filter(entry => entry.routingId === routingId);
   }
 
   /**
@@ -122,14 +122,14 @@ export class PipelineConfigGenerator extends BaseModule {
    * 创建执行记录
    */
   private createExecutionRecord(
-    virtualModelId: string,
+    routingId: string,
     providerId: string,
     modelId: string,
     input?: any
   ): PipelineExecutionRecord {
     const record: PipelineExecutionRecord = {
       id: uuidv4(),
-      virtualModelId,
+      routingId,
       providerId,
       modelId,
       startTime: Date.now(),
@@ -142,7 +142,7 @@ export class PipelineConfigGenerator extends BaseModule {
     };
 
     this.executionRecords.set(record.id, record);
-    this.logInfo(`Pipeline execution record created - recordId: ${record.id}, virtualModelId: ${virtualModelId}, providerId: ${providerId}, modelId: ${modelId}`);
+    this.logInfo(`Pipeline execution record created - recordId: ${record.id}, routingId: ${routingId}, providerId: ${providerId}, modelId: ${modelId}`);
 
     return record;
   }
@@ -206,7 +206,7 @@ export class PipelineConfigGenerator extends BaseModule {
     let record: PipelineExecutionRecord | undefined;
 
     try {
-      this.logInfo(`Starting pipeline table generation - configVersion: ${config.version}, virtualModelCount: ${Object.keys(config.virtualModels).length}`);
+      this.logInfo(`Starting pipeline table generation - configVersion: ${config.version}, routingConfigCount: ${Object.keys(config.dynamicRouting).length}`);
 
       // 创建执行记录
       record = this.createExecutionRecord(
@@ -218,22 +218,22 @@ export class PipelineConfigGenerator extends BaseModule {
 
       const entries: PipelineTableEntry[] = [];
 
-      // 遍历虚拟模型配置
-      for (const [vmId, vmConfig] of Object.entries(config.virtualModels)) {
-        // 跳过禁用的虚拟模型
-        if (!vmConfig.enabled) {
+      // 遍历动态路由配置
+      for (const [routingId, routingConfig] of Object.entries(config.dynamicRouting)) {
+        // 跳过禁用的动态路由
+        if (!routingConfig.enabled) {
           continue;
         }
 
         // 为每个目标创建流水线条目
-        for (const target of vmConfig.targets) {
+        for (const target of routingConfig.targets) {
           const entry: PipelineTableEntry = {
-            virtualModelId: vmId,
+            routingId: routingId,
             providerId: target.providerId,
             modelId: target.modelId,
             keyIndex: target.keyIndex || 0,
-            priority: vmConfig.priority || 1,
-            enabled: vmConfig.enabled,
+            priority: routingConfig.priority || 1,
+            enabled: routingConfig.enabled,
             weight: 1,
             strategy: 'round-robin'
           };

@@ -5,11 +5,12 @@
  * including files, environment variables, remote APIs, and databases.
  */
 
-import { 
-  ConfigData, 
-  ConfigSource, 
-  ConfigValidationResult 
+import {
+  ConfigData,
+  ConfigSource,
+  ConfigValidationResult
 } from '../core/ConfigData';
+import type { BufferEncoding } from 'buffer';
 
 /**
  * Configuration loading options

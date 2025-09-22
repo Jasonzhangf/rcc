@@ -85,7 +85,7 @@ export const providerConfigSchema = z.object({
 /**
  * 虚拟模型目标配置模式
  */
-export const virtualModelTargetSchema = z.object({
+export const dynamicRoutingTargetSchema = z.object({
   providerId: z.string(),
   modelId: z.string(),
   keyIndex: z.number().int().min(0).optional(),
@@ -106,7 +106,7 @@ export const virtualModelTargetSchema = z.object({
 /**
  * 虚拟模型配置模式
  */
-export const virtualModelConfigSchema = z.object({
+export const dynamicRoutingConfigSchema = z.object({
   id: z.string(),
   name: z.string(),
   enabled: z.boolean(),
@@ -118,7 +118,7 @@ export const virtualModelConfigSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   topP: z.number().min(0).max(1).optional(),
   routingRules: z.array(z.string()).optional(),
-  targets: z.array(virtualModelTargetSchema).min(1, 'At least one target is required'),
+  targets: z.array(dynamicRoutingTargetSchema).min(1, 'At least one target is required'),
   fallback: z.object({
     enabled: z.boolean().optional(),
     retryAfter: z.number().positive().optional(),
@@ -223,7 +223,7 @@ export const rccConfigSchema = z.object({
   providers: z.record(providerConfigSchema).optional(),
 
   // 虚拟模型配置
-  virtualModels: z.record(virtualModelConfigSchema).optional(),
+  dynamicRouting: z.record(dynamicRoutingConfigSchema).optional(),
 
   // 流水线配置
   pipeline: pipelineConfigSchema.optional(),
@@ -328,8 +328,8 @@ export const configValidationResultSchema = z.object({
 export type AuthConfig = z.infer<typeof authConfigSchema>;
 export type ModelConfig = z.infer<typeof modelConfigSchema>;
 export type ProviderConfig = z.infer<typeof providerConfigSchema>;
-export type VirtualModelTarget = z.infer<typeof virtualModelTargetSchema>;
-export type VirtualModelConfig = z.infer<typeof virtualModelConfigSchema>;
+export type DynamicRoutingTarget = z.infer<typeof dynamicRoutingTargetSchema>;
+export type DynamicRoutingConfig = z.infer<typeof dynamicRoutingConfigSchema>;
 export type PipelineConfig = z.infer<typeof pipelineConfigSchema>;
 export type DebugConfig = z.infer<typeof debugConfigSchema>;
 export type RCCConfig = z.infer<typeof rccConfigSchema>;

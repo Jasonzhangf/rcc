@@ -99,9 +99,9 @@ export abstract class BaseProvider extends UnifiedPipelineBaseModule {
       async () => {
         this.logInfo(`Processing chat request for provider: ${this.getProviderInfo().name}`, undefined, 'chat');
 
-        // 验证请求
+        // 验证请求 - 如果provider有预配置的model，则请求中的model是可选的
         const request = new OpenAIChatRequest(openaiRequest);
-        request.validate();
+        request.validate(true); // providerHasPreconfiguredModel = true
 
         // 如果有 compatibility，进行请求映射
         const providerRequest = compatibility

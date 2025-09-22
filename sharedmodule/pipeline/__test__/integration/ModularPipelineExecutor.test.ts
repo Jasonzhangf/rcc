@@ -44,7 +44,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
     test('should fail initialization with invalid wrapper', async () => {
       const invalidWrapper = {
         ...testWrapper,
-        virtualModels: [] // Missing virtual models
+        dynamicRouting: [] // Missing dynamic routing configurations
       };
 
       await expect(executor.initialize(invalidWrapper)).rejects.toThrow('配置验证失败');
@@ -67,9 +67,9 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should execute complete request pipeline successfully', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
-      const result = await executor.execute(request, virtualModelId);
+      const result = await executor.execute(request, routingId);
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
@@ -98,12 +98,12 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should handle request with specific provider routing', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const context = {
         providerId: 'test-provider'
       };
 
-      const result = await executor.execute(request, virtualModelId, context);
+      const result = await executor.execute(request, routingId, context);
 
       expect(result.success).toBe(true);
       expect(result.context.providerId).toBe('test-provider');
@@ -111,10 +111,10 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should handle streaming request execution', async () => {
       const request = createStreamingTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const streamingSteps: any[] = [];
-      const streamingGenerator = executor.executeStreaming(request, virtualModelId);
+      const streamingGenerator = executor.executeStreaming(request, routingId);
 
       for await (const step of streamingGenerator) {
         streamingSteps.push(step);
@@ -151,7 +151,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
         temperature: 0.7
       };
 
-      const result = await executor.execute(malformedRequest, 'test-virtual-model');
+      const result = await executor.execute(malformedRequest, 'test-dynamic-routing');
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -165,7 +165,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should handle context execution errors', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const invalidContext = {
         sessionId: 'test-session',
         requestId: 'test-request',
@@ -186,14 +186,14 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should execute pipeline efficiently', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const iterations = 10;
 
       const startTime = Date.now();
       const results: any[] = [];
 
       for (let i = 0; i < iterations; i++) {
-        const result = await executor.execute(request, virtualModelId);
+        const result = await executor.execute(request, routingId);
         results.push(result);
       }
 
@@ -211,7 +211,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should handle concurrent requests efficiently', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const concurrency = 5;
 
       const startTime = Date.now();
@@ -237,7 +237,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should provide performance metrics', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       // Execute a few requests to gather metrics
       for (let i = 0; i < 3; i++) {
@@ -265,9 +265,9 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should pass data correctly through module chain', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
-      const result = await executor.execute(request, virtualModelId);
+      const result = await executor.execute(request, routingId);
 
       expect(result.success).toBe(true);
 
@@ -286,7 +286,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should maintain context throughout pipeline execution', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const testContext = {
         sessionId: 'test-session-123',
         requestId: 'test-request-456',
@@ -305,9 +305,9 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
     test('should track IO records throughout execution', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
-      const result = await executor.execute(request, virtualModelId);
+      const result = await executor.execute(request, routingId);
 
       expect(result.success).toBe(true);
       expect(result.context.ioRecords).toBeDefined();
@@ -372,7 +372,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
 
       // Execute some requests to create resources
       const request = createTestRequest();
-      await executor.execute(request, 'test-virtual-model');
+      await executor.execute(request, 'test-dynamic-routing');
 
       await executor.destroy();
 
@@ -429,7 +429,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
         max_tokens: 1000
       };
 
-      const result = await executor.execute(complexRequest, 'test-virtual-model');
+      const result = await executor.execute(complexRequest, 'test-dynamic-routing');
 
       expect(result.success).toBe(true);
       expect(result.response).toBeDefined();
@@ -460,7 +460,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
         temperature: 0.7
       };
 
-      const result = await executor.execute(conversationRequest, 'test-virtual-model');
+      const result = await executor.execute(conversationRequest, 'test-dynamic-routing');
 
       expect(result.success).toBe(true);
       expect(result.response).toBeDefined();
@@ -485,7 +485,7 @@ describe('ModularPipelineExecutor Integration Tests', () => {
         frequency_penalty: 2.0 // Max penalty
       };
 
-      const result = await executor.execute(edgeCaseRequest, 'test-virtual-model');
+      const result = await executor.execute(edgeCaseRequest, 'test-dynamic-routing');
 
       expect(result).toBeDefined();
       // Should handle gracefully, may succeed or fail gracefully

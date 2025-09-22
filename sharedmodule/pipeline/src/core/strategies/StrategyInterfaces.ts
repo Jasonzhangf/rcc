@@ -6,24 +6,97 @@
  * that extend the existing RCC error handling framework.
  */
 
-import {
-  ErrorHandlingCenter,
-  ErrorClassifier,
-  PolicyEngine,
-  ErrorCategory,
-  ErrorSeverity,
-  ErrorType,
-  ErrorSource,
-  ErrorImpact,
-  ErrorRecoverability,
-  ModuleRegistryManager,
-  ErrorInterfaceGateway,
-  ErrorContext,
-  ErrorPolicy,
-  ErrorHandlingResult
-} from 'rcc-errorhandling';
+import { ErrorHandlingCenter } from 'rcc-errorhandling';
+import { PipelineExecutionContext } from '../../interfaces/ModularInterfaces';
 
-import { PipelineExecutionContext } from '../interfaces/ModularInterfaces';
+// Local type definitions for interfaces that don't exist in rcc-errorhandling
+export interface ErrorClassifier {
+  classify(error: Error): ErrorCategory;
+}
+
+export interface PolicyEngine {
+  execute(error: Error, context: ErrorContext): ErrorPolicy;
+}
+
+export enum ErrorCategory {
+  NETWORK = 'network',
+  AUTHENTICATION = 'authentication',
+  AUTHORIZATION = 'authorization',
+  VALIDATION = 'validation',
+  TIMEOUT = 'timeout',
+  RATE_LIMIT = 'rate_limit',
+  INTERNAL = 'internal',
+  EXTERNAL = 'external'
+}
+
+export enum ErrorSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical'
+}
+
+export enum ErrorType {
+  RECOVERABLE = 'recoverable',
+  NON_RECOVERABLE = 'non_recoverable',
+  RETRYABLE = 'retryable',
+  NON_RETRYABLE = 'non_retryable'
+}
+
+export enum ErrorSource {
+  CLIENT = 'client',
+  SERVER = 'server',
+  NETWORK = 'network',
+  UNKNOWN = 'unknown'
+}
+
+export enum ErrorImpact {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical'
+}
+
+export enum ErrorRecoverability {
+  AUTO = 'auto',
+  MANUAL = 'manual',
+  NONE = 'none'
+}
+
+export interface ModuleRegistryManager {
+  register(module: any): void;
+  get(id: string): any;
+}
+
+export interface ErrorInterfaceGateway {
+  forward(error: Error): void;
+}
+
+export interface ErrorContext {
+  timestamp: number;
+  module: string;
+  operation: string;
+  retryCount: number;
+  metadata?: Record<string, any>;
+}
+
+export interface ErrorPolicy {
+  action: 'retry' | 'fallback' | 'circuit_break' | 'fail';
+  maxRetries?: number;
+  delay?: number;
+  fallbackProvider?: string;
+}
+
+export interface ErrorHandlingResult {
+  success: boolean;
+  error?: Error;
+  action?: string;
+  metadata?: Record<string, any>;
+  handled?: boolean;
+  strategy?: string;
+  message?: string;
+  [key: string]: any; // Allow additional properties
+}
 
 /**
  * Strategy execution context for error handling
@@ -221,6 +294,11 @@ export interface IStrategyManager {
    * 获取组合指标
    */
   getMetrics(): StrategyManagerMetrics;
+  /**
+   * Get strategy health summary
+   * 获取策略健康摘要
+   */
+  getStrategyHealthSummary(): Record<string, any>;
 }
 
 /**

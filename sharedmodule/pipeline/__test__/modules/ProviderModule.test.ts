@@ -29,7 +29,7 @@ describe('ProviderModule', () => {
     testContext = {
       sessionId: 'test-session',
       requestId: 'test-request',
-      virtualModelId: 'test-virtual-model',
+      routingId: 'test-dynamic-routing',
       providerId: 'test-provider',
       startTime: Date.now(),
       ioRecords: [],

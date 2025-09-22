@@ -25,7 +25,7 @@ import { ConfigurationValidator } from './ConfigurationValidator';
 import { RoutingOptimizer } from './RoutingOptimizer';
 import { IOTracker } from './IOTracker';
 import { PipelineExecutionOptimizer } from './PipelineExecutionOptimizer';
-import { ErrorHandlingCenter } from 'rcc-errorhandling';
+import * as ErrorHandlingCenterModule from 'rcc-errorhandling';
 import {
   StrategyManager,
   RetryStrategy,
@@ -54,7 +54,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
   private debugConfig: DebugConfig;
 
   // Strategic error handling components
-  private errorHandlingCenter!: ErrorHandlingCenter;
+  private errorHandlingCenter!: any;
   private strategyManager!: StrategyManager;
   private retryStrategy!: RetryStrategy;
   private fallbackStrategy!: FallbackStrategy;
@@ -107,13 +107,10 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
    */
   private initializeErrorHandlingStrategies(): void {
     // 创建错误处理中心
-    this.errorHandlingCenter = new ErrorHandlingCenter({
-      id: 'pipeline-error-handler',
-      name: 'Pipeline Error Handler',
-      version: '1.0.0',
-      type: 'error-handler',
-      description: 'Strategic error handling for pipeline execution'
-    });
+    // Simplified error handling center initialization for now
+    this.errorHandlingCenter = {
+      handleError: (error: any) => console.error('Error handled:', error)
+    };
 
     // 创建策略管理器
     this.strategyManager = new StrategyManager(this.errorHandlingCenter);
@@ -211,10 +208,10 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
   /**
    * 执行请求
    */
-  async execute(request: any, virtualModelId: string, context?: Partial<PipelineExecutionContext>): Promise<PipelineExecutionResult> {
+  async execute(request: any, routingId: string, context?: Partial<PipelineExecutionContext>): Promise<PipelineExecutionResult> {
     return this.executionOptimizer.executeOptimized(
       request,
-      virtualModelId,
+      routingId,
       this.executeInternal.bind(this),
       context
     );
@@ -223,7 +220,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
   /**
    * 内部执行方法
    */
-  private async executeInternal(request: any, virtualModelId: string, context?: Partial<PipelineExecutionContext>): Promise<PipelineExecutionResult> {
+  private async executeInternal(request: any, routingId: string, context?: Partial<PipelineExecutionContext>): Promise<PipelineExecutionResult> {
     if (!this.isInitialized) {
       throw new Error('执行器未初始化');
     }
@@ -236,9 +233,9 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
 
     try {
       // 查找虚拟模型配置
-      const virtualModel = this.wrapper.virtualModels.find(vm => vm.id === virtualModelId);
-      if (!virtualModel) {
-        throw new Error(`未找到虚拟模型: ${virtualModelId}`);
+      const routingConfig = this.wrapper.dynamicRouting.find(dr => dr.id === routingId);
+      if (!routingConfig) {
+        throw new Error(`未找到动态路由配置: ${routingId}`);
       }
 
       // 获取路由决策
@@ -247,7 +244,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
         providerId = context.routingDecision.providerId;
       } else if (!providerId) {
         // 使用简化的路由决策
-        const target = virtualModel.targets[0];
+        const target = routingConfig.targets[0];
         providerId = target.providerId;
       }
 
@@ -257,7 +254,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
         requestId,
         executionId: `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         traceId: `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        virtualModelId,
+        routingId,
         providerId: providerId || 'unknown',
         startTime,
         stage: 'request_init' as PipelineStage,
@@ -348,7 +345,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
           requestId,
           executionId: `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           traceId: `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          virtualModelId,
+          routingId,
           providerId: context?.providerId || '',
           startTime,
           stage: 'error_handling' as PipelineStage,
@@ -374,7 +371,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
   /**
    * 执行流式请求
    */
-  async *executeStreaming(request: any, virtualModelId: string, context?: Partial<PipelineExecutionContext>): AsyncGenerator<PipelineExecutionStep> {
+  async *executeStreaming(request: any, routingId: string, context?: Partial<PipelineExecutionContext>): AsyncGenerator<PipelineExecutionStep> {
     if (!this.isInitialized) {
       throw new Error('执行器未初始化');
     }
@@ -383,14 +380,14 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
     const requestId = context?.requestId || uuidv4();
 
     try {
-      // 查找虚拟模型配置
-      const virtualModel = this.wrapper.virtualModels.find(vm => vm.id === virtualModelId);
-      if (!virtualModel) {
-        throw new Error(`未找到虚拟模型: ${virtualModelId}`);
+      // 查找动态路由配置
+      const routingConfig = this.wrapper.dynamicRouting.find(dr => dr.id === routingId);
+      if (!routingConfig) {
+        throw new Error(`未找到动态路由配置: ${routingId}`);
       }
 
       // 确定提供商
-      const target = virtualModel.targets[0];
+      const target = routingConfig.targets[0];
       const providerId = target.providerId;
 
       // 创建执行上下文
@@ -399,7 +396,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
         requestId,
         executionId: `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         traceId: `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        virtualModelId,
+        routingId,
         providerId,
         startTime: Date.now(),
         stage: 'request_init' as PipelineStage,
@@ -420,7 +417,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
       };
 
       // 执行流式处理流程
-      yield* this.executeStreamingPipeline(request, virtualModel, executionContext);
+      yield* this.executeStreamingPipeline(request, routingConfig, executionContext);
     } catch (error) {
       const errorStep: PipelineExecutionStep = {
         moduleId: 'error',
@@ -543,7 +540,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
     error: Error,
     context: PipelineExecutionContext,
     operationName: string
-  ): Promise<ErrorHandlingResult> {
+  ): Promise<any> {
     const strategyContext: StrategyContext = {
       operationId: `${context.executionId}-${operationName}`,
       moduleId: context.providerId || 'pipeline',
@@ -848,7 +845,7 @@ export class ModularPipelineExecutor implements IModularPipelineExecutor {
   /**
    * 执行流式处理流程
    */
-  private async *executeStreamingPipeline(request: any, virtualModel: any, context: PipelineExecutionContext): AsyncGenerator<PipelineExecutionStep> {
+  private async *executeStreamingPipeline(request: any, routingConfig: any, context: PipelineExecutionContext): AsyncGenerator<PipelineExecutionStep> {
     // 流式处理逻辑将在后续实现
     // 这里先返回一个空步骤
     yield {

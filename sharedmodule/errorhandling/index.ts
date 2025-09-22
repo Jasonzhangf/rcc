@@ -33,7 +33,7 @@ export interface ErrorResponse {
  * Simple ErrorHandling Center extending BaseModule
  */
 export class ErrorHandlingCenter extends BaseModule {
-  private isInitialized: boolean = false;
+  private _isInitialized: boolean = false;
   private errorCount: number = 0;
   private startTime: number = Date.now();
 
@@ -55,7 +55,7 @@ export class ErrorHandlingCenter extends BaseModule {
   public async initialize(): Promise<void> {
     try {
       console.log('Initializing ErrorHandlingCenter');
-      this.isInitialized = true;
+      this._isInitialized = true;
       console.log('ErrorHandlingCenter initialized successfully');
     } catch (error) {
       console.error('Failed to initialize ErrorHandlingCenter:', error);
@@ -67,7 +67,7 @@ export class ErrorHandlingCenter extends BaseModule {
    * Handle an error
    */
   public async handleError(error: ErrorContext): Promise<ErrorResponse> {
-    if (!this.isInitialized) {
+    if (!this._isInitialized) {
       await this.initialize();
     }
 
@@ -131,7 +131,7 @@ export class ErrorHandlingCenter extends BaseModule {
    */
   public getHealth() {
     return {
-      isInitialized: this.isInitialized,
+      isInitialized: this._isInitialized,
       errorCount: this.errorCount,
       uptime: Date.now() - this.startTime,
       lastError: this.errorCount > 0 ? `Last error was error_${this.errorCount}` : 'No errors'
@@ -145,7 +145,7 @@ export class ErrorHandlingCenter extends BaseModule {
     return {
       totalErrors: this.errorCount,
       uptime: Date.now() - this.startTime,
-      isInitialized: this.isInitialized,
+      isInitialized: this._isInitialized,
       moduleId: 'error-handling-center',
       moduleName: 'ErrorHandlingCenter'
     };
@@ -164,17 +164,28 @@ export class ErrorHandlingCenter extends BaseModule {
    */
   public async destroy(): Promise<void> {
     try {
-      console.log('Destroying ErrorHandlingCenter:', { 
+      console.log('Destroying ErrorHandlingCenter:', {
         finalErrorCount: this.errorCount,
         uptime: Date.now() - this.startTime
       });
-      
-      this.isInitialized = false;
+
+      this._isInitialized = false;
       console.log('ErrorHandlingCenter destroyed successfully');
     } catch (error) {
       console.error('Failed to destroy ErrorHandlingCenter:', error);
       throw error;
     }
+  }
+
+  /**
+   * Override BaseModule methods
+   */
+  public isInitialized(): boolean {
+    return this._isInitialized;
+  }
+
+  public isRunning(): boolean {
+    return this._isInitialized;
   }
 }
 

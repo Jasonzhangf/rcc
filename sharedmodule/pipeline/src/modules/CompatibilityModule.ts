@@ -163,7 +163,7 @@ export class CompatibilityModule extends BasePipelineModule implements ICompatib
       this.config = config.config as CompatibilityConfig;
     }
 
-    this.logInfo('Configuring CompatibilityModule', this.config, 'initialize');
+    this.logInfo('Configuring CompatibilityModule', this.config as unknown as Record<string, unknown>, 'initialize');
 
     // Validate configuration
     this.validateConfig();
@@ -176,7 +176,7 @@ export class CompatibilityModule extends BasePipelineModule implements ICompatib
 
     await super.configure(this.config);
     this.isInitialized = true;
-    this.logInfo('CompatibilityModule configured successfully', this.config, 'initialize');
+    this.logInfo('CompatibilityModule configured successfully', this.config as unknown as Record<string, unknown>, 'initialize');
   }
 
   /**

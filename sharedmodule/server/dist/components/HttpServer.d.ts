@@ -16,7 +16,7 @@ export declare class HttpServerComponent extends BaseModule implements IHttpServ
     /**
      * Initialize the HTTP server with configuration
      */
-    configure(config: ServerConfig): void;
+    configure(config: ServerConfig): Promise<void>;
     initialize(): Promise<void>;
     /**
      * Start the HTTP server (alias for listen)

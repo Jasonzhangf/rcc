@@ -7,10 +7,7 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorHandlingResult,
-  ErrorContext,
-  ErrorSeverity
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
 import {
@@ -18,7 +15,10 @@ import {
   IErrorHandlingStrategy,
   StrategyContext,
   StrategyManagerHealth,
-  StrategyManagerMetrics
+  StrategyManagerMetrics,
+  ErrorHandlingResult,
+  ErrorContext,
+  ErrorSeverity
 } from './StrategyInterfaces';
 
 /**

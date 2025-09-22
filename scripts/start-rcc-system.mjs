@@ -100,7 +100,7 @@ class RCCSystemInitializer {
 
       // Phase 3: Virtual Model Scheduler Creation
       this.currentPhase = 'scheduler-initialization';
-      await this.createVirtualModelScheduler();
+      await this.createDynamicRoutingScheduler();
 
       // Phase 4: Server Creation with Prepared Scheduler
       this.currentPhase = 'server-initialization';
@@ -278,7 +278,7 @@ class RCCSystemInitializer {
 
       // Verify required Pipeline classes are available
       const requiredComponents = [
-        'VirtualModelSchedulerManager',
+        'DynamicRoutingManager',
         'PipelineAssembler',  // 新增：流水线组装器
         'ModuleScanner',     // 新增：模块扫描器
         'PipelineFactory',
@@ -294,7 +294,7 @@ class RCCSystemInitializer {
       }
 
       this.pipelineComponents = {
-        VirtualModelSchedulerManager: pipelineModule.VirtualModelSchedulerManager,
+        DynamicRoutingManager: pipelineModule.DynamicRoutingManager,
         PipelineAssembler: pipelineModule.PipelineAssembler,  // 新增
         ModuleScanner: pipelineModule.ModuleScanner,         // 新增
         PipelineFactory: pipelineModule.PipelineFactory,
@@ -412,11 +412,11 @@ class RCCSystemInitializer {
     }
   }
 
-  async createVirtualModelScheduler() {
-    this.log('scheduler', 'Creating VirtualModelSchedulerManager with assembled pipeline pools...');
+  async createDynamicRoutingScheduler() {
+    this.log('scheduler', 'Creating DynamicRoutingManager with assembled pipeline pools...');
 
     try {
-      const { VirtualModelSchedulerManager } = this.pipelineComponents;
+      const { DynamicRoutingManager } = this.pipelineComponents;
 
       // Verify we have assembled pipeline pools
       if (!this.assembledPipelinePools || this.assembledPipelinePools.size === 0) {
@@ -452,15 +452,15 @@ class RCCSystemInitializer {
         enableMetricsExport: true
       };
 
-      // Create VirtualModelSchedulerManager with proper configuration
-      // Note: VirtualModelSchedulerManager expects ManagerConfig and PipelineTracker
+      // Create DynamicRoutingManager with proper configuration
+      // Note: DynamicRoutingManager expects ManagerConfig and PipelineTracker
       const schedulerConfig = {
         ...managerConfig,
         pipelinePools: this.assembledPipelinePools,
         enableInternalAPI: true
       };
 
-      this.pipelineManager = new VirtualModelSchedulerManager(
+      this.pipelineManager = new DynamicRoutingManager(
         schedulerConfig,
         this.pipelineTracker
       );
@@ -468,20 +468,20 @@ class RCCSystemInitializer {
       // Initialize the scheduler manager with pipeline pools
       this.pipelineManager.initialize(this.assembledPipelinePools);
 
-      this.log('scheduler', 'VirtualModelSchedulerManager created and initialized with assembled pipeline pools', {
+      this.log('scheduler', 'DynamicRoutingManager created and initialized with assembled pipeline pools', {
         schedulerCount: this.pipelineManager.getMetrics().totalSchedulers,
         activeSchedulers: this.pipelineManager.getMetrics().activeSchedulers,
         pipelinePools: this.assembledPipelinePools.size,
-        virtualModels: Array.from(this.assembledPipelinePools.keys())
+        dynamicRoutings: Array.from(this.assembledPipelinePools.keys())
       });
 
     } catch (error) {
-      throw new Error(`VirtualModelSchedulerManager creation failed: ${error.message}`);
+      throw new Error(`DynamicRoutingManager creation failed: ${error.message}`);
     }
   }
 
   async createServerWithScheduler() {
-    this.log('server', 'Creating ServerModule with prepared VirtualModelSchedulerManager...');
+    this.log('server', 'Creating ServerModule with prepared DynamicRoutingManager...');
 
     try {
       // Import ServerModule
@@ -603,7 +603,7 @@ class RCCSystemInitializer {
       }
 
       // Create ServerModule instance with prepared scheduler manager (T3: 流水线优先架构)
-      this.log('server', 'Creating ServerModule instance with VirtualModelSchedulerManager...');
+      this.log('server', 'Creating ServerModule instance with DynamicRoutingManager...');
 
       // Always try new constructor first
       try {
@@ -627,9 +627,9 @@ class RCCSystemInitializer {
       await this.server.configure(serverConfig);
 
       // For legacy mode: inject scheduler manager after creation
-      if (this.server.setVirtualModelSchedulerManager) {
-        this.server.setVirtualModelSchedulerManager(this.pipelineManager);
-        this.log('server', 'VirtualModelSchedulerManager injected into ServerModule');
+      if (this.server.setDynamicRoutingSchedulerManager) {
+        this.server.setDynamicRoutingSchedulerManager(this.pipelineManager);
+        this.log('server', 'DynamicRoutingManager injected into ServerModule');
       }
 
       this.log('server', 'ServerModule configured and scheduler manager injected');
@@ -749,7 +749,7 @@ class RCCSystemInitializer {
 
       if (this.pipelineManager) {
         await this.pipelineManager.destroy();
-        this.log('pipeline', 'VirtualModelSchedulerManager destroyed');
+        this.log('pipeline', 'DynamicRoutingManager destroyed');
       }
 
       this.log('system', 'RCC system shutdown completed');

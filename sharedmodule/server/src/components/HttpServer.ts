@@ -50,7 +50,7 @@ export class HttpServerComponent extends BaseModule implements IHttpServer {
   /**
    * Initialize the HTTP server with configuration
    */
-  public override configure(config: ServerConfig): void {
+  public override async configure(config: ServerConfig): Promise<void> {
     super.configure(config);
     this.serverConfig = config;
     this.config = config; // Set parent class config

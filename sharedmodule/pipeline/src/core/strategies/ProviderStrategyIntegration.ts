@@ -6,10 +6,8 @@
  * with provider implementations like QwenProvider and IFlowProvider.
  */
 
-import {
-  ErrorHandlingCenter,
-  ErrorHandlingResult
-} from 'rcc-errorhandling';
+import { ErrorHandlingCenter } from 'rcc-errorhandling';
+import { ErrorHandlingResult } from '../monitoring/ErrorMonitoringInterfaces';
 
 import {
   StrategyContext,
@@ -17,7 +15,7 @@ import {
   StrategyConfig
 } from './StrategyInterfaces';
 
-import { PipelineExecutionContext } from '../interfaces/ModularInterfaces';
+import { PipelineExecutionContext } from '../../interfaces/ModularInterfaces';
 
 /**
  * Provider strategy integration configuration

@@ -11,7 +11,7 @@ import { ClientRequest, ClientResponse } from '../types/ServerTypes';
  */
 export class RequestForwarder extends BaseModule {
   private schedulerManager: any | null = null;
-  private virtualModelSchedulerManager: any | null = null;
+  private dynamicRoutingManager: any | null = null;
 
   constructor() {
     const moduleInfo: ModuleInfo = {
@@ -28,7 +28,7 @@ export class RequestForwarder extends BaseModule {
 
     super(moduleInfo);
     this.schedulerManager = null;
-    this.virtualModelSchedulerManager = null;
+    this.dynamicRoutingManager = null;
   }
 
   /**
@@ -45,32 +45,32 @@ export class RequestForwarder extends BaseModule {
     });
 
     try {
-      if (!this.virtualModelSchedulerManager) {
-        throw new Error('Virtual model scheduler manager not available');
+      if (!this.dynamicRoutingManager) {
+        throw new Error('Dynamic routing manager not available');
       }
 
-      // 直接调用虚拟模型调度器的handleRequest方法
-      this.log('Calling virtual model scheduler handleRequest', {
+      // 直接调用动态路由管理器的handleRequest方法
+      this.log('Calling dynamic routing manager handleRequest', {
         method: 'forwardRequest',
         requestId,
-        schedulerType: typeof this.virtualModelSchedulerManager,
-        hasHandleRequest: typeof this.virtualModelSchedulerManager.handleRequest === 'function',
-        schedulerKeys: Object.keys(this.virtualModelSchedulerManager || {}),
-        schedulerPrototypeKeys: Object.getPrototypeOf(this.virtualModelSchedulerManager || {}),
-        isInitialized: this.virtualModelSchedulerManager.isInitialized,
-        constructorName: this.virtualModelSchedulerManager.constructor?.name
+        schedulerType: typeof this.dynamicRoutingManager,
+        hasHandleRequest: typeof this.dynamicRoutingManager.handleRequest === 'function',
+        schedulerKeys: Object.keys(this.dynamicRoutingManager || {}),
+        schedulerPrototypeKeys: Object.getPrototypeOf(this.dynamicRoutingManager || {}),
+        isInitialized: this.dynamicRoutingManager.isInitialized,
+        constructorName: this.dynamicRoutingManager.constructor?.name
       });
 
       // 检查调度器是否已初始化
-      if (!this.virtualModelSchedulerManager.isInitialized) {
-        throw new Error('Virtual model scheduler manager not initialized');
+      if (!this.dynamicRoutingManager.isInitialized) {
+        throw new Error('Dynamic routing manager not initialized');
       }
 
-      // 转换ClientRequest为VirtualModelSchedulerManager期望的格式
+      // 转换ClientRequest为DynamicRoutingManager期望的格式
       const adaptedRequest = this.adaptClientRequest(request);
 
       // 调用handleRequest方法
-      const schedulerResponse = await this.virtualModelSchedulerManager.handleRequest(adaptedRequest);
+      const schedulerResponse = await this.dynamicRoutingManager.handleRequest(adaptedRequest);
 
       // 转换响应格式
       const response = this.adaptSchedulerResponse(schedulerResponse, request);
@@ -79,7 +79,7 @@ export class RequestForwarder extends BaseModule {
         method: 'forwardRequest',
         requestId,
         statusCode: response.status || 200,
-        schedulerType: 'virtual-model'
+        schedulerType: 'dynamic-routing'
       });
 
       return response;
@@ -90,7 +90,7 @@ export class RequestForwarder extends BaseModule {
         method: 'forwardRequest',
         requestId,
         error: errorMessage,
-        schedulerType: 'virtual-model'
+        schedulerType: 'dynamic-routing'
       });
 
       throw new Error(`Scheduler execution failed: ${errorMessage}`);
@@ -107,9 +107,9 @@ export class RequestForwarder extends BaseModule {
   /**
    * 设置虚拟模型调度器管理器 - 连接pipeline虚拟模型路由系统
    */
-  public setVirtualModelSchedulerManager(schedulerManager: any): void {
-    this.virtualModelSchedulerManager = schedulerManager;
-    this.log('Virtual model scheduler manager connected to forwarder');
+  public setDynamicRoutingManager(schedulerManager: any): void {
+    this.dynamicRoutingManager = schedulerManager;
+    this.log('Dynamic routing manager connected to forwarder');
   }
 
   /**
@@ -117,7 +117,7 @@ export class RequestForwarder extends BaseModule {
    */
   public override async destroy(): Promise<void> {
     this.schedulerManager = null;
-    this.virtualModelSchedulerManager = null;
+    this.dynamicRoutingManager = null;
     await super.destroy();
   }
 
@@ -125,6 +125,37 @@ export class RequestForwarder extends BaseModule {
    * 适配ClientRequest为虚拟模型调度器期望的格式
    */
   private adaptClientRequest(clientRequest: ClientRequest): any {
+    const requestType = this.getRequestType(clientRequest);
+
+    // 如果是聊天请求，需要提取OpenAI格式的数据
+    if (requestType === 'chat' && clientRequest.body) {
+      // 从ClientRequest.body中提取OpenAI聊天请求格式
+      const openAIRequest = {
+        model: clientRequest.body.model || 'default',
+        messages: clientRequest.body.messages || [],
+        temperature: clientRequest.body.temperature,
+        max_tokens: clientRequest.body.max_tokens,
+        top_p: clientRequest.body.top_p,
+        stream: clientRequest.body.stream || false,
+        tools: clientRequest.body.tools,
+        tool_choice: clientRequest.body.tool_choice,
+        // 保留原始请求的其他字段
+        ...clientRequest.body
+      };
+
+      this.log('Adapted chat request', {
+        method: 'adaptClientRequest',
+        requestType,
+        hasMessages: !!openAIRequest.messages,
+        messagesLength: openAIRequest.messages?.length || 0,
+        model: openAIRequest.model,
+        originalPath: clientRequest.path
+      });
+
+      return openAIRequest;
+    }
+
+    // 非聊天请求，返回原始格式
     return {
       // 基本字段映射
       id: clientRequest.id,
@@ -137,9 +168,9 @@ export class RequestForwarder extends BaseModule {
       clientId: clientRequest.clientId,
 
       // 虚拟模型调度器需要的字段
-      type: this.getRequestType(clientRequest),
+      type: requestType,
       stream: this.isStreamingRequest(clientRequest),
-      virtualModel: this.extractVirtualModel(clientRequest),
+      routingClassification: this.extractRoutingClassification(clientRequest),
 
       // 保留原始请求引用
       originalRequest: clientRequest
@@ -219,7 +250,7 @@ export class RequestForwarder extends BaseModule {
   /**
    * 提取虚拟模型信息
    */
-  private extractVirtualModel(request: ClientRequest): string {
+  private extractRoutingClassification(request: ClientRequest): string {
     // 从路径、查询参数或请求体中提取虚拟模型信息
     if (request.path.includes('/v1/')) {
       const pathParts = request.path.split('/');

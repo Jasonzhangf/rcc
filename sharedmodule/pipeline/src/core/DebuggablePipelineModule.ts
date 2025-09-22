@@ -790,7 +790,7 @@ export class DebuggablePipelineModule extends BaseModule {
       traceId,
       sessionId,
       requestId,
-      virtualModelId: rawContext.module?.moduleId || 'unknown',
+      routingId: rawContext.module?.moduleId || 'unknown',
       providerId: rawContext.module?.providerName || 'unknown',
       startTime: rawContext.timing?.startTime || Date.now(),
       stage,

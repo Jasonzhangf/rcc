@@ -107,6 +107,16 @@ export class OpenAIChatRequest {
   public tool_choice?: string | Record<string, any> | null;
 
   constructor(data: OpenAIChatRequestData) {
+    // Debug logging to understand request structure
+    console.log('[OpenAIChatRequest] Constructor called with data:', {
+      hasModel: !!data.model,
+      hasMessages: !!data.messages,
+      messagesType: typeof data.messages,
+      messagesLength: data.messages?.length,
+      dataKeys: Object.keys(data),
+      messages: data.messages
+    });
+
     this.model = data.model;
     this.messages = data.messages || [];
     this.temperature = data.temperature;
@@ -123,8 +133,9 @@ export class OpenAIChatRequest {
     this.tool_choice = data.tool_choice;
   }
   
-  validate(): boolean {
-    if (!this.model) {
+  validate(providerHasPreconfiguredModel: boolean = false): boolean {
+    // If provider has a pre-configured model, model field is optional in request
+    if (!providerHasPreconfiguredModel && !this.model) {
       throw new Error('Model is required');
     }
     if (!this.messages || this.messages.length === 0) {

@@ -6,7 +6,7 @@ RCC Server is a lightweight HTTP server module designed specifically for **pure 
 ## Architecture Principles
 - **Separation of Concerns**: Server handles only HTTP services and request forwarding, **no model selection or routing decisions**
 - **Scheduler-First**: All model selection and scheduling logic **completely delegated to the scheduler**
-- **Zero Routing**: **No virtual model routing or selection logic**
+- **Zero Routing**: **No dynamic routing routing or selection logic**
 - **Pure Forwarding**: Request → Server → Scheduler (scheduler makes all decisions) → Provider
 
 ## Quick Start
@@ -14,7 +14,7 @@ RCC Server is a lightweight HTTP server module designed specifically for **pure 
 2. Build: `npm run build`
 3. Run tests: `npm test`
 
-*Note: Current version is v3.0 pure-forwarding architecture, ensure all virtual model dependencies are removed before building*
+*Note: Current version is v3.0 pure-forwarding architecture, ensure all dynamic routing dependencies are removed before building*
 
 ## File Structure & Responsibilities
 
@@ -45,12 +45,12 @@ RCC Server is a lightweight HTTP server module designed specifically for **pure 
 
 ### Architecture Features
 - ✅ **Pure Forwarding**: Server only receives requests and forwards to scheduler, **no model selection or routing logic**
-- ✅ **Zero Routing**: **No virtual model routing, model selection, or capability matching**
+- ✅ **Zero Routing**: **No dynamic routing routing, model selection, or capability matching**
 - ✅ **Scheduler-Centric**: All intelligent decisions concentrated in scheduler, Server only handles HTTP access and forwarding
 - ✅ **Minimal Configuration**: Only basic HTTP configuration retained, **all model-related configuration removed**
 
 ## Initialization Flow
-1. **Scheduler System Initialization** - Create `VirtualModelSchedulerManager` (contains all intelligent decision-making)
+1. **Scheduler System Initialization** - Create `DynamicRoutingSchedulerManager` (contains all intelligent decision-making)
 2. **Server Instantiation** - Configure pure HTTP service and forwarding components
 3. **Scheduler Connection** - Establish forwarding channel via `setSchedulerManager()`
 4. **Forwarder Binding** - Completely delegate request processing to scheduler
@@ -60,11 +60,11 @@ RCC Server is a lightweight HTTP server module designed specifically for **pure 
 The module exposes the following core interfaces:
 - **IServerForwarder** - Server request forwarding interface (pure forwarding, no routing decisions)
 - **IServerModule** - Server HTTP configuration and scheduler connection interface
-- **Scheduler Connection Interface** - Integration point with VirtualModelSchedulerManager
+- **Scheduler Connection Interface** - Integration point with DynamicRoutingSchedulerManager
 
 ### Request Processing Flow
 ```
-User Request → HTTP Server → RequestForwarder → VirtualModelScheduler → Scheduler selects model → Provider executes → Response returns
+User Request → HTTP Server → RequestForwarder → DynamicRoutingScheduler → Scheduler selects model → Provider executes → Response returns
 ```
 
 **Core Features:**
@@ -98,16 +98,16 @@ User Request → HTTP Server → RequestForwarder → VirtualModelScheduler → 
 ## Architecture Evolution
 This module has undergone significant architectural refactoring:
 - **v2.0 → v3.0**: Refactored from "intelligent routing" to "pure forwarding" architecture
-- **Core Changes**: VirtualModelRouter → RequestForwarder, **removed all routing decision logic**
+- **Core Changes**: DynamicRoutingRouter → RequestForwarder, **removed all routing decision logic**
 - **Driving Reason**: Separation of concerns, letting Server focus on HTTP access, routing intelligence completely delegated to scheduler
 
 ## 🎯 Pure Forwarding Architecture Summary
 
 ### ✅ Completed Refactoring (v3.0)
 **Core Changes:**
-1. **Component Layer**: `VirtualModelRouter` → `RequestForwarder` (removed all routing logic)
-2. **Interface Layer**: `IVirtualModelRouter` → `IServerForwarder` (pure forwarding interface)
-3. **Type Layer**: Removed all VirtualModelConfig, RoutingRule and other model-related types
+1. **Component Layer**: `DynamicRoutingRouter` → `RequestForwarder` (removed all routing logic)
+2. **Interface Layer**: `IDynamicRoutingRouter` → `IServerForwarder` (pure forwarding interface)
+3. **Type Layer**: Removed all DynamicRoutingConfig, RoutingRule and other model-related types
 4. **Configuration Layer**: HTTP basic configuration only, **zero model-related configuration**
 5. **Responsibility Layer**: Server=pure forwarding, Scheduler=full decision making
 

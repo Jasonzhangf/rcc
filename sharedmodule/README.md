@@ -33,7 +33,7 @@ sharedmodule/
 ├── server/                 # 服务器框架
 ├── underconstruction/      # 开发模式支持
 ├── bootstrap/              # 启动引导模块
-├── virtual-model-rules/    # 虚拟模型规则
+├── dynamic-routing-classification/    # 动态路由分类
 └── README.md              # 本文档
 ```
 
@@ -122,13 +122,13 @@ sharedmodule/
   - 依赖关系解析
   - 启动配置处理
 
-#### Virtual-Model-Rules (`virtual-model-rules/`)
-- **作用**: 虚拟模型规则引擎
+#### Dynamic-Routing-Classification (`dynamic-routing-classification/`)
+- **作用**: 动态路由分类规则引擎
 - **核心功能**:
-  - 模型映射规则
-  - 动态模型转换
+  - 动态路由映射规则
+  - 智能请求分类和路由
   - 规则验证和执行
-  - 模型兼容性处理
+  - 路由兼容性处理
 
 ## 使用方式 (Usage)
 

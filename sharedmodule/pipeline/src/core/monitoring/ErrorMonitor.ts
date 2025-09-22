@@ -7,10 +7,7 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorContext,
-  ErrorSeverity,
-  ErrorCategory
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -27,7 +24,10 @@ import {
   RecoveryPattern,
   RecoveryAction,
   StrategyContext,
-  MonitoringEventHandlers
+  MonitoringEventHandlers,
+  ErrorContext,
+  ErrorSeverity,
+  ErrorCategory
 } from './ErrorMonitoringInterfaces';
 
 import { StrategyManager } from '../strategies/StrategyManager';
@@ -85,8 +85,12 @@ export class ErrorMonitor implements IErrorMonitor {
       errorsByCategory: {
         [ErrorCategory.NETWORK]: 0,
         [ErrorCategory.AUTHENTICATION]: 0,
+        [ErrorCategory.AUTHORIZATION]: 0,
         [ErrorCategory.VALIDATION]: 0,
         [ErrorCategory.TIMEOUT]: 0,
+        [ErrorCategory.RATE_LIMIT]: 0,
+        [ErrorCategory.INTERNAL]: 0,
+        [ErrorCategory.EXTERNAL]: 0,
         [ErrorCategory.PROVIDER]: 0,
         [ErrorCategory.SYSTEM]: 0
       },
@@ -379,8 +383,12 @@ export class ErrorMonitor implements IErrorMonitor {
       errorCategories: {
         [ErrorCategory.NETWORK]: 0,
         [ErrorCategory.AUTHENTICATION]: 0,
+        [ErrorCategory.AUTHORIZATION]: 0,
         [ErrorCategory.VALIDATION]: 0,
         [ErrorCategory.TIMEOUT]: 0,
+        [ErrorCategory.RATE_LIMIT]: 0,
+        [ErrorCategory.INTERNAL]: 0,
+        [ErrorCategory.EXTERNAL]: 0,
         [ErrorCategory.PROVIDER]: 0,
         [ErrorCategory.SYSTEM]: 0
       },

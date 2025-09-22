@@ -522,11 +522,11 @@ export class FinalVerification {
 
       // 场景2: 虚拟模型路由
       console.log('   🎭 测试虚拟模型路由...');
-      const routingTest = await this.testVirtualModelRoutingEndToEnd(executor);
+      const routingTest = await this.testDynamicRoutingEndToEnd(executor);
       phaseResult.scenarios.push(routingTest);
       if (!routingTest.passed) {
         phaseResult.issues.push({
-          type: 'virtual_model_routing',
+          type: 'dynamic_routing',
           message: 'Virtual model routing failed'
         });
       }
@@ -1196,7 +1196,7 @@ export class FinalVerification {
     return { passed: true, executionTime: 450 };
   }
 
-  private async testVirtualModelRoutingEndToEnd(executor: ModularPipelineExecutor): Promise<any> {
+  private async testDynamicRoutingEndToEnd(executor: ModularPipelineExecutor): Promise<any> {
     // 模拟虚拟模型路由端到端测试
     await new Promise(resolve => setTimeout(resolve, 80));
     return { passed: true, routingAccuracy: 98 };

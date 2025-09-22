@@ -227,7 +227,7 @@ export interface MetricsCollector {
  */
 export interface PipelineExecutionRecord {
   id: string;
-  virtualModelId: string;
+  routingId: string;
   providerId: string;
   modelId: string;
   startTime: number;
@@ -337,7 +337,7 @@ export const TypeGuards = {
       value !== null &&
       typeof value.version === 'string' &&
       typeof value.providers === 'object' &&
-      typeof value.virtualModels === 'object' &&
+      typeof value.dynamicRouting === 'object' &&
       typeof value.createdAt === 'string' &&
       typeof value.updatedAt === 'string'
     );

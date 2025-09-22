@@ -117,7 +117,7 @@ const { missing, invalid, valid } = env.validateRequired([
 // ❌ 潜在风险的动态导入
 const serverModule = await import(serverPath);
 const pipelineModule = await import('rcc-pipeline');
-const schedulerManager = new VirtualModelSchedulerManager(managerConfig);
+const schedulerManager = new DynamicRoutingManager(managerConfig);
 ```
 
 #### 安全风险

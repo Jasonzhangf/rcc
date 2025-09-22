@@ -7,14 +7,41 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorContext,
-  ErrorSeverity,
-  ErrorCategory
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
-import { PipelineExecutionContext } from '../core/PipelineExecutionContext';
-import { StrategyManagerMetrics, StrategyHealth } from './strategies/StrategyInterfaces';
+import { PipelineExecutionContext } from '../PipelineExecutionContext';
+import { StrategyManagerMetrics, StrategyHealth } from '../strategies/StrategyInterfaces';
+
+// Local definitions for interfaces that don't exist in rcc-errorhandling
+export interface ErrorContext {
+  timestamp: number;
+  module: string;
+  operation: string;
+  retryCount: number;
+  delay?: number;
+  metadata?: Record<string, any>;
+}
+
+export enum ErrorSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical'
+}
+
+export enum ErrorCategory {
+  NETWORK = 'network',
+  AUTHENTICATION = 'authentication',
+  AUTHORIZATION = 'authorization',
+  VALIDATION = 'validation',
+  TIMEOUT = 'timeout',
+  RATE_LIMIT = 'rate_limit',
+  INTERNAL = 'internal',
+  EXTERNAL = 'external',
+  PROVIDER = 'provider',
+  SYSTEM = 'system'
+}
 
 /**
  * Error metrics collection interfaces
@@ -44,6 +71,7 @@ export interface ErrorEvent {
   recoverySuccessful: boolean;
   strategyUsed?: string;
   handlingTime: number;
+  consecutiveErrors?: number;
 }
 
 /**
@@ -174,7 +202,7 @@ export interface HealthStatus {
  */
 export interface Alert {
   alertId: string;
-  type: 'error_rate' | 'recovery_rate' | 'handling_time' | 'consecutive_errors' | 'health_check';
+  type: 'error_rate' | 'recovery_rate' | 'handling_time' | 'consecutive_errors' | 'health_check' | 'anomaly_detection';
   severity: ErrorSeverity;
   timestamp: number;
   message: string;
@@ -359,21 +387,70 @@ export interface MonitoringEventHandlers {
   onMetricsUpdated?: (metrics: SystemErrorMetrics) => void;
 }
 
-/**
- * Export monitoring interfaces for external use
- * 导出监控接口供外部使用
- */
-export {
-  ErrorEvent,
-  ProviderErrorMetrics,
-  ModuleErrorMetrics,
-  SystemErrorMetrics,
-  MonitoringConfig,
-  HealthStatus,
-  Alert,
-  RecoveryPattern,
-  RecoveryAction,
-  IErrorMonitor,
-  StrategyContext,
-  MonitoringEventHandlers
-};
+// Configuration interfaces for monitoring systems
+export interface AdaptiveRecoveryConfig {
+  enabled: boolean;
+  learningRate: number;
+  minConfidenceThreshold: number;
+  maxRecoveryAttempts: number;
+  adaptiveTimeout: boolean;
+  performanceTracking: boolean;
+  patternEvolution: boolean;
+  selfHealing: boolean;
+}
+
+export interface HealthCheckConfig {
+  enabled: boolean;
+  checkInterval: number;
+  timeout: number;
+  retryAttempts: number;
+  thresholds: {
+    errorRate: number;
+    responseTime: number;
+    availability: number;
+    memoryUsage: number;
+    cpuUsage: number;
+  };
+  providers: string[];
+  modules: string[];
+  anomalyDetection: {
+    enabled: boolean;
+    sensitivity: number;
+    windowSize: number;
+    alertThreshold: number;
+  };
+}
+
+export interface MonitoringIntegrationConfig {
+  errorMonitoring: MonitoringConfig;
+  automatedRecovery: AdaptiveRecoveryConfig;
+  healthCheck: HealthCheckConfig;
+  unifiedDashboard: {
+    enabled: boolean;
+    port: number;
+    updateInterval: number;
+    retentionPeriod: number;
+  };
+  export: {
+    enabled: boolean;
+    formats: readonly ('json' | 'prometheus')[];
+    endpoints: string[];
+  };
+  notifications: {
+    enabled: boolean;
+    channels: readonly ('webhook' | 'email' | 'slack')[];
+    severityFilter: ErrorSeverity[];
+  };
+}
+
+// Additional missing types
+export interface ErrorHandlingResult {
+  success: boolean;
+  action?: string;
+  error?: Error;
+  context?: ErrorContext;
+  handled?: boolean;
+  result?: any;
+  strategy?: string;
+  delay?: number;
+}

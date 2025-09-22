@@ -1,12 +1,12 @@
 /**
- * Virtual Model Routing System Example
- * 虚拟模型路由系统示例
+ * Dynamic Routing System Example
+ * 动态路由系统示例
  */
 
 import {
-  VirtualModelSchedulerManager,
+  DynamicRoutingManager,
   ManagerConfig
-} from '../framework/VirtualModelSchedulerManager';
+} from '../framework/DynamicRoutingManager';
 
 import {
   PipelineAssembler,
@@ -28,10 +28,10 @@ import {
 export class RoutingExample {
   private pipelineTracker: PipelineTracker;
   private pipelineAssembler: PipelineAssembler;
-  private virtualModelScheduler: VirtualModelSchedulerManager;
+  private dynamicRoutingManager: DynamicRoutingManager;
 
   constructor() {
-    console.log('🚀 Initializing Virtual Model Routing System Example...');
+    console.log('🚀 Initializing Dynamic Routing System Example...');
 
     // 初始化Pipeline Tracker
     this.pipelineTracker = new PipelineTracker();
@@ -83,8 +83,8 @@ export class RoutingExample {
       internalAPIPort: 8080
     };
 
-    // 创建Virtual Model Scheduler Manager
-    this.virtualModelScheduler = new VirtualModelSchedulerManager(
+    // 创建Dynamic Routing Manager
+    this.dynamicRoutingManager = new DynamicRoutingManager(
       schedulerConfig,
       this.pipelineTracker
     );
@@ -106,10 +106,10 @@ export class RoutingExample {
       this.pipelineTracker
     );
 
-    // 将Scheduler连接到Assembler
-    this.pipelineAssembler.setVirtualModelScheduler(this.virtualModelScheduler);
+    // 将Dynamic Router连接到Assembler
+    this.pipelineAssembler.setDynamicRoutingManager(this.dynamicRoutingManager);
 
-    console.log('✅ Virtual Model Routing System Example initialized');
+    console.log('✅ Dynamic Routing System Example initialized');
   }
 
   /**
@@ -181,21 +181,21 @@ export class RoutingExample {
       };
 
       console.log('📝 Processing simple chat request...');
-      const simpleResult = await this.virtualModelScheduler.handleRequest(
+      const simpleResult = await this.dynamicRoutingManager.handleRequest(
         simpleChatRequest,
         routingContext
       );
       console.log('✅ Simple chat result:', simpleResult);
 
       console.log('📝 Processing vision chat request...');
-      const visionResult = await this.virtualModelScheduler.handleRequest(
+      const visionResult = await this.dynamicRoutingManager.handleRequest(
         visionChatRequest,
         { ...routingContext, requestId: 'demo-request-002' }
       );
       console.log('✅ Vision chat result:', visionResult);
 
       console.log('📝 Processing tool call request...');
-      const toolResult = await this.virtualModelScheduler.handleRequest(
+      const toolResult = await this.dynamicRoutingManager.handleRequest(
         toolCallRequest,
         { ...routingContext, requestId: 'demo-request-003' }
       );
@@ -223,7 +223,7 @@ export class RoutingExample {
           { field: 'userContext', operator: 'contains', value: { userTier: 'premium' } }
         ],
         actions: [
-          { type: 'select_virtual_model', target: 'high-performance-model', parameters: {} }
+          { type: 'select_routing', target: 'high-performance-model', parameters: {} }
         ],
         weight: 1.5
       };
@@ -251,7 +251,7 @@ export class RoutingExample {
       };
 
       console.log('📝 Processing premium user request...');
-      const premiumResult = await this.virtualModelScheduler.handleRequest(
+      const premiumResult = await this.dynamicRoutingManager.handleRequest(
         premiumUserRequest,
         premiumContext
       );
@@ -270,19 +270,19 @@ export class RoutingExample {
 
     try {
       // 获取路由引擎统计信息
-      if (this.virtualModelScheduler['routingEngine']) {
-        const routingStats = this.virtualModelScheduler['routingEngine'].getStatistics();
+      if (this.dynamicRoutingManager['routingEngine']) {
+        const routingStats = this.dynamicRoutingManager['routingEngine'].getStatistics();
         console.log('📈 Routing Statistics:', routingStats);
       }
 
       // 获取请求分析器统计信息
-      if (this.virtualModelScheduler['requestAnalyzer']) {
-        const analyzerStats = this.virtualModelScheduler['requestAnalyzer'].getStatistics();
+      if (this.dynamicRoutingManager['requestAnalyzer']) {
+        const analyzerStats = this.dynamicRoutingManager['requestAnalyzer'].getStatistics();
         console.log('📊 Request Analyzer Statistics:', analyzerStats);
       }
 
-      // 获取虚拟模型调度器统计信息
-      const schedulerMetrics = this.virtualModelScheduler.getMetrics();
+      // 获取动态路由管理器统计信息
+      const schedulerMetrics = this.dynamicRoutingManager.getMetrics();
       console.log('🎯 Scheduler Metrics:', schedulerMetrics);
 
       // 获取流水线组装器状态
@@ -298,7 +298,7 @@ export class RoutingExample {
    * 运行完整演示
    */
   async runFullDemo(): Promise<void> {
-    console.log('🎪 Running complete virtual model routing demonstration...');
+    console.log('🎪 Running complete dynamic routing demonstration...');
 
     try {
       // 步骤1: 演示基本路由功能
@@ -310,7 +310,7 @@ export class RoutingExample {
       // 步骤3: 演示路由统计和监控
       await this.demonstrateRoutingStatistics();
 
-      console.log('🎉 Virtual model routing demonstration completed successfully!');
+      console.log('🎉 Dynamic routing demonstration completed successfully!');
 
     } catch (error) {
       console.error('❌ Full demonstration failed:', error);
@@ -327,8 +327,8 @@ export class RoutingExample {
       this.pipelineAssembler.destroy();
     }
 
-    if (this.virtualModelScheduler) {
-      this.virtualModelScheduler.destroy();
+    if (this.dynamicRoutingManager) {
+      this.dynamicRoutingManager.destroy();
     }
 
     if (this.pipelineTracker) {

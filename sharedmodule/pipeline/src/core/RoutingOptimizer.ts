@@ -7,7 +7,7 @@
 import {
   RoutingDecision,
   RoutingOptimizationConfig,
-  VirtualModel,
+  DynamicRouting,
   PerformanceMetrics,
   PipelineExecutionContext,
   ProviderInfo
@@ -194,10 +194,10 @@ export class RoutingOptimizer {
    * 获取路由决策
    */
   async getRoutingDecision(
-    virtualModel: VirtualModel,
+    dynamicRouting: DynamicRouting,
     context?: Partial<PipelineExecutionContext>
   ): Promise<RoutingDecision> {
-    const targetProviders = virtualModel.targets.map(target => target.providerId);
+    const targetProviders = dynamicRouting.targets.map(target => target.providerId);
 
     // 基于健康状态筛选可用提供商
     const availableProviders = targetProviders.filter(providerId => {

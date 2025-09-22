@@ -130,7 +130,7 @@ npm install rcc-bootstrap
 此模块需要以下RCC模块：
 
 ```bash
-npm install rcc-basemodule rcc-config-parser rcc-errorhandling rcc-pipeline rcc-server rcc-virtual-model-rules
+npm install rcc-basemodule rcc-config-parser rcc-errorhandling rcc-pipeline rcc-server rcc-dynamic-routing-classification
 ```
 
 ## 快速开始
@@ -470,7 +470,7 @@ try {
 | **rcc-server** | Instantiation | HTTP server, pure forwarding (no routing) |
 | **rcc-errorhandling** | Dependency Injection | Error handling and recovery |
 | **rcc-pipeline** | Coordinator Injection | Pipeline management and scheduling |
-| **rcc-virtual-model-rules** | Configuration Integration | Virtual model rules management |
+| **rcc-dynamic-routing-classification** | Configuration Integration | Dynamic routing classification rules management |
 
 ### 组件注入示例
 

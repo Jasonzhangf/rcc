@@ -62,7 +62,7 @@ export interface RoutingStatistics {
   successfulDecisions: number;
   fallbackDecisions: number;
   loadBalancedDecisions: number;
-  virtualModelUsage: Map<string, number>;
+  routingUsage: Map<string, number>;
   ruleUsage: Map<string, number>;
   averageMatchScore: number;
   lastDecisionTime: number;
@@ -99,7 +99,7 @@ export class RoutingRulesEngine {
       successfulDecisions: 0,
       fallbackDecisions: 0,
       loadBalancedDecisions: 0,
-      virtualModelUsage: new Map(),
+      routingUsage: new Map(),
       ruleUsage: new Map(),
       averageMatchScore: 0,
       lastDecisionTime: 0
@@ -138,7 +138,7 @@ export class RoutingRulesEngine {
           { field: 'specialRequirements', operator: 'contains', value: { needsVision: true } }
         ],
         actions: [
-          { type: 'select_virtual_model', target: 'vision-capable', parameters: {} }
+          { type: 'select_routing', target: 'vision-capable', parameters: {} }
         ],
         weight: 1.0
       },
@@ -151,7 +151,7 @@ export class RoutingRulesEngine {
           { field: 'requiresStreaming', operator: 'equals', value: true }
         ],
         actions: [
-          { type: 'select_virtual_model', target: 'streaming-capable', parameters: {} }
+          { type: 'select_routing', target: 'streaming-capable', parameters: {} }
         ],
         weight: 0.8
       },
@@ -164,7 +164,7 @@ export class RoutingRulesEngine {
           { field: 'hasToolCalls', operator: 'equals', value: true }
         ],
         actions: [
-          { type: 'select_virtual_model', target: 'tool-capable', parameters: {} }
+          { type: 'select_routing', target: 'tool-capable', parameters: {} }
         ],
         weight: 0.8
       },
@@ -177,7 +177,7 @@ export class RoutingRulesEngine {
           { field: 'tokenCount', operator: 'greater_than', value: 0 }
         ],
         actions: [
-          { type: 'select_virtual_model', target: 'large-context', parameters: {} }
+          { type: 'select_routing', target: 'large-context', parameters: {} }
         ],
         weight: 0.7
       }
@@ -350,7 +350,7 @@ export class RoutingRulesEngine {
       // 更新统计信息
       this.updateStatistics(decision, Date.now() - startTime);
 
-      console.log(`✅ Routing decision made: ${decision.targetVirtualModelId}, score: ${decision.matchResult.matchScore.toFixed(2)}`);
+      console.log(`✅ Routing decision made: ${decision.targetRoutingId}, score: ${decision.matchResult.matchScore.toFixed(2)}`);
 
       return decision;
 
@@ -803,13 +803,13 @@ export class RoutingRulesEngine {
       candidates
         .slice(1, Math.min(this.config.maxAlternatives + 1, candidates.length))
         .map(candidate => ({
-          virtualModelId: candidate.poolId,
+          routingId: candidate.poolId,
           matchScore: candidate.matchResult.matchScore,
           reason: 'Alternative candidate'
         })) : [];
 
     const decision: RoutingDecision = {
-      targetVirtualModelId: selectedCandidate.poolId,
+      targetRoutingId: selectedCandidate.poolId,
       selectedPoolId: selectedCandidate.poolId,
       matchResult: selectedCandidate.matchResult,
       alternatives,
@@ -855,8 +855,8 @@ export class RoutingRulesEngine {
       case 'least_connections':
         // 选择最少使用的
         return candidates.reduce((least, current) => {
-          const leastUsage = this.statistics.virtualModelUsage.get(least.poolId) || 0;
-          const currentUsage = this.statistics.virtualModelUsage.get(current.poolId) || 0;
+          const leastUsage = this.statistics.routingUsage.get(least.poolId) || 0;
+          const currentUsage = this.statistics.routingUsage.get(current.poolId) || 0;
           return currentUsage < leastUsage ? current : least;
         });
 
@@ -894,7 +894,7 @@ export class RoutingRulesEngine {
     this.statistics.fallbackDecisions++;
 
     const fallbackDecision: RoutingDecision = {
-      targetVirtualModelId: bestCandidate.poolId,
+      targetRoutingId: bestCandidate.poolId,
       selectedPoolId: bestCandidate.poolId,
       matchResult: {
         isMatch: true,
@@ -962,8 +962,8 @@ export class RoutingRulesEngine {
     this.statistics.averageDecisionTime = (totalTime + decisionTime) / this.statistics.totalDecisions;
 
     // 更新虚拟模型使用统计
-    const usage = this.statistics.virtualModelUsage.get(decision.targetVirtualModelId) || 0;
-    this.statistics.virtualModelUsage.set(decision.targetVirtualModelId, usage + 1);
+    const usage = this.statistics.routingUsage.get(decision.targetRoutingId) || 0;
+    this.statistics.routingUsage.set(decision.targetRoutingId, usage + 1);
 
     // 更新负载均衡统计
     if (decision.metadata?.decisionReason === 'load_balancing') {
@@ -1018,7 +1018,7 @@ export class RoutingRulesEngine {
       successfulDecisions: 0,
       fallbackDecisions: 0,
       loadBalancedDecisions: 0,
-      virtualModelUsage: new Map(),
+      routingUsage: new Map(),
       ruleUsage: new Map(),
       averageMatchScore: 0,
       lastDecisionTime: 0

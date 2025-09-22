@@ -65,18 +65,7 @@ const testConfig: PipelineWrapper = {
   version: '1.0.0',
   type: 'pipeline',
   description: 'Test pipeline for modular architecture',
-  virtualModels: [
-    {
-      id: 'test-model',
-      name: 'Test Model',
-      description: 'Test model for modular pipeline',
-      type: 'text',
-      provider: 'mock-provider',
-      endpoint: 'https://mock-api.example.com',
-      model: 'mock-model'
-    }
-  ],
-  modules: {
+    modules: {
     llmswitch: {
       enabled: true,
       config: {

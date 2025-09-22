@@ -303,7 +303,7 @@ MIT License - see LICENSE file for details
 
 ## 🔗 Related Projects
 
-- [rcc-virtual-model-rules](https://github.com/rcc/rcc-virtual-model-rules) - Virtual model routing rules
+- [rcc-dynamic-routing-classification](https://github.com/rcc/rcc-dynamic-routing-classification) - Dynamic routing classification rules
 - [rcc-debugcenter](https://github.com/rcc/rcc-debugcenter) - Debug and monitoring tools
 
 ---

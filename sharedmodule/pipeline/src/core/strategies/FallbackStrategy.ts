@@ -7,10 +7,7 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorHandlingResult,
-  ErrorSeverity,
-  ErrorCategory
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
 import {
@@ -20,7 +17,10 @@ import {
   StrategyHealth,
   StrategyMetrics,
   FallbackStrategyConfig,
-  FallbackAction
+  FallbackAction,
+  ErrorHandlingResult,
+  ErrorSeverity,
+  ErrorCategory
 } from './StrategyInterfaces';
 
 /**
@@ -256,9 +256,9 @@ export class FallbackStrategy implements IErrorHandlingStrategy {
     const pipelineContext = context.pipelineContext;
 
     // Check if the provider has a token refresh method
-    if (pipelineContext && typeof pipelineContext.refreshToken === 'function') {
+    if (pipelineContext && 'refreshToken' in pipelineContext && typeof (pipelineContext as any).refreshToken === 'function') {
       try {
-        const newToken = await pipelineContext.refreshToken();
+        const newToken = await (pipelineContext as any).refreshToken();
         return {
           success: true,
           action: 'token_refresh',
@@ -279,7 +279,7 @@ export class FallbackStrategy implements IErrorHandlingStrategy {
    */
   private isTokenRefreshAvailable(context: StrategyContext): boolean {
     const pipelineContext = context.pipelineContext;
-    return pipelineContext && typeof pipelineContext.refreshToken === 'function';
+    return pipelineContext && 'refreshToken' in pipelineContext && typeof (pipelineContext as any).refreshToken === 'function';
   }
 
   /**
@@ -444,7 +444,7 @@ export class FallbackStrategy implements IErrorHandlingStrategy {
    * 更新策略健康状态
    */
   private updateHealth(): void {
-    this.health.lastExecutionTime = Date.now();
+    this.health.lastExecution = Date.now();
     this.health.averageResponseTime = this.metrics.averageExecutionTime;
     this.health.successRate = this.metrics.successRate;
 

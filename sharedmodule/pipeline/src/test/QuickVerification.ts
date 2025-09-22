@@ -157,11 +157,11 @@ class QuickVerification {
 
       // 创建测试配置
       const testConfig: PipelineWrapper = {
-        virtualModels: [
+        routingConfigs: [
           {
             id: 'test-model',
             name: 'Test Model',
-            description: 'Test virtual model',
+            description: 'Test routing configuration',
             targets: [{ providerId: 'mock-provider' }],
             capabilities: ['text-generation']
           }
@@ -315,7 +315,7 @@ class QuickVerification {
 
       // 创建测试配置
       const testConfig: PipelineWrapper = {
-        virtualModels: [
+        routingConfigs: [
           {
             id: 'test-model',
             name: 'Test Model',
@@ -428,7 +428,7 @@ class QuickVerification {
       const context = {
         sessionId: 'test-session',
         requestId: 'test-request',
-        virtualModelId: 'test-model',
+        routingId: 'test-model',
         providerId: 'mock-provider',
         startTime: Date.now(),
         ioRecords: [],

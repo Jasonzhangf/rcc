@@ -5,10 +5,12 @@
 
 import { ModuleScanner, ProviderDiscoveryOptions } from './ModuleScanner';
 import { PipelineTracker } from './PipelineTracker';
-import { VirtualModelConfig } from '../types/virtual-model';
+import { DynamicRoutingConfig } from '../types/dynamic-routing';
 import { Pipeline, PipelineConfig } from './Pipeline';
 import { BaseProvider } from './BaseProvider';
-import { VirtualModelSchedulerManager, ManagerConfig } from './VirtualModelSchedulerManager';
+import { DynamicRoutingManager, ManagerConfig } from './DynamicRoutingManager';
+import QwenProvider from '../providers/qwen';
+import IFlowProvider from '../providers/iflow';
 import { EnhancedPipelineAssembler } from '../core/EnhancedPipelineAssembler';
 import { RoutingOptimizationConfig, DebugConfig } from '../interfaces/ModularInterfaces';
 import { UnifiedPipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
@@ -30,13 +32,27 @@ interface ConfigData {
 
 interface PipelineTable {
   getEntries(): PipelineTableEntry[];
+  getEntriesByDynamicRouting(routingId: string): PipelineTableEntry[];
   toJSON(): any;
 }
 
 interface PipelineTableEntry {
-  id: string;
-  name: string;
-  config: any;
+  /** 虚拟模型ID */
+  routingId: string;
+  /** 目标供应商ID */
+  providerId: string;
+  /** 目标模型ID */
+  modelId: string;
+  /** API密钥索引 */
+  keyIndex: number;
+  /** 优先级 */
+  priority: number;
+  /** 是否启用 */
+  enabled: boolean;
+  /** 权重 */
+  weight?: number;
+  /** 负载均衡策略 */
+  strategy?: 'round-robin' | 'weighted' | 'random' | 'least-connections';
 }
 
 // Import config-parser types with proper type assertion
@@ -89,10 +105,14 @@ export interface AssemblerConfig {
   // 新增：PipelineWrapper支持
   pipelineWrapper?: PipelineWrapper;
   enableModularPipeline?: boolean;
+  // Debug configuration
+  enableTwoPhaseDebug?: boolean;
+  debugBaseDirectory?: string;
+  enableIOTracking?: boolean;
 }
 
 export interface PipelinePool {
-  virtualModelId: string;
+  routingId: string;
   pipelines: Map<string, Pipeline>;
   activePipeline: Pipeline | null;
   healthStatus: 'healthy'; // Always healthy
@@ -113,12 +133,12 @@ export interface AssemblyResult {
   success: boolean;
   pipelinePools: Map<string, PipelinePool>;
   errors: Array<{
-    virtualModelId: string;
+    routingId: string;
     error: string;
     provider?: string;
   }>;
   warnings: Array<{
-    virtualModelId: string;
+    routingId: string;
     warning: string;
   }>;
 }
@@ -128,12 +148,12 @@ export interface AssemblyResult {
  * 流水线组装器 - 从配置组装流水线的核心服务
  */
 export class PipelineAssembler extends UnifiedPipelineBaseModule {
-  private config: AssemblerConfig;
+  public config: AssemblerConfig;
   private moduleScanner: ModuleScanner;
   private pipelineTracker: PipelineTracker;
   private pipelinePools: Map<string, PipelinePool> = new Map();
   private discoveredProviders: Map<string, BaseProvider> = new Map();
-  private virtualModelScheduler?: VirtualModelSchedulerManager; // 虚拟模型调度器引用
+  private dynamicRoutingManager?: DynamicRoutingManager; // 动态路由管理器引用
 
   // Configuration module integration
   private configLoader?: any;
@@ -157,7 +177,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
     this.config = {
       enableAutoDiscovery: true,
       fallbackStrategy: 'first-available',
-      enableConfigModuleIntegration: true,
+      enableConfigModuleIntegration: true, // Enable to load provider configurations
       enableModularPipeline: false,
       ...config
     };
@@ -183,36 +203,15 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
    */
   private initializeConfigModules(): void {
     try {
-      this.logInfo('Initializing configuration modules', {}, 'initialization');
+      this.logInfo('Configuration modules not yet implemented - skipping initialization', {}, 'initialization');
 
-      // Create configuration module instances
-      this.configLoader = new ConfigLoader({
-        id: 'config-loader',
-        type: 'config-loader',
-        name: 'Config Loader Module',
-        version: '1.0.0',
-        description: 'RCC Configuration Loader Module'
-      });
+      // Note: Config modules (ConfigLoader, ConfigParser, PipelineConfigGenerator)
+      // are not yet available. For now, we'll use the existing dynamic routing configs
+      // directly without pipeline table generation.
 
-      this.configParser = new ConfigParser({
-        id: 'config-parser',
-        type: 'config-parser',
-        name: 'Config Parser Module',
-        version: '1.0.0',
-        description: 'RCC Configuration Parser Module'
-      });
-
-      this.pipelineConfigGenerator = new PipelineConfigGenerator({
-        id: 'pipeline-config-generator',
-        type: 'pipeline-config-generator',
-        name: 'Pipeline Config Generator Module',
-        version: '1.0.0',
-        description: 'RCC Pipeline Configuration Generator Module'
-      });
-
-      this.logInfo('Configuration modules initialized successfully', {}, 'initialization');
+      this.logWarn('Configuration modules disabled - using direct dynamic routing configs', {}, 'initialization');
     } catch (error) {
-      this.logError('Failed to initialize configuration modules', error, 'initialization');
+      this.logError('Failed to initialize configuration modules', error as unknown as Record<string, unknown>, 'initialization');
       // Don't throw - allow fallback to traditional assembly
     }
   }
@@ -227,10 +226,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
     }
 
     try {
-      this.logInfo('Loading configuration and generating pipeline table', { configPath }, 'config-loading');
-
       // Find configuration file
       const configPath = this.config.configFilePath || this.getDefaultConfigPath();
+      this.logInfo('Loading configuration and generating pipeline table', { configPath }, 'config-loading');
       this.logInfo('Configuration file path determined', { configPath }, 'config-loading');
 
       // Initialize config modules
@@ -261,7 +259,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       return this.currentConfigData || null;
     } catch (error) {
-      this.logError('Failed to load configuration and generate pipeline table', error, 'config-loading');
+      this.logError('Failed to load configuration and generate pipeline table', error as unknown as Record<string, unknown>, 'config-loading');
       return null;
     }
   }
@@ -311,44 +309,86 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       this.logInfo('Pipeline table saved to file', { outputPath }, 'config-persistence');
     } catch (error) {
-      this.logError('Failed to save pipeline table', error, 'config-persistence');
+      this.logError('Failed to save pipeline table', error as unknown as Record<string, unknown>, 'config-persistence');
     }
   }
 
   /**
-   * Convert pipeline table entries to VirtualModelConfig array
-   * 将流水线表条目转换为VirtualModelConfig数组
+   * Convert pipeline table entries to DynamicRoutingConfig array
+   * 将流水线表条目转换为DynamicRoutingConfig数组
    */
-  private convertPipelineTableToVirtualModelConfigs(pipelineTable: PipelineTable): VirtualModelConfig[] {
+  private convertPipelineTableToDynamicRoutingConfigs(pipelineTable: PipelineTable): DynamicRoutingConfig[] {
     const entries = pipelineTable.getEntries();
-    const virtualModelConfigs: Map<string, VirtualModelConfig> = new Map();
+    const dynamicRoutingConfigs: Map<string, DynamicRoutingConfig> = new Map();
 
     for (const entry of entries) {
-      const virtualModelId = `vm-${entry.id}`;
-      if (!virtualModelConfigs.has(virtualModelId)) {
-        virtualModelConfigs.set(virtualModelId, {
-          id: virtualModelId,
-          name: entry.name || virtualModelId,
-          enabled: entry.config?.enabled !== false,
-          modelId: entry.config?.modelId || 'default',
-          provider: entry.config?.providerId || 'unknown',
-          targets: [],
+      const routingId = entry.routingId;
+      if (!dynamicRoutingConfigs.has(routingId)) {
+        dynamicRoutingConfigs.set(routingId, {
+          id: routingId,
+          name: routingId,
+          enabled: entry.enabled,
+          modelId: entry.modelId,
+          provider: entry.providerId,
+          targets: [], // Dynamic routing doesn't need targets - they route based on pipeline table
           capabilities: ['chat']
         });
       }
 
-      const vmConfig = virtualModelConfigs.get(virtualModelId)!;
-      if (vmConfig.targets) {
-        vmConfig.targets.push({
-          providerId: entry.config?.providerId || 'unknown',
-          modelId: entry.config?.modelId || 'default',
-          weight: entry.config?.weight || 1,
-          enabled: entry.config?.enabled !== false
-        });
+      // According to user feedback: dynamic routing doesn't need targets
+      // They should route to appropriate pipelines based on the pipeline table
+      // So we don't push targets here
+    }
+
+    return Array.from(dynamicRoutingConfigs.values());
+  }
+
+  /**
+   * Create simple pipeline table from dynamic routing configs
+   * 从动态路由配置创建简单的流水线表
+   */
+  private createSimplePipelineTable(dynamicRoutingConfigs: DynamicRoutingConfig[]): PipelineTable {
+    const entries: PipelineTableEntry[] = [];
+
+    for (const vmConfig of dynamicRoutingConfigs) {
+      // If dynamic routing has targets, convert them to pipeline table entries
+      if (vmConfig.targets && vmConfig.targets.length > 0) {
+        for (const target of vmConfig.targets) {
+          const entry: PipelineTableEntry = {
+            routingId: vmConfig.id,
+            providerId: target.providerId,
+            modelId: target.modelId,
+            keyIndex: target.keyIndex || 0,
+            priority: 1,
+            enabled: vmConfig.enabled && (target.enabled !== false),
+            weight: target.weight || 1,
+            strategy: 'round-robin'
+          };
+          entries.push(entry);
+        }
+      } else {
+        // Create a default entry for dynamic routing without targets
+        const entry: PipelineTableEntry = {
+          routingId: vmConfig.id,
+          providerId: vmConfig.provider || 'default',
+          modelId: vmConfig.modelId || 'default',
+          keyIndex: 0,
+          priority: 1,
+          enabled: vmConfig.enabled,
+          weight: 1,
+          strategy: 'round-robin'
+        };
+        entries.push(entry);
       }
     }
 
-    return Array.from(virtualModelConfigs.values());
+    return {
+      getEntries: () => entries,
+      getEntriesByDynamicRouting: (routingId: string) => {
+        return entries.filter(entry => entry.routingId === routingId);
+      },
+      toJSON: () => ({ entries, metadata: { generatedAt: new Date().toISOString(), totalEntries: entries.length } })
+    };
   }
 
   /**
@@ -359,21 +399,21 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
     this.logInfo('Starting pipeline assembly from pipeline table', {}, 'assembly-process');
 
     try {
-      // Convert pipeline table to virtual model configs
-      const virtualModelConfigs = this.convertPipelineTableToVirtualModelConfigs(pipelineTable);
-      this.logInfo('Converted pipeline table to virtual model configs', { count: virtualModelConfigs.length }, 'assembly-process');
+      // Convert pipeline table to dynamic routing configs
+      const dynamicRoutingConfigs = this.convertPipelineTableToDynamicRoutingConfigs(pipelineTable);
+      this.logInfo('Converted pipeline table to dynamic routing configs', { count: dynamicRoutingConfigs.length }, 'assembly-process');
 
       // Use existing assembly logic
-      return await this.assemblePipelines(virtualModelConfigs);
+      return await this.assemblePipelines(dynamicRoutingConfigs);
 
     } catch (error) {
-      this.logError('Failed to load from pipeline table', error, 'assembly-process');
+      this.logError('Failed to load from pipeline table', error as unknown as Record<string, unknown>, 'assembly-process');
 
       return {
         success: false,
         pipelinePools: new Map(),
         errors: [{
-          virtualModelId: 'pipeline-table',
+          routingId: 'pipeline-table',
           error: `Failed to load from pipeline table: ${error instanceof Error ? error.message : String(error)}`
         }],
         warnings: []
@@ -404,7 +444,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       const validationResult = await this.validatePipelineWrapper(wrapper);
       if (!validationResult.isValid) {
         result.errors.push(...validationResult.errors.map(error => ({
-          virtualModelId: 'wrapper-validation',
+          routingId: 'wrapper-validation',
           error
         })));
         result.success = false;
@@ -424,11 +464,11 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logError('Modular assembly error', error, 'assembly-process');
+      this.logError('Modular assembly error', error as unknown as Record<string, unknown>, 'assembly-process');
 
       result.success = false;
       result.errors.push({
-        virtualModelId: 'modular-assembly',
+        routingId: 'modular-assembly',
         error: `Modular assembly error: ${errorMessage}`
       });
 
@@ -448,9 +488,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // 验证虚拟模型配置
-    if (!wrapper.virtualModels || wrapper.virtualModels.length === 0) {
-      errors.push('PipelineWrapper.virtualModels不能为空');
+    // 验证动态路由配置
+    if (!wrapper.dynamicRouting || wrapper.dynamicRouting.length === 0) {
+      errors.push('PipelineWrapper.dynamicRouting不能为空');
     }
 
     // 验证模块配置
@@ -492,7 +532,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
    * 使用PipelineWrapper组装模块化流水线
    */
   private async assembleModularPipelines(wrapper: PipelineWrapper): Promise<AssemblyResult> {
-    this.logInfo('Assembling modular pipelines from PipelineWrapper', { wrapperId: wrapper.id, virtualModels: wrapper.virtualModels.length, modules: wrapper.modules.length }, 'assembly-process');
+    this.logInfo('Assembling modular pipelines from PipelineWrapper', { wrapperId: wrapper.id, dynamicRoutings: wrapper.dynamicRouting.length, modules: wrapper.modules.length }, 'assembly-process');
 
     const result: AssemblyResult = {
       success: true,
@@ -502,32 +542,32 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
     };
 
     try {
-      // 为每个虚拟模型创建流水线池
-      for (const virtualModel of wrapper.virtualModels) {
+      // 为每个动态路由创建流水线池
+      for (const routingConfig of wrapper.dynamicRouting) {
         try {
-          const pool = await this.assembleModularPipelinePool(virtualModel, wrapper);
+          const pool = await this.assembleModularPipelinePool(routingConfig, wrapper);
 
           if (pool.pipelines.size === 0) {
             result.warnings.push({
-              virtualModelId: virtualModel.id,
-              warning: `No modular pipelines could be assembled for virtual model`
+              routingId: routingConfig.id,
+              warning: `No modular pipelines could be assembled for dynamic route`
             });
           }
 
-          result.pipelinePools.set(virtualModel.id, pool);
-          this.logInfo('Assembled modular pipeline pool', { virtualModelId: virtualModel.id, pipelineCount: pool.pipelines.size }, 'assembly-process');
+          result.pipelinePools.set(routingConfig.id, pool);
+          this.logInfo('Assembled modular pipeline pool', { routingId: routingConfig.id, pipelineCount: pool.pipelines.size }, 'assembly-process');
 
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           result.errors.push({
-            virtualModelId: virtualModel.id,
+            routingId: routingConfig.id,
             error: errorMessage
           });
-          this.logError('Failed to assemble modular pipeline', { virtualModelId: virtualModel.id, error: errorMessage }, 'assembly-process');
+          this.logError('Failed to assemble modular pipeline', { routingId: routingConfig.id, error: errorMessage }, 'assembly-process');
         }
       }
 
-      result.success = result.errors.length < wrapper.virtualModels.length;
+      result.success = result.errors.length < wrapper.dynamicRouting.length;
       return result;
 
     } catch (error) {
@@ -536,7 +576,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       result.success = false;
       result.errors.push({
-        virtualModelId: 'modular-assembly',
+        routingId: 'modular-assembly',
         error: `Modular pipeline assembly failed: ${errorMessage}`
       });
 
@@ -545,25 +585,25 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * Assemble modular pipeline pool for a single virtual model
-   * 为单个虚拟模型组装模块化流水线池
+   * Assemble modular pipeline pool for a single dynamic route
+   * 为单个动态路由组装模块化流水线池
    */
-  private async assembleModularPipelinePool(virtualModel: any, wrapper: PipelineWrapper): Promise<PipelinePool> {
-    this.logInfo('Assembling modular pipeline pool', { virtualModelId: virtualModel.id }, 'assembly-process');
+  private async assembleModularPipelinePool(routingConfig: any, wrapper: PipelineWrapper): Promise<PipelinePool> {
+    this.logInfo('Assembling modular pipeline pool', { routingId: routingConfig.id }, 'assembly-process');
 
     const pipelines = new Map<string, Pipeline>();
 
     try {
       // 创建模块化流水线
-      const modularPipeline = await this.createModularPipeline(virtualModel, wrapper);
+      const modularPipeline = await this.createModularPipeline(routingConfig, wrapper);
       if (modularPipeline) {
-        const pipelineId = `modular_${virtualModel.id}`;
+        const pipelineId = `modular_${routingConfig.id}`;
         pipelines.set(pipelineId, modularPipeline);
         this.logInfo('Created modular pipeline', { pipelineId }, 'assembly-process');
       }
 
       const pool: PipelinePool = {
-        virtualModelId: virtualModel.id,
+        routingId: routingConfig.id,
         pipelines,
         activePipeline: pipelines.size > 0 ? Array.from(pipelines.values())[0] : null,
         healthStatus: 'healthy',
@@ -574,18 +614,21 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
           failedRequests: 0,
           averageResponseTime: 0
         },
-        routingCapabilities: this.createModularRoutingCapabilities(virtualModel, wrapper),
+        routingCapabilities: this.createModularRoutingCapabilities(routingConfig, wrapper),
         isActive: true
       };
 
-      this.logInfo('Modular pipeline pool assembled', { virtualModelId: virtualModel.id, pipelineCount: pipelines.size }, 'assembly-process');
+      this.logInfo('Modular pipeline pool assembled', { routingId: routingConfig.id, pipelineCount: pipelines.size }, 'assembly-process');
       return pool;
 
     } catch (error) {
-      this.logError('Failed to assemble modular pipeline pool', { virtualModelId: virtualModel.id, error: error.message || error }, 'assembly-process');
+      this.logError('Failed to assemble modular pipeline pool', {
+        routingId: routingConfig.id,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'assembly-process');
 
       return {
-        virtualModelId: virtualModel.id,
+        routingId: routingConfig.id,
         pipelines: new Map(),
         activePipeline: null,
         healthStatus: 'healthy',
@@ -596,7 +639,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
           failedRequests: 0,
           averageResponseTime: 0
         },
-        routingCapabilities: this.createDefaultModularRoutingCapabilities(virtualModel),
+        routingCapabilities: this.createDefaultModularRoutingCapabilities(routingConfig),
         isActive: false
       };
     }
@@ -606,9 +649,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
    * Create modular pipeline using wrapper configuration
    * 使用wrapper配置创建模块化流水线
    */
-  private async createModularPipeline(virtualModel: any, wrapper: PipelineWrapper): Promise<Pipeline | null> {
+  private async createModularPipeline(routingConfig: any, wrapper: PipelineWrapper): Promise<Pipeline | null> {
     try {
-      this.logInfo('Creating modular pipeline', { virtualModelId: virtualModel.id }, 'assembly-process');
+      this.logInfo('Creating modular pipeline', { routingId: routingConfig.id }, 'assembly-process');
 
       // 初始化模块化执行器（如果尚未初始化）
       if (!this.modularExecutor) {
@@ -616,16 +659,19 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       }
 
       // 构建流水线配置
-      const pipelineConfig = this.buildModularPipelineConfig(virtualModel, wrapper);
+      const pipelineConfig = this.buildModularPipelineConfig(routingConfig, wrapper);
 
       // 创建模块化流水线实例
       const pipeline = new Pipeline(pipelineConfig, this.pipelineTracker);
 
-      this.logInfo('Created modular pipeline', { virtualModelId: virtualModel.id }, 'assembly-process');
+      this.logInfo('Created modular pipeline', { routingId: routingConfig.id }, 'assembly-process');
       return pipeline;
 
     } catch (error) {
-      this.logError('Failed to create modular pipeline', { virtualModelId: virtualModel.id, error: error.message || error }, 'assembly-process');
+      this.logError('Failed to create modular pipeline', {
+        routingId: routingConfig.id,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'assembly-process');
       return null;
     }
   }
@@ -653,7 +699,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       this.logInfo('Modular executor initialized successfully', {}, 'initialization');
     } catch (error) {
-      this.logError('Failed to initialize modular executor', error, 'initialization');
+      this.logError('Failed to initialize modular executor', error as unknown as Record<string, unknown>, 'initialization');
       throw error;
     }
   }
@@ -662,7 +708,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
    * Build modular pipeline configuration
    * 构建模块化流水线配置
    */
-  private buildModularPipelineConfig(virtualModel: any, wrapper: PipelineWrapper): any {
+  private buildModularPipelineConfig(routingConfig: any, wrapper: PipelineWrapper): any {
     // 从wrapper配置中提取模块配置
     const llmswitchModule = wrapper.modules.find(m => m.type === 'llmswitch');
     const workflowModule = wrapper.modules.find(m => m.type === 'workflow');
@@ -670,12 +716,12 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
     const providerModule = wrapper.modules.find(m => m.type === 'provider');
 
     // 确定目标提供商和模型
-    const target = virtualModel.targets[0] || { providerId: 'default', modelId: 'default' };
+    const target = routingConfig.targets[0] || { providerId: 'default', modelId: 'default' };
 
     return {
-      id: `modular_pipeline_${virtualModel.id}_${Date.now()}`,
-      name: `Modular Pipeline for ${virtualModel.name || virtualModel.id}`,
-      virtualModelId: virtualModel.id,
+      id: `modular_pipeline_${routingConfig.id}_${Date.now()}`,
+      name: `Modular Pipeline for ${routingConfig.name || routingConfig.id}`,
+      routingId: routingConfig.id,
       description: `Modular pipeline using LLM Switch → Workflow → Compatibility → Provider architecture`,
       type: 'modular',
 
@@ -689,7 +735,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       // 目标配置
       targets: [{
-        id: `${virtualModel.id}_${target.providerId}_${target.modelId}`,
+        id: `${routingConfig.id}_${target.providerId}_${target.modelId}`,
         providerId: target.providerId,
         modelId: target.modelId,
         weight: target.weight || 1,
@@ -699,7 +745,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
         requestCount: 0,
         errorCount: 0,
         metadata: {
-          virtualModelId: virtualModel.id,
+          routingId: routingConfig.id,
           providerId: target.providerId,
           modelId: target.modelId,
           modularPipeline: true
@@ -724,9 +770,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       // 元数据
       metadata: {
-        virtualModelName: virtualModel.name || virtualModel.id,
-        virtualModelProvider: target.providerId,
-        capabilities: virtualModel.capabilities || ['chat'],
+        routingConfigName: routingConfig.name || routingConfig.id,
+        routingConfigProvider: target.providerId,
+        capabilities: routingConfig.capabilities || ['chat'],
         targetProvider: target.providerId,
         targetModel: target.modelId,
         wrapperVersion: wrapper.metadata?.version || '1.0.0',
@@ -739,10 +785,10 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
    * Create modular routing capabilities
    * 创建模块化路由能力
    */
-  private createModularRoutingCapabilities(virtualModel: any, wrapper: PipelineWrapper): any {
+  private createModularRoutingCapabilities(routingConfig: any, wrapper: PipelineWrapper): any {
     // 从wrapper的路由配置创建路由能力
     return {
-      supportedModels: [virtualModel.modelId || 'default'],
+      supportedModels: [routingConfig.modelId || 'default'],
       maxTokens: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
       supportsStreaming: true,
       supportsTools: true,
@@ -772,9 +818,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
    * Create default modular routing capabilities
    * 创建默认模块化路由能力
    */
-  private createDefaultModularRoutingCapabilities(virtualModel: any): any {
+  private createDefaultModularRoutingCapabilities(routingConfig: any): any {
     return {
-      supportedModels: [virtualModel.modelId || 'default'],
+      supportedModels: [routingConfig.modelId || 'default'],
       maxTokens: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
       supportsStreaming: true,
       supportsTools: true,
@@ -801,10 +847,10 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * Assemble pipelines from virtual model configurations
-   * 从虚拟模型配置组装流水线
+   * Assemble pipelines from dynamic routing configurations
+   * 从动态路由配置组装流水线
    */
-  async assemblePipelines(virtualModelConfigs?: VirtualModelConfig[]): Promise<AssemblyResult> {
+  async assemblePipelines(dynamicRoutingConfigs?: DynamicRoutingConfig[]): Promise<AssemblyResult> {
     this.logInfo('Starting pipeline assembly process', {}, 'assembly-process');
 
     const result: AssemblyResult = {
@@ -814,30 +860,36 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       warnings: []
     };
 
-    // If config module integration is enabled and no explicit configs provided, load from config file
-    if (this.config.enableConfigModuleIntegration && (!virtualModelConfigs || virtualModelConfigs.length === 0)) {
-      this.logInfo('No explicit virtual model configs provided - loading from configuration file', {}, 'assembly-process');
+    // Load configuration if not already loaded and no explicit configs provided
+    if (!this.currentConfigData && (!dynamicRoutingConfigs || dynamicRoutingConfigs.length === 0)) {
+      this.logInfo('No configuration loaded - loading from configuration file', {}, 'assembly-process');
 
       const configData = await this.loadConfigurationAndGeneratePipelineTable();
       if (configData && this.currentPipelineTable) {
-        // Convert pipeline table to virtual model configs and proceed
-        virtualModelConfigs = this.convertPipelineTableToVirtualModelConfigs(this.currentPipelineTable);
-        this.logInfo('Loaded virtual model configurations from pipeline table', { count: virtualModelConfigs.length }, 'assembly-process');
+        // Convert pipeline table to dynamic routing configs and proceed
+        dynamicRoutingConfigs = this.convertPipelineTableToDynamicRoutingConfigs(this.currentPipelineTable);
+        this.logInfo('Loaded dynamic routing configurations from pipeline table', { count: dynamicRoutingConfigs.length }, 'assembly-process');
       } else {
         this.logWarn('Failed to load configuration from file - falling back to empty configs', {}, 'assembly-process');
-        virtualModelConfigs = [];
+        dynamicRoutingConfigs = [];
       }
     }
 
-    // Ensure we have virtual model configs to work with
-    if (!virtualModelConfigs || virtualModelConfigs.length === 0) {
-      this.logWarn('No virtual model configurations available - creating empty assembly', {}, 'assembly-process');
+    // Create a simple pipeline table from dynamic routing configs for routing
+    if (!this.currentPipelineTable && dynamicRoutingConfigs.length > 0) {
+      this.currentPipelineTable = this.createSimplePipelineTable(dynamicRoutingConfigs);
+      this.logInfo('Created simple pipeline table from dynamic routing configs', { entries: this.currentPipelineTable.getEntries().length }, 'assembly-process');
+    }
+
+    // Ensure we have dynamic routing configs to work with
+    if (!dynamicRoutingConfigs || dynamicRoutingConfigs.length === 0) {
+      this.logWarn('No dynamic routing configurations available - creating empty assembly', {}, 'assembly-process');
       return {
         success: false,
         pipelinePools: new Map(),
         errors: [{
-          virtualModelId: 'global',
-          error: 'No virtual model configurations available for assembly'
+          routingId: 'global',
+          error: 'No dynamic routing configurations available for assembly'
         }],
         warnings: []
       };
@@ -850,7 +902,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       if (providers.size === 0) {
         result.errors.push({
-          virtualModelId: 'global',
+          routingId: 'global',
           error: 'No providers discovered - assembly cannot proceed'
         });
         result.success = false;
@@ -859,49 +911,51 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       this.logInfo('Provider discovery completed', { providerCount: providers.size, providers: Array.from(providers.keys()) }, 'provider-discovery');
 
-      // Step 2: Assemble pipeline for each virtual model
-      this.logInfo('Assembling pipelines for virtual models', {}, 'assembly-process');
+      // Step 2: Assemble pipeline for each dynamic route
+      this.logInfo('Assembling pipelines for dynamic routing', {}, 'assembly-process');
 
-      for (const virtualModelConfig of virtualModelConfigs) {
+      for (const routingConfig of dynamicRoutingConfigs) {
         try {
-          const pool = await this.assemblePipelinePool(virtualModelConfig, providers);
+          const pool = await this.assemblePipelinePool(routingConfig, providers);
 
           if (pool.pipelines.size === 0) {
             result.warnings.push({
-              virtualModelId: virtualModelConfig.id,
-              warning: `No pipelines could be assembled for virtual model - will use fallback strategy`
+              routingId: routingConfig.id,
+              warning: `No pipelines could be assembled for dynamic route - will use fallback strategy`
             });
           }
 
-          this.pipelinePools.set(virtualModelConfig.id, pool);
-          result.pipelinePools.set(virtualModelConfig.id, pool);
+          this.pipelinePools.set(routingConfig.id, pool);
+          result.pipelinePools.set(routingConfig.id, pool);
 
-          this.logInfo('Assembled pipeline pool for virtual model', { virtualModelId: virtualModelConfig.id }, 'assembly-process');
+          this.logInfo('Assembled pipeline pool for dynamic route', { routingId: routingConfig.id }, 'assembly-process');
 
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           result.errors.push({
-            virtualModelId: virtualModelConfig.id,
+            routingId: routingConfig.id,
             error: errorMessage
           });
 
-          this.logError('Failed to assemble pipeline for virtual model', { virtualModelId: virtualModelConfig.id, error: errorMessage }, 'assembly-process');
+          this.logError('Failed to assemble pipeline for dynamic route', { routingId: routingConfig.id, error: errorMessage }, 'assembly-process');
         }
       }
 
       // Step 3: Validate overall assembly
-      result.success = result.errors.length < virtualModelConfigs.length; // At least one succeeded
+      result.success = result.errors.length < dynamicRoutingConfigs.length; // At least one succeeded
 
       this.logInfo('Pipeline assembly completed', { success: result.success, pools: result.pipelinePools.size, errors: result.errors.length, warnings: result.warnings.length }, 'assembly-process');
 
       // 如果有可用的scheduler并且组装成功，初始化scheduler
-      if (result.success && this.virtualModelScheduler) {
-        this.logInfo('Initializing VirtualModelSchedulerManager with assembled pipeline pools', {}, 'initialization');
+      if (result.success && this.dynamicRoutingManager) {
+        this.logInfo('Initializing DynamicRoutingManager with assembled pipeline pools', {}, 'initialization');
         try {
-          this.virtualModelScheduler.initialize(result.pipelinePools);
-          this.logInfo('VirtualModelSchedulerManager initialized successfully', {}, 'initialization');
+          this.dynamicRoutingManager.initialize(result.pipelinePools);
+          this.logInfo('DynamicRoutingManager initialized successfully', {}, 'initialization');
         } catch (error) {
-          this.logWarn('Failed to initialize VirtualModelSchedulerManager', { error: error.message || error }, 'initialization');
+          this.logWarn('Failed to initialize DynamicRoutingManager', {
+            error: error instanceof Error ? error.message : String(error)
+          }, 'initialization');
         }
       }
 
@@ -913,7 +967,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
       result.success = false;
       result.errors.push({
-        virtualModelId: 'assembly-process',
+        routingId: 'assembly-process',
         error: `Critical assembly error: ${errorMessage}`
       });
 
@@ -922,73 +976,209 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * Discover available providers using ModuleScanner
-   * 使用ModuleScanner发现可用的provider
+   * Discover available providers using ModuleScanner and config data
+   * 使用ModuleScanner和配置数据发现可用的provider
    */
   private async discoverProviders(): Promise<Map<string, BaseProvider>> {
-    const options = this.config.providerDiscoveryOptions || {};
+    const options = {
+      ...this.config.providerDiscoveryOptions,
+      providerConfigs: this.currentConfigData?.providers || {}
+    };
     this.logInfo('Provider discovery started', { options }, 'provider-discovery');
 
-    const discoveredProviders = await this.moduleScanner.scan(options);
     const providers = new Map<string, BaseProvider>();
 
-    for (const discovered of discoveredProviders) {
-      if (discovered.status === 'available' && discovered.instance) {
-        providers.set(discovered.info.id, discovered.instance);
-        this.discoveredProviders.set(discovered.info.id, discovered.instance);
+    // Step 1: Try to discover providers using ModuleScanner
+    try {
+      const discoveredProviders = await this.moduleScanner.scan(options);
+      for (const discovered of discoveredProviders) {
+        if (discovered.status === 'available' && discovered.instance) {
+          providers.set(discovered.info.id, discovered.instance);
+          this.discoveredProviders.set(discovered.info.id, discovered.instance);
+          this.logInfo('Provider discovered and loaded', { id: discovered.info.id, name: discovered.info.name, type: discovered.info.type }, 'provider-discovery');
+        } else {
+          this.logWarn('Provider unavailable', { id: discovered.info.id, error: discovered.error }, 'provider-discovery');
+        }
+      }
+    } catch (error) {
+      this.logWarn('ModuleScanner discovery failed', { error: error instanceof Error ? error.message : String(error) }, 'provider-discovery');
+    }
 
-        this.logInfo('Provider discovered and loaded', { id: discovered.info.id, name: discovered.info.name, type: discovered.info.type }, 'provider-discovery');
-      } else {
-        this.logWarn('Provider unavailable', { id: discovered.info.id, error: discovered.error }, 'provider-discovery');
+    // Step 2: Create providers from configuration data if available
+    if (this.currentConfigData && this.currentConfigData.providers) {
+      this.logInfo('Creating providers from configuration data', {}, 'provider-discovery');
+
+      const configProviders = this.currentConfigData.providers;
+      for (const [providerId, providerConfig] of Object.entries(configProviders)) {
+        try {
+          // Skip if provider already exists
+          if (providers.has(providerId)) {
+            this.logInfo('Provider already exists, skipping config creation', { providerId }, 'provider-discovery');
+            continue;
+          }
+
+          // Create provider based on type
+          const provider = await this.createProviderFromConfig(providerId, providerConfig);
+          if (provider) {
+            providers.set(providerId, provider);
+            this.discoveredProviders.set(providerId, provider);
+            this.logInfo('Provider created from configuration', { providerId, type: (providerConfig as any).type }, 'provider-discovery');
+          }
+        } catch (error) {
+          this.logError('Failed to create provider from configuration', {
+            providerId,
+            error: error instanceof Error ? error.message : String(error)
+          }, 'provider-discovery');
+        }
       }
     }
+
+    this.logInfo('Provider discovery completed', {
+      totalProviders: providers.size,
+      discoveredProviderIds: Array.from(providers.keys())
+    }, 'provider-discovery');
 
     return providers;
   }
 
   /**
-   * Assemble pipeline pool for a single virtual model
-   * 为单个虚拟模型组装流水线池
+   * Create a provider instance from configuration
+   * 从配置创建provider实例
+   */
+  private async createProviderFromConfig(providerId: string, providerConfig: { type?: string; [key: string]: any }): Promise<BaseProvider | null> {
+    try {
+      this.logInfo('Creating provider from config', { providerId, providerConfig }, 'provider-discovery');
+      const { type, endpoint, models, auth } = providerConfig;
+
+      // Common provider configuration
+      const baseConfig = {
+        name: providerId,
+        endpoint,
+        supportedModels: models ? Object.keys(models) : [],
+        defaultModel: models ? Object.keys(models)[0] : undefined,
+        enableTwoPhaseDebug: this.config.enableTwoPhaseDebug || false,
+        debugBaseDirectory: this.config.debugBaseDirectory || '~/.rcc/debug-logs',
+        enableIOTracking: this.config.enableIOTracking || false,
+        maxConcurrentRequests: 5,
+        requestTimeout: 30000
+      };
+
+      this.logInfo('Base provider config created', { providerId, baseConfig }, 'provider-discovery');
+
+      // Create provider based on type
+      switch (type) {
+        case 'openai':
+          // For openai type, determine if it's qwen, iflow, or generic openai
+          if (endpoint && endpoint.includes('qwen')) {
+            return new QwenProvider(baseConfig);
+          } else if (endpoint && endpoint.includes('iflow')) {
+            return new IFlowProvider(baseConfig);
+          } else {
+            // For lmstudio and other openai-compatible providers, use QwenProvider as base
+            return new QwenProvider(baseConfig);
+          }
+
+        case 'qwen':
+          return new QwenProvider(baseConfig);
+
+        case 'iflow':
+          return new IFlowProvider(baseConfig);
+
+        default:
+          this.logWarn('Unknown provider type, using QwenProvider as fallback', { providerId, type }, 'provider-discovery');
+          return new QwenProvider(baseConfig);
+      }
+    } catch (error) {
+      this.logError('Failed to create provider from config', {
+        providerId,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'provider-discovery');
+      return null;
+    }
+  }
+
+  /**
+   * Assemble pipeline pool for a single dynamic route
+   * 为单个动态路由组装流水线池
    */
   private async assemblePipelinePool(
-    virtualModel: VirtualModelConfig,
+    routingConfig: DynamicRoutingConfig,
     providers: Map<string, BaseProvider>
   ): Promise<PipelinePool> {
-    this.logInfo('Assembling pipeline pool for virtual model', { virtualModelId: virtualModel.id }, 'assembly-process');
+    this.logInfo('Assembling pipeline pool for dynamic route', { routingId: routingConfig.id }, 'assembly-process');
 
     const pipelines = new Map<string, Pipeline>();
 
     try {
-      // Validate virtual model configuration
-      if (!virtualModel.targets || virtualModel.targets.length === 0) {
-        this.logWarn('Virtual model has no targets - creating minimal pipeline', { virtualModelId: virtualModel.id }, 'assembly-process');
+      // According to user feedback: dynamic routing doesn't need targets
+      // They should route to appropriate pipelines based on the pipeline table
+      // So we create pipelines based on the pipeline table entries for this dynamic route
 
-        // Create a minimal pipeline with available providers
-        const fallbackPipeline = await this.createFallbackPipeline(virtualModel, providers);
+      if (!this.currentPipelineTable) {
+        this.logWarn('No pipeline table available - creating minimal pipeline', { routingId: routingConfig.id }, 'assembly-process');
+
+        // Create a minimal pipeline with available providers as fallback
+        const fallbackPipeline = await this.createFallbackPipeline(routingConfig, providers);
         if (fallbackPipeline) {
-          pipelines.set(`fallback_${virtualModel.id}`, fallbackPipeline);
+          pipelines.set(`fallback_${routingConfig.id}`, fallbackPipeline);
         }
       } else {
-        // Create pipelines for each valid target
-        for (const targetConfig of virtualModel.targets) {
-          try {
-            const provider = providers.get(targetConfig.providerId);
+        // Get pipeline table entries for this dynamic route
+        const tableEntries = this.currentPipelineTable.getEntriesByDynamicRouting(routingConfig.id);
 
-            if (!provider) {
-              this.logWarn('Provider not found for target', { providerId: targetConfig.providerId, virtualModelId: virtualModel.id }, 'assembly-process');
-              continue;
+        if (tableEntries.length === 0) {
+          this.logWarn('No pipeline table entries found for dynamic route - creating minimal pipeline', { routingId: routingConfig.id }, 'assembly-process');
+
+          // Create a minimal pipeline with available providers as fallback
+          const fallbackPipeline = await this.createFallbackPipeline(routingConfig, providers);
+          if (fallbackPipeline) {
+            pipelines.set(`fallback_${routingConfig.id}`, fallbackPipeline);
+          }
+        } else {
+          // Create pipelines for each pipeline table entry
+          for (const entry of tableEntries) {
+            try {
+              // Create a new provider instance configured with pipeline table entry
+              const configuredProvider = this.createProviderForPipelineEntry(entry, providers);
+              if (!configuredProvider) {
+                this.logWarn('Failed to create provider for pipeline table entry', {
+                  providerId: entry.providerId,
+                  routingId: routingConfig.id,
+                  modelId: entry.modelId
+                }, 'assembly-process');
+                continue;
+              }
+
+              // Create a target config from the pipeline table entry
+              const targetConfig = {
+                providerId: entry.providerId,
+                modelId: entry.modelId,
+                keyIndex: entry.keyIndex,
+                weight: entry.weight || 1,
+                enabled: entry.enabled
+              };
+
+              const pipeline = this.createPipelineFromTarget(routingConfig, targetConfig, configuredProvider);
+              if (pipeline) {
+                const pipelineId = `${routingConfig.id}_${entry.providerId}_${entry.modelId}`;
+                pipelines.set(pipelineId, pipeline);
+
+                this.logInfo('Created pipeline from pipeline table entry', {
+                  pipelineId,
+                  routingId: routingConfig.id,
+                  providerId: entry.providerId,
+                  modelId: entry.modelId
+                }, 'assembly-process');
+              }
+
+            } catch (error) {
+              this.logError('Failed to assemble pipeline for pipeline table entry', {
+                routingId: routingConfig.id,
+                providerId: entry.providerId,
+                modelId: entry.modelId,
+                error: error instanceof Error ? error.message : String(error)
+              }, 'assembly-process');
             }
-
-            const pipeline = this.createPipelineFromTarget(virtualModel, targetConfig, provider);
-            if (pipeline) {
-              const pipelineId = `${virtualModel.id}_${targetConfig.providerId}_${targetConfig.modelId}`;
-              pipelines.set(pipelineId, pipeline);
-
-              this.logInfo('Created pipeline', { pipelineId }, 'assembly-process');
-            }
-
-          } catch (error) {
-            this.logError('Failed to assemble pipeline for target', { providerId: targetConfig.providerId, modelId: targetConfig.modelId, error: error.message || error }, 'assembly-process');
           }
         }
       }
@@ -997,10 +1187,10 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       const activePipeline = pipelines.size > 0 ? Array.from(pipelines.values())[0] : null;
 
       // 创建路由能力描述
-      const routingCapabilities: RoutingCapabilities = this.createRoutingCapabilities(virtualModel, providers);
+      const routingCapabilities: RoutingCapabilities = this.createRoutingCapabilities(routingConfig, providers);
 
       const pool: PipelinePool = {
-        virtualModelId: virtualModel.id,
+        routingId: routingConfig.id,
         pipelines,
         activePipeline,
         healthStatus: 'healthy', // Always healthy
@@ -1015,14 +1205,17 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
         isActive: true
       };
 
-      this.logInfo('Pipeline pool assembled', { virtualModelId: virtualModel.id, pipelineCount: pipelines.size, healthStatus: pool.healthStatus }, 'assembly-process');
+      this.logInfo('Pipeline pool assembled', { routingId: routingConfig.id, pipelineCount: pipelines.size, healthStatus: pool.healthStatus }, 'assembly-process');
       return pool;
 
     } catch (error) {
-      this.logError('Failed to assemble pipeline pool', { virtualModelId: virtualModel.id, error: error.message || error }, 'assembly-process');
+      this.logError('Failed to assemble pipeline pool', {
+        routingId: routingConfig.id,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'assembly-process');
 
       return {
-        virtualModelId: virtualModel.id,
+        routingId: routingConfig.id,
         pipelines: new Map(),
         activePipeline: null,
         healthStatus: 'healthy', // Always healthy
@@ -1033,7 +1226,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
           failedRequests: 0,
           averageResponseTime: 0
         },
-        routingCapabilities: this.createDefaultRoutingCapabilities(virtualModel),
+        routingCapabilities: this.createDefaultRoutingCapabilities(routingConfig),
         isActive: false
       };
     }
@@ -1044,7 +1237,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
    * 当没有配置目标时创建回退流水线
    */
   private async createFallbackPipeline(
-    virtualModel: VirtualModelConfig,
+    routingConfig: DynamicRoutingConfig,
     providers: Map<string, BaseProvider>
   ): Promise<Pipeline | null> {
     if (providers.size === 0) {
@@ -1056,37 +1249,37 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
 
     const targetConfig = {
       providerId,
-      modelId: virtualModel.modelId || 'default',
+      modelId: routingConfig.modelId || 'default',
       weight: 1,
       enabled: true
     };
 
-    return this.createPipelineFromTarget(virtualModel, targetConfig, provider);
+    return this.createPipelineFromTarget(routingConfig, targetConfig, provider);
   }
 
   /**
    * 创建路由能力描述
    */
-  private createRoutingCapabilities(virtualModel: VirtualModelConfig, providers: Map<string, BaseProvider>): RoutingCapabilities {
-    // 从虚拟模型配置和能力中推断路由能力
-    const capabilities = virtualModel.capabilities || ['chat'];
-    const supportedModels = virtualModel.targets?.map(target => target.modelId) || [virtualModel.modelId || 'default'];
+  private createRoutingCapabilities(routingConfig: DynamicRoutingConfig, providers: Map<string, BaseProvider>): RoutingCapabilities {
+    // 从动态路由配置和能力中推断路由能力
+    const capabilities = routingConfig.capabilities || ['chat'];
+    const supportedModels = routingConfig.targets?.map(target => target.modelId) || [routingConfig.modelId || 'default'];
 
     return {
       supportedModels,
-      maxTokens: this.estimateMaxTokens(virtualModel),
+      maxTokens: this.estimateMaxTokens(routingConfig),
       supportsStreaming: capabilities.includes('streaming') || capabilities.includes('chat'),
       supportsTools: capabilities.includes('tools') || capabilities.includes('function-calling'),
       supportsImages: capabilities.includes('vision') || capabilities.includes('images'),
       supportsFunctionCalling: capabilities.includes('function-calling'),
       supportsMultimodal: capabilities.includes('multimodal') || capabilities.includes('vision'),
       supportedModalities: this.determineSupportedModalities(capabilities),
-      priority: this.determinePriority(virtualModel),
+      priority: this.determinePriority(routingConfig),
       availability: 0.9, // 默认高可用性
-      loadWeight: virtualModel.targets?.reduce((sum, target) => sum + (target.weight || 1), 0) || 1,
-      costScore: this.estimateCostScore(virtualModel),
-      performanceScore: this.estimatePerformanceScore(virtualModel),
-      routingTags: this.generateRoutingTags(virtualModel),
+      loadWeight: routingConfig.targets?.reduce((sum, target) => sum + (target.weight || 1), 0) || 1,
+      costScore: this.estimateCostScore(routingConfig),
+      performanceScore: this.estimatePerformanceScore(routingConfig),
+      routingTags: this.generateRoutingTags(routingConfig),
       extendedCapabilities: {
         supportsVision: capabilities.includes('vision'),
         supportsAudio: capabilities.includes('audio'),
@@ -1102,9 +1295,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   /**
    * 创建默认路由能力
    */
-  private createDefaultRoutingCapabilities(virtualModel: VirtualModelConfig): RoutingCapabilities {
+  private createDefaultRoutingCapabilities(routingConfig: DynamicRoutingConfig): RoutingCapabilities {
     return {
-      supportedModels: [virtualModel.modelId || 'default'],
+      supportedModels: [routingConfig.modelId || 'default'],
       maxTokens: Number.MAX_SAFE_INTEGER, // 使用最大安全整数，实际限制由provider控制
       supportsStreaming: true,
       supportsTools: true,
@@ -1128,7 +1321,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   /**
    * 估算最大token数
    */
-  private estimateMaxTokens(virtualModel: VirtualModelConfig): number {
+  private estimateMaxTokens(routingConfig: DynamicRoutingConfig): number {
     // 移除硬编码token限制，从provider配置中获取实际token限制
     // 这里返回一个较大的默认值，实际限制由provider控制
     return Number.MAX_SAFE_INTEGER; // 使用最大安全整数，实际限制由provider控制
@@ -1162,9 +1355,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   /**
    * 确定优先级
    */
-  private determinePriority(virtualModel: VirtualModelConfig): number {
+  private determinePriority(routingConfig: DynamicRoutingConfig): number {
     // 根据模型类型确定优先级
-    const modelId = virtualModel.modelId?.toLowerCase() || '';
+    const modelId = routingConfig.modelId?.toLowerCase() || '';
 
     if (modelId.includes('gpt-4')) {
       return 80;
@@ -1180,9 +1373,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   /**
    * 估算成本分数
    */
-  private estimateCostScore(virtualModel: VirtualModelConfig): number {
+  private estimateCostScore(routingConfig: DynamicRoutingConfig): number {
     // 根据模型类型估算成本（0-1，分数越高成本越高）
-    const modelId = virtualModel.modelId?.toLowerCase() || '';
+    const modelId = routingConfig.modelId?.toLowerCase() || '';
 
     if (modelId.includes('gpt-4')) {
       return 0.8;
@@ -1198,9 +1391,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   /**
    * 估算性能分数
    */
-  private estimatePerformanceScore(virtualModel: VirtualModelConfig): number {
+  private estimatePerformanceScore(routingConfig: DynamicRoutingConfig): number {
     // 根据模型类型估算性能（0-1，分数越高性能越好）
-    const modelId = virtualModel.modelId?.toLowerCase() || '';
+    const modelId = routingConfig.modelId?.toLowerCase() || '';
 
     if (modelId.includes('gpt-4')) {
       return 0.9;
@@ -1216,10 +1409,10 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   /**
    * 生成路由标签
    */
-  private generateRoutingTags(virtualModel: VirtualModelConfig): string[] {
+  private generateRoutingTags(routingConfig: DynamicRoutingConfig): string[] {
     const tags: string[] = [];
-    const modelId = virtualModel.modelId?.toLowerCase() || '';
-    const capabilities = virtualModel.capabilities || [];
+    const modelId = routingConfig.modelId?.toLowerCase() || '';
+    const capabilities = routingConfig.capabilities || [];
 
     // 添加模型相关标签
     if (modelId.includes('gpt-4')) {
@@ -1242,16 +1435,113 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
+   * Create a new provider instance for a pipeline table entry
+   * 为流水线表条目创建新的provider实例
+   */
+  private createProviderForPipelineEntry(entry: PipelineTableEntry, baseProviders: Map<string, BaseProvider>): BaseProvider | null {
+    console.log(`[PipelineAssembler] DEBUG: createProviderForPipelineEntry called for`, entry);
+    try {
+      // Get the base provider template
+      const baseProvider = baseProviders.get(entry.providerId);
+      if (!baseProvider) {
+        this.logWarn('Base provider not found', { providerId: entry.providerId }, 'provider-configuration');
+        return null;
+      }
+
+      // Get the base provider's configuration from its properties
+      const baseConfig = {
+        name: (baseProvider as any).moduleName || (baseProvider as any).name || entry.providerId,
+        endpoint: (baseProvider as any).endpoint,
+        supportedModels: (baseProvider as any).supportedModels || [],
+        defaultModel: (baseProvider as any).defaultModel,
+        maxTokens: (baseProvider as any).maxTokens || 256000,
+        metadata: (baseProvider as any).metadata || {}
+      };
+
+      // DEBUG: Log the actual properties available on the base provider
+      console.log(`[PipelineAssembler] DEBUG: Base provider properties for ${entry.providerId}:`, {
+        keys: Object.keys(baseProvider as any),
+        name: (baseProvider as any).name,
+        moduleName: (baseProvider as any).moduleName,
+        endpoint: (baseProvider as any).endpoint,
+        hasConfig: !!(baseProvider as any).config,
+        hasPipelineConfig: !!(baseProvider as any).pipelineConfig
+      });
+
+      // Validate required configuration
+      if (!baseConfig.endpoint) {
+        this.logWarn('Base provider endpoint not found', {
+          providerId: entry.providerId,
+          actualConfig: Object.keys(baseProvider as any)
+        }, 'provider-configuration');
+        return null;
+      }
+
+      // Create new provider configuration with pipeline table model settings
+      const newProviderConfig = {
+        name: `${baseConfig.name}-${entry.modelId}`,
+        endpoint: baseConfig.endpoint, // Ensure endpoint is preserved
+        supportedModels: [entry.modelId], // Only support the specific model from pipeline table
+        defaultModel: entry.modelId, // Set the specific model as default
+        maxTokens: baseConfig.maxTokens, // Preserve max tokens configuration
+        metadata: {
+          ...baseConfig.metadata,
+          pipelineTableEntry: entry,
+          keyIndex: entry.keyIndex,
+          routingId: entry.routingId
+        }
+      };
+
+      // DEBUG: Log provider configuration creation
+      console.log(`[PipelineAssembler] DEBUG: Creating provider for entry`, {
+        entry,
+        baseConfig: {
+          name: baseConfig.name,
+          endpoint: baseConfig.endpoint,
+          hasDefaultModel: !!baseConfig.defaultModel,
+          supportedModelsCount: baseConfig.supportedModels.length
+        },
+        newProviderConfig: {
+          name: newProviderConfig.name,
+          endpoint: newProviderConfig.endpoint,
+          supportedModels: newProviderConfig.supportedModels,
+          defaultModel: newProviderConfig.defaultModel
+        }
+      });
+
+      // Create new provider instance with the specific configuration
+      const ProviderClass = baseProvider.constructor as new (config: any) => BaseProvider;
+      const configuredProvider = new ProviderClass(newProviderConfig);
+
+      this.logInfo('Created configured provider for pipeline entry', {
+        providerId: entry.providerId,
+        modelId: entry.modelId,
+        routingId: entry.routingId,
+        providerName: newProviderConfig.name
+      }, 'provider-configuration');
+
+      return configuredProvider;
+    } catch (error) {
+      this.logError('Failed to create provider for pipeline entry', {
+        providerId: entry.providerId,
+        modelId: entry.modelId,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'provider-configuration');
+      return null;
+    }
+  }
+
+  /**
    * Create pipeline from target configuration
    * 从目标配置创建流水线
    */
   private createPipelineFromTarget(
-    virtualModel: VirtualModelConfig,
+    routingConfig: DynamicRoutingConfig,
     targetConfig: any,
     provider: BaseProvider
   ): Pipeline | null {
     try {
-      const pipelineConfig = this.buildPipelineConfig(virtualModel, targetConfig, provider);
+      const pipelineConfig = this.buildPipelineConfig(routingConfig, targetConfig, provider);
 
       if (!pipelineConfig) {
         return null;
@@ -1261,27 +1551,31 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       return new Pipeline(pipelineConfig, this.pipelineTracker);
 
     } catch (error) {
-      this.logError('Failed to create pipeline from target', { providerId: targetConfig.providerId, modelId: targetConfig.modelId, error: error.message || error }, 'assembly-process');
+      this.logError('Failed to create pipeline from target', {
+        providerId: targetConfig.providerId,
+        modelId: targetConfig.modelId,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'assembly-process');
       return null;
     }
   }
 
   /**
-   * Build pipeline configuration from virtual model and target
-   * 从虚拟模型和目标构建流水线配置
+   * Build pipeline configuration from dynamic routing and target
+   * 从动态路由和目标构建流水线配置
    */
   private buildPipelineConfig(
-    virtualModel: VirtualModelConfig,
+    routingConfig: DynamicRoutingConfig,
     targetConfig: any,
     provider: BaseProvider
   ): any {
     return {
-      id: `pipeline_${virtualModel.id}_${targetConfig.providerId}_${targetConfig.modelId}_${Date.now()}`,
-      name: `${virtualModel.name} Pipeline (${targetConfig.providerId})`,
-      virtualModelId: virtualModel.id,
-      description: `${virtualModel.name} using ${targetConfig.providerId}`,
+      id: `pipeline_${routingConfig.id}_${targetConfig.providerId}_${targetConfig.modelId}_${Date.now()}`,
+      name: `${routingConfig.name} Pipeline (${targetConfig.providerId})`,
+      routingId: routingConfig.id,
+      description: `${routingConfig.name} using ${targetConfig.providerId}`,
       targets: [{
-        id: `${virtualModel.id}_${targetConfig.providerId}_${targetConfig.modelId}`,
+        id: `${routingConfig.id}_${targetConfig.providerId}_${targetConfig.modelId}`,
         provider,
         weight: targetConfig.weight || 1,
         enabled: targetConfig.enabled !== false,
@@ -1291,7 +1585,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
         errorCount: 0,
         metadata: {
           keyIndex: targetConfig.keyIndex,
-          virtualModelId: virtualModel.id,
+          routingId: routingConfig.id,
           providerId: targetConfig.providerId,
           modelId: targetConfig.modelId
         }
@@ -1301,9 +1595,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       maxRetries: 3,
       timeout: 30000,
       metadata: {
-        virtualModelName: virtualModel.name,
-        virtualModelProvider: virtualModel.provider,
-        capabilities: virtualModel.capabilities || ['chat'],
+        routingConfigName: routingConfig.name,
+        routingConfigProvider: routingConfig.provider,
+        capabilities: routingConfig.capabilities || ['chat'],
         targetProvider: targetConfig.providerId,
         targetModel: targetConfig.modelId
       }
@@ -1319,11 +1613,11 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * Get pipeline pool for specific virtual model
-   * 获取特定虚拟模型的流水线池
+   * Get pipeline pool for specific dynamic route
+   * 获取特定动态路由的流水线池
    */
-  getPipelinePool(virtualModelId: string): PipelinePool | null {
-    return this.pipelinePools.get(virtualModelId) || null;
+  getPipelinePool(routingId: string): PipelinePool | null {
+    return this.pipelinePools.get(routingId) || null;
   }
 
   /**
@@ -1351,24 +1645,27 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       const providers = await this.discoverProviders();
       this.logInfo('Providers rediscovered', { count: providers.size }, 'reload-process');
 
-      // Reassemble pipelines for existing virtual models
-      for (const [virtualModelId, oldPool] of existingPools.entries()) {
+      // Reassemble pipelines for existing dynamic routes
+      for (const [routingId, oldPool] of existingPools.entries()) {
         try {
-          // Restore original virtual model config (would need to store this)
-          const virtualModelConfig = this.inferVirtualModelConfig(virtualModelId, oldPool);
-          const newPool = await this.assemblePipelinePool(virtualModelConfig, providers);
+          // Restore original dynamic routing config (would need to store this)
+          const routingConfig = this.inferDynamicRoutingConfig(routingId, oldPool);
+          const newPool = await this.assemblePipelinePool(routingConfig, providers);
 
-          this.pipelinePools.set(virtualModelId, newPool);
-          this.logInfo('Pipeline pool reassembled', { virtualModelId }, 'reload-process');
+          this.pipelinePools.set(routingId, newPool);
+          this.logInfo('Pipeline pool reassembled', { routingId }, 'reload-process');
         } catch (error) {
-          this.logError('Failed to reassemble pipeline pool', { virtualModelId, error: error.message || error }, 'reload-process');
+          this.logError('Failed to reassemble pipeline pool', {
+            routingId,
+            error: error instanceof Error ? error.message : String(error)
+          }, 'reload-process');
         }
       }
 
       this.logInfo('Provider reload and pipeline reassembly completed', {}, 'reload-process');
 
     } catch (error) {
-      this.logError('Provider reload failed', error, 'reload-process');
+      this.logError('Provider reload failed', error as unknown as Record<string, unknown>, 'reload-process');
       // Restore previous state on failure
       this.pipelinePools = existingPools;
       throw error;
@@ -1376,16 +1673,16 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * Infer virtual model configuration from existing pool (fallback)
-   * 从现有池推断虚拟模型配置（回退）
+   * Infer dynamic routing configuration from existing pool (fallback)
+   * 从现有池推断动态路由配置（回退）
    */
-  private inferVirtualModelConfig(virtualModelId: string, pool: PipelinePool): VirtualModelConfig {
+  private inferDynamicRoutingConfig(routingId: string, pool: PipelinePool): DynamicRoutingConfig {
     // This is a simplified inference - in real implementation, store original configs
     const target = pool.pipelines.size > 0 ? Array.from(pool.pipelines.values())[0].config.targets[0] : null;
 
     return {
-      id: virtualModelId,
-      name: virtualModelId,
+      id: routingId,
+      name: routingId,
       modelId: target?.metadata?.modelId || 'default',
       provider: target?.metadata?.providerId || 'unknown',
       enabled: true,
@@ -1416,11 +1713,11 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * 设置虚拟模型调度器
+   * 设置动态路由管理器
    */
-  setVirtualModelScheduler(scheduler: VirtualModelSchedulerManager): void {
-    this.logInfo('Setting VirtualModelSchedulerManager for PipelineAssembler', {}, 'initialization');
-    this.virtualModelScheduler = scheduler;
+  setDynamicRoutingManager(scheduler: DynamicRoutingManager): void {
+    this.logInfo('Setting DynamicRoutingManager for PipelineAssembler', {}, 'initialization');
+    this.dynamicRoutingManager = scheduler;
   }
 
   /**
@@ -1433,7 +1730,7 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
     totalPipelines: number;
     healthyPools: number;
     discoveredProviders: number;
-    virtualModelIds: string[];
+    routingIds: string[];
     routingEnabled: boolean;
     schedulerInitialized: boolean;
     configModuleIntegration: {
@@ -1458,9 +1755,9 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
       totalPipelines,
       healthyPools,
       discoveredProviders: this.discoveredProviders.size,
-      virtualModelIds: Array.from(this.pipelinePools.keys()),
-      routingEnabled: !!this.virtualModelScheduler,
-      schedulerInitialized: this.virtualModelScheduler?.isInitializedAccessor || false,
+      routingIds: Array.from(this.pipelinePools.keys()),
+      routingEnabled: !!this.dynamicRoutingManager,
+      schedulerInitialized: this.dynamicRoutingManager?.isInitializedAccessor || false,
       configModuleIntegration: {
         enabled: this.config.enableConfigModuleIntegration || false,
         configLoaded: !!this.currentConfigData,
@@ -1471,10 +1768,34 @@ export class PipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
+   * Process method - Required by BasePipelineModule interface
+   * 处理方法 - BasePipelineModule接口必需
+   */
+  async process(request: any): Promise<any> {
+    this.logInfo('Processing request in PipelineAssembler', { requestType: typeof request }, 'process');
+
+    // For now, return the request as-is since this is primarily an assembly module
+    // 暂时直接返回请求，因为这主要是一个组装模块
+    return request;
+  }
+
+  /**
+   * Process response method - Required by BasePipelineModule interface
+   * 处理响应方法 - BasePipelineModule接口必需
+   */
+  async processResponse(response: any): Promise<any> {
+    this.logInfo('Processing response in PipelineAssembler', { responseType: typeof response }, 'processResponse');
+
+    // For now, return the response as-is since this is primarily an assembly module
+    // 暂时直接返回响应，因为这主要是一个组装模块
+    return response;
+  }
+
+  /**
    * Cleanup resources
    * 清理资源
    */
-  destroy(): void {
+  async destroy(): Promise<void> {
     this.logInfo('Destroying Pipeline Assembler', {}, 'shutdown');
 
     // Destroy all pipelines in pools

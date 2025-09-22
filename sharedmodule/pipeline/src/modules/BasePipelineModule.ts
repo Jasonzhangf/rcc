@@ -64,7 +64,7 @@ export abstract class BasePipelineModule extends UnifiedPipelineBaseModule {
    * @returns string - Unique request identifier
    */
   protected generateRequestId(): string {
-    return `${this.moduleName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `${this.info.name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
@@ -90,7 +90,7 @@ export abstract class BasePipelineModule extends UnifiedPipelineBaseModule {
    * @param targetModule - Target module to connect to
    */
   connect(targetModule: BasePipelineModule): void {
-    this.debug('info', `Connecting to module: ${targetModule.getName()}`, undefined, 'connect');
+    this.debug('info', `Connecting to module: ${targetModule.info.name}`, undefined, 'connect');
     // Add connection logic here
   }
 
@@ -99,7 +99,7 @@ export abstract class BasePipelineModule extends UnifiedPipelineBaseModule {
    * @param targetModule - Target module to disconnect from
    */
   disconnect(targetModule: BasePipelineModule): void {
-    this.debug('info', `Disconnecting from module: ${targetModule.getName()}`, undefined, 'disconnect');
+    this.debug('info', `Disconnecting from module: ${targetModule.info.name}`, undefined, 'disconnect');
     // Add disconnection logic here
   }
 

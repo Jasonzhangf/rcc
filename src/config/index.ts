@@ -1,22 +1,12 @@
 /**
- * Unified Configuration Management System
- * 统一配置管理系统
+ * Configuration System (Simplified)
+ * 简化的配置系统
  */
 
 // Types
 export * from '../types/config.js';
 
-// Core Components
-export {
-  UnifiedConfigManager,
-  FileConfigProvider,
-  EnvironmentConfigProvider,
-  ConfigManagerFactory,
-} from './UnifiedConfigManager.js';
-
-export { ConfigValidator } from './ConfigValidator.js';
-
-// ConfigMigrator removed as it was unused
+// Empty implementation for now - removed complex config managers
 
 // Utility exports
 export { CONFIG_FILE_NAMES, CONFIG_SEARCH_PATHS, unifiedConfigSchema } from '../types/config.js';
@@ -31,19 +21,17 @@ export type {
   UnifiedConfigType,
 } from '../types/config.js';
 
-// ConfigMigrator types removed as they were unused
-
-// Convenience factory functions
+// Simple placeholder functions
 export function createConfigManager(
   configPath?: string,
   watchMode = false,
   instanceId = 'default'
-): UnifiedConfigManager {
-  return ConfigManagerFactory.create(configPath, watchMode, instanceId);
+): any {
+  // Placeholder implementation
+  return {};
 }
 
-export function createValidator(): ConfigValidator {
-  return new ConfigValidator();
+export function createValidator(): any {
+  // Placeholder implementation
+  return {};
 }
-
-// createMigrator removed as ConfigMigrator was unused

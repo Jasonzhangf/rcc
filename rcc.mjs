@@ -457,14 +457,14 @@ program
               console.error(`   - Stack: ${importError.stack}`);
               throw importError;
             }
-            const { PipelineFactory, VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } = pipelineModule;
+            const { PipelineFactory, DynamicRoutingManager, PipelineAssembler, PipelineTracker } = pipelineModule;
 
             console.log(`🔍 Checking pipeline module components:`);
             console.log(`   - PipelineFactory: ${!!PipelineFactory}`);
-            console.log(`   - VirtualModelSchedulerManager: ${!!VirtualModelSchedulerManager}`);
+            console.log(`   - DynamicRoutingManager: ${!!DynamicRoutingManager}`);
             console.log(`   - PipelineAssembler: ${!!PipelineAssembler}`);
             console.log(`   - PipelineTracker: ${!!PipelineTracker}`);
-            if (PipelineFactory && VirtualModelSchedulerManager && PipelineAssembler && PipelineTracker) {
+            if (PipelineFactory && DynamicRoutingManager && PipelineAssembler && PipelineTracker) {
                 console.log(`✅ Pipeline module loaded successfully`);
 
                 // Create PipelineTracker for request tracking
@@ -630,13 +630,13 @@ program
                     assemblyResult.errors.forEach((error, index) => {
                       console.log(`   ${index + 1}. ${error}`);
                       // Analyze error type
-                      if (error.includes('provider') || error.includes('Provider')) {
+                      if (String(error).includes('provider') || String(error).includes('Provider')) {
                         console.log(`      → Provider-related error`);
-                      } else if (error.includes('target') || error.includes('Target')) {
+                      } else if (String(error).includes('target') || String(error).includes('Target')) {
                         console.log(`      → Target configuration error`);
-                      } else if (error.includes('module') || error.includes('Module')) {
+                      } else if (String(error).includes('module') || String(error).includes('Module')) {
                         console.log(`      → Module loading error`);
-                      } else if (error.includes('config') || error.includes('Config')) {
+                      } else if (String(error).includes('config') || String(error).includes('Config')) {
                         console.log(`      → Configuration error`);
                       } else {
                         console.log(`      → Unknown error type`);
@@ -677,8 +677,8 @@ program
                       }
                     }
 
-                    // Create VirtualModelSchedulerManager with pipeline pools
-                    console.log(`🔧 Creating VirtualModelSchedulerManager...`);
+                    // Create DynamicRoutingManager with pipeline pools
+                    console.log(`🔧 Creating DynamicRoutingManager...`);
 
                     // Enhanced diagnostic logging for scheduler creation
                     console.log(`🔍 ENHANCED DIAGNOSTIC - Scheduler Creation Analysis:`);
@@ -739,16 +739,16 @@ program
 
                     // Use the corrected constructor with proper parameter order
                     try {
-                      schedulerManager = new VirtualModelSchedulerManager(
+                      schedulerManager = new DynamicRoutingManager(
                         managerConfig,
                         pipelineTracker
                       );
-                      console.log(`✅ VirtualModelSchedulerManager created successfully`);
+                      console.log(`✅ DynamicRoutingManager created successfully`);
                       console.log(`   - Scheduler manager type: ${typeof schedulerManager}`);
                       console.log(`   - Scheduler has required methods: ${typeof schedulerManager.getScheduler === 'function'}`);
 
                       // Initialize the scheduler manager with pipeline pools
-                      console.log(`🔧 Initializing VirtualModelSchedulerManager with pipeline pools...`);
+                      console.log(`🔧 Initializing DynamicRoutingManager with pipeline pools...`);
                       console.log(`🔍 Pipeline pools structure:`);
                       console.log(`   - Type: ${typeof assemblyResult.pipelinePools}`);
                       console.log(`   - Is Map: ${assemblyResult.pipelinePools instanceof Map}`);
@@ -769,9 +769,9 @@ program
 
                       // Initialize the scheduler with all pipeline pools at once
                       schedulerManager.initialize(initializationPools);
-                      console.log(`✅ VirtualModelSchedulerManager initialized with ${initializationPools.size} pipeline pools`);
+                      console.log(`✅ DynamicRoutingManager initialized with ${initializationPools.size} pipeline pools`);
                     } catch (schedulerError) {
-                      console.log(`❌ CRITICAL ERROR - Failed to create VirtualModelSchedulerManager:`);
+                      console.log(`❌ CRITICAL ERROR - Failed to create DynamicRoutingManager:`);
                       console.log(`   - Error: ${schedulerError.message}`);
                       console.log(`   - Stack: ${schedulerError.stack}`);
                       throw schedulerError;
@@ -824,9 +824,9 @@ program
           await server.configure(serverConfig);
 
           // Set scheduler manager BEFORE initializing server
-          if (schedulerManager && server.setVirtualModelSchedulerManager) {
-            server.setVirtualModelSchedulerManager(schedulerManager);
-            console.log(`✅ VirtualModelSchedulerManager integrated with ServerModule`);
+          if (schedulerManager && server.setDynamicRoutingManager) {
+            server.setDynamicRoutingManager(schedulerManager);
+            console.log(`✅ DynamicRoutingManager integrated with ServerModule`);
           }
 
           await server.initialize();
@@ -964,7 +964,7 @@ program
                 { id: 'basemodule', name: 'BaseModule System' },
                 { id: 'bootstrap', name: 'Bootstrap Service' },
                 { id: 'pipeline', name: 'Pipeline System' },
-                { id: 'virtual-model-rules', name: 'Virtual Model Rules' },
+                { id: 'dynamic-routing-classification', name: 'Dynamic Routing Classification' },
                 { id: 'error-handling', name: 'Error Handling Center' }
               ];
 
@@ -1142,6 +1142,16 @@ program
 
           process.on('SIGINT', shutdown);
           process.on('SIGTERM', shutdown);
+
+          // Keep the process running - prevent Node.js from exiting
+          console.log(`🔄 RCC server is running and waiting for requests...`);
+          console.log(`💡 Press Ctrl+C to stop the server`);
+
+          // Create a simple keep-alive mechanism
+          const keepAliveInterval = setInterval(() => {
+            // This interval keeps the Node.js event loop active
+            // The server itself handles the actual HTTP requests
+          }, 60000); // Check every minute
 
         } catch (serverError) {
           console.error(`❌ Failed to start RCC HTTP Server: ${serverError.message}`);

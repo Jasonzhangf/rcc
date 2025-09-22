@@ -49,7 +49,7 @@ describe('Performance Tests - Individual Modules', () => {
       const context = {
         sessionId: 'perf-test',
         requestId: 'perf-req',
-        virtualModelId: 'test-virtual-model',
+        routingId: 'test-dynamic-routing',
         providerId: 'test-provider',
         startTime: Date.now(),
         ioRecords: [],
@@ -88,7 +88,7 @@ describe('Performance Tests - Individual Modules', () => {
       const context = {
         sessionId: 'perf-test',
         requestId: 'perf-req',
-        virtualModelId: 'test-virtual-model',
+        routingId: 'test-dynamic-routing',
         providerId: 'test-provider',
         startTime: Date.now(),
         ioRecords: [],
@@ -120,7 +120,7 @@ describe('Performance Tests - Individual Modules', () => {
       const context = {
         sessionId: 'perf-test',
         requestId: 'perf-req',
-        virtualModelId: 'test-virtual-model',
+        routingId: 'test-dynamic-routing',
         providerId: 'test-provider',
         startTime: Date.now(),
         ioRecords: [],
@@ -154,7 +154,7 @@ describe('Performance Tests - Individual Modules', () => {
       const context = {
         sessionId: 'perf-test',
         requestId: 'perf-req',
-        virtualModelId: 'test-virtual-model',
+        routingId: 'test-dynamic-routing',
         providerId: 'test-provider',
         startTime: Date.now(),
         ioRecords: [],
@@ -186,7 +186,7 @@ describe('Performance Tests - Individual Modules', () => {
       const context = {
         sessionId: 'perf-test',
         requestId: 'perf-req',
-        virtualModelId: 'test-virtual-model',
+        routingId: 'test-dynamic-routing',
         providerId: 'test-provider',
         startTime: Date.now(),
         ioRecords: [],
@@ -218,7 +218,7 @@ describe('Performance Tests - Individual Modules', () => {
       const context = {
         sessionId: 'perf-test',
         requestId: 'perf-req',
-        virtualModelId: 'test-virtual-model',
+        routingId: 'test-dynamic-routing',
         providerId: 'test-provider',
         startTime: Date.now(),
         ioRecords: [],
@@ -267,14 +267,14 @@ describe('Performance Tests - Pipeline System', () => {
     test('should handle high request throughput', async () => {
       const requestCount = 100;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
       const results: any[] = [];
 
       // Execute requests sequentially
       for (let i = 0; i < requestCount; i++) {
-        const result = await executor.execute(request, virtualModelId);
+        const result = await executor.execute(request, routingId);
         results.push(result);
       }
 
@@ -296,13 +296,13 @@ describe('Performance Tests - Pipeline System', () => {
     test('should handle concurrent request processing', async () => {
       const concurrency = 20;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
 
       // Execute requests concurrently
       const promises = Array(concurrency).fill(null).map(() =>
-        executor.execute(request, virtualModelId)
+        executor.execute(request, routingId)
       );
 
       const results = await Promise.all(promises);
@@ -326,7 +326,7 @@ describe('Performance Tests - Pipeline System', () => {
       const duration = 30000; // 30 seconds
       const requestRate = 5; // requests per second
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
       const results: any[] = [];
@@ -336,7 +336,7 @@ describe('Performance Tests - Pipeline System', () => {
       const requestInterval = setInterval(() => {
         if (Date.now() - startTime < duration) {
           requestCount++;
-          executor.execute(request, virtualModelId).then(result => {
+          executor.execute(request, routingId).then(result => {
             results.push(result);
           });
         }
@@ -366,7 +366,7 @@ describe('Performance Tests - Pipeline System', () => {
     test('should handle memory efficiency with many requests', async () => {
       const requestCount = 1000;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       // Get initial memory usage
       const initialMemory = process.memoryUsage();
@@ -375,7 +375,7 @@ describe('Performance Tests - Pipeline System', () => {
 
       // Execute many requests
       for (let i = 0; i < requestCount; i++) {
-        await executor.execute(request, virtualModelId);
+        await executor.execute(request, routingId);
       }
 
       const endTime = Date.now();
@@ -401,13 +401,13 @@ describe('Performance Tests - Pipeline System', () => {
     test('should handle streaming requests efficiently', async () => {
       const concurrency = 10;
       const request = createStreamingTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
 
       // Execute streaming requests concurrently
       const promises = Array(concurrency).fill(null).map(async () => {
-        const streamingGenerator = executor.executeStreaming(request, virtualModelId);
+        const streamingGenerator = executor.executeStreaming(request, routingId);
         const chunks: any[] = [];
 
         for await (const chunk of streamingGenerator) {
@@ -482,7 +482,7 @@ describe('Performance Tests - Stress Testing', () => {
     const requestsPerBurst = 20;
     const delayBetweenBursts = 1000;
     const request = createTestRequest();
-    const virtualModelId = 'test-virtual-model';
+    const routingId = 'test-dynamic-routing';
 
     const allResults: any[] = [];
     const burstTimings: number[] = [];
@@ -492,7 +492,7 @@ describe('Performance Tests - Stress Testing', () => {
 
       // Execute burst of requests
       const promises = Array(requestsPerBurst).fill(null).map(() =>
-        executor.execute(request, virtualModelId)
+        executor.execute(request, routingId)
       );
 
       const results = await Promise.all(promises);
@@ -522,11 +522,11 @@ describe('Performance Tests - Stress Testing', () => {
   test('should recover from system overload', async () => {
     const overloadCount = 100;
     const request = createTestRequest();
-    const virtualModelId = 'test-virtual-model';
+    const routingId = 'test-dynamic-routing';
 
     // Create system overload
     const overloadPromises = Array(overloadCount).fill(null).map(() =>
-      executor.execute(request, virtualModelId)
+      executor.execute(request, routingId)
     );
 
     // Wait for all to complete (some may fail)
@@ -540,7 +540,7 @@ describe('Performance Tests - Stress Testing', () => {
     const recoveryResults: any[] = [];
 
     for (let i = 0; i < recoveryRequests; i++) {
-      const result = await executor.execute(request, virtualModelId);
+      const result = await executor.execute(request, routingId);
       recoveryResults.push(result);
     }
 
@@ -565,12 +565,12 @@ describe('Performance Tests - Stress Testing', () => {
     };
 
     const iterations = 50;
-    const virtualModelId = 'test-virtual-model';
+    const routingId = 'test-dynamic-routing';
     const results: any[] = [];
 
     for (let i = 0; i < iterations; i++) {
       try {
-        const result = await executor.execute(constrainedRequest, virtualModelId);
+        const result = await executor.execute(constrainedRequest, routingId);
         results.push(result);
       } catch (error) {
         // Some requests may fail due to resource constraints

@@ -7,26 +7,64 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorContext,
-  ErrorSeverity,
-  ErrorCategory
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
 import { v4 as uuidv4 } from 'uuid';
 
-import { ErrorMonitor, IErrorMonitor, MonitoringConfig } from './ErrorMonitor';
-import { AutomatedRecoverySystem, AdaptiveRecoveryConfig } from './AutomatedRecoverySystem';
-import { HealthCheckSystem, HealthCheckConfig } from './HealthCheckSystem';
+import { ErrorMonitor } from './ErrorMonitor';
+import { AutomatedRecoverySystem } from './AutomatedRecoverySystem';
+import { HealthCheckSystem } from './HealthCheckSystem';
+
+import {
+  ErrorContext,
+  ErrorSeverity,
+  ErrorCategory,
+  IErrorMonitor,
+  MonitoringConfig
+} from './ErrorMonitoringInterfaces';
 
 import { StrategyManager } from '../strategies/StrategyManager';
 import { IModularPipelineExecutor } from '../../interfaces/ModularInterfaces';
-import { PipelineExecutionContext } from '../core/PipelineExecutionContext';
+import { PipelineExecutionContext } from '../PipelineExecutionContext';
 
 /**
  * Monitoring integration configuration
  * 监控集成配置
  */
+interface AdaptiveRecoveryConfig {
+  enabled: boolean;
+  learningRate: number;
+  minConfidenceThreshold: number;
+  maxRecoveryAttempts: number;
+  adaptiveTimeout: boolean;
+  performanceTracking: boolean;
+  patternEvolution: boolean;
+  selfHealing: boolean;
+}
+
+interface HealthCheckConfig {
+  enabled: boolean;
+  checkInterval: number;
+  timeout: number;
+  retryAttempts: number;
+  thresholds: {
+    errorRate: number;
+    responseTime: number;
+    availability: number;
+    memoryUsage: number;
+    cpuUsage: number;
+  };
+  providers: string[];
+  modules: string[];
+  anomalyDetection: {
+    enabled: boolean;
+    sensitivity: number;
+    windowSize: number;
+    alertThreshold: number;
+  };
+}
+
 interface MonitoringIntegrationConfig {
   errorMonitoring: MonitoringConfig;
   automatedRecovery: AdaptiveRecoveryConfig;
@@ -146,9 +184,9 @@ export class MonitoringIntegration {
 
   constructor(
     errorHandlingCenter: ErrorHandlingCenter,
+    config: MonitoringIntegrationConfig,
     strategyManager?: StrategyManager,
     pipelineExecutor?: IModularPipelineExecutor,
-    config: MonitoringIntegrationConfig,
     eventHandlers: typeof MonitoringIntegration.prototype.eventHandlers = {}
   ) {
     this.errorHandlingCenter = errorHandlingCenter;

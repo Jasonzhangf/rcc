@@ -1,9 +1,30 @@
 /**
+ * Pipeline Tracker Interface
+ * 流水线跟踪器接口
+ */
+export interface IPipelineTracker {
+  setDebugCenter(debugCenter: any): void;
+  getDebugCenter(): any | null;
+  subscribe(event: string, callback: (data: any) => void): void;
+  createContext(moduleInfo: any, stage: string, request?: any, options?: any): any;
+  recordRequest(context: any, request: any, stage: string): Promise<void>;
+  recordResponse(context: any, response: any, stage: string): Promise<void>;
+  completeContext(context: any, response?: any, error?: any): void;
+  getStatistics(): any;
+  getActiveContexts(): any[];
+  getActiveTraceChains(): any[];
+  initialize(): Promise<void>;
+  destroy(): Promise<void>;
+  getConfig(): any;
+  updateConfig(config: any): void;
+}
+
+/**
  * Pipeline Tracker - Request ID and Pipeline Tracking System
  * 流水线跟踪器 - 请求ID和流水线跟踪系统
  */
 
-import { PipelineBaseModule } from '../modules/PipelineBaseModule';
+import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 // Simple mock implementation for DebugCenter
 class SimpleDebugCenter {
   constructor(config: any) {
@@ -437,8 +458,37 @@ class PipelineStageManagerImpl implements IPipelineStageManager {
  * Pipeline Tracker Main Class
  * 流水线跟踪器主类
  */
-export class PipelineTracker extends PipelineBaseModule {
+export class PipelineTracker extends BaseModule implements IPipelineTracker {
   protected debugCenter: DebugCenterType | null = null;
+  private activeRequests: Map<string, IRequestContext> = new Map();
+  private stageFactory: IPipelineStageFactory;
+  private stageManager: IPipelineStageManager;
+
+  constructor() {
+    const moduleInfo: ModuleInfo = {
+      id: 'pipeline-tracker',
+      name: 'Pipeline Tracker',
+      version: '1.0.0',
+      description: 'Pipeline request tracking and stage management system',
+      type: 'tracker'
+    };
+
+    super(moduleInfo);
+
+    this.stageFactory = new PipelineStageFactoryImpl();
+    this.stageManager = new PipelineStageManagerImpl(this.stageFactory);
+
+    this.logInfo('Pipeline tracker initialized', {}, 'constructor');
+  }
+
+  /**
+   * Initialize the tracker
+   * 初始化跟踪器
+   */
+  public async initialize(): Promise<void> {
+    await super.initialize();
+    this.logInfo('Pipeline tracker initialized successfully', {}, 'initialize');
+  }
 
   /**
    * Set debug center for integration
@@ -467,10 +517,10 @@ export class PipelineTracker extends PipelineBaseModule {
   }
 
   /**
-   * Handle system messages including 'module_registered'
-   * 处理系统消息，包括'module_registered'
+   * Handle messages (required by BaseModule abstract class)
+   * 处理消息（BaseModule抽象类需要）
    */
-  async handleMessage(message: any): Promise<any> {
+  public async handleMessage(message: any): Promise<any> {
     if (!message || !message.type) {
       this.warn('Received invalid message', { message }, 'handleMessage');
       return { success: false, error: 'Invalid message format' };
@@ -512,7 +562,7 @@ export class PipelineTracker extends PipelineBaseModule {
           // Handle pipeline start messages
           this.logInfo('Pipeline started', {
             pipelineId: message.pipelineId,
-            virtualModelId: message.virtualModelId
+            routingId: message.routingId
           }, 'handleMessage');
 
           return { success: true, message: 'Pipeline start recorded' };
@@ -572,34 +622,21 @@ export class PipelineTracker extends PipelineBaseModule {
   }
 
   /**
-   * Legacy on method for backward compatibility
-   * @deprecated Use subscribe instead
+   * Process request - implementation of abstract method from BaseModule
+   * 处理请求 - 实现BaseModule的抽象方法
    */
-  public on(event: string, callback: (data: any) => void): void {
-    this.subscribe(event, callback);
+  public async process(request: any): Promise<any> {
+    // PipelineTracker is a tracking utility, not a request processor
+    throw new Error('PipelineTracker does not support direct request processing');
   }
-  private activeRequests: Map<string, IRequestContext> = new Map();
-  private stageFactory: IPipelineStageFactory;
-  private stageManager: IPipelineStageManager;
 
-  constructor() {
-    const config = {
-      id: 'pipeline-tracker',
-      name: 'Pipeline Tracker',
-      version: '1.0.0',
-      description: 'Pipeline request tracking and stage management system',
-      type: 'tracker' as const,
-      enableTwoPhaseDebug: true,
-      enableIOTracking: true,
-      debugBaseDirectory: '~/.rcc/debug-logs'
-    };
-
-    super(config);
-
-    this.stageFactory = new PipelineStageFactoryImpl();
-    this.stageManager = new PipelineStageManagerImpl(this.stageFactory);
-
-    this.logInfo('Pipeline tracker initialized', {}, 'constructor');
+  /**
+   * Process response - implementation of abstract method from BaseModule
+   * 处理响应 - 实现BaseModule的抽象方法
+   */
+  public async processResponse(response: any): Promise<any> {
+    // PipelineTracker is a tracking utility, not a response processor
+    return response;
   }
 
   /**
@@ -991,16 +1028,24 @@ export class PipelineTracker extends PipelineBaseModule {
   }
 
   /**
+   * Legacy on method for backward compatibility
+   * @deprecated Use subscribe instead
+   */
+  public on(event: string, callback: (data: any) => void): void {
+    this.subscribe(event, callback);
+  }
+
+  /**
    * Get configuration (compatibility method)
    * 获取配置（兼容性方法）
    */
   getConfig(): any {
     return {
-      enabled: this.pipelineConfig.enableIOTracking || false,
+      enabled: true,
       maxActiveTraces: 1000,
       traceRetentionTime: 300000,
       enableChainTracking: true,
-      enableMetrics: this.pipelineConfig.enableIOTracking || false,
+      enableMetrics: true,
       maxContextDepth: 10,
       samplingRate: 1.0,
       enableRealTimeMonitoring: true
@@ -1012,8 +1057,6 @@ export class PipelineTracker extends PipelineBaseModule {
    * 更新配置（兼容性方法）
    */
   updateConfig(newConfig: any): void {
-    this.updatePipelineConfig({
-      enableIOTracking: newConfig.enabled
-    });
+    this.logInfo('Pipeline tracker configuration updated', { newConfig }, 'updateConfig');
   }
 }

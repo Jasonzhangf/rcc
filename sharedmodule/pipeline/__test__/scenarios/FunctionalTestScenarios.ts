@@ -36,7 +36,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         temperature: 0.7,
         max_tokens: 1000
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       // This would be executed by the test runner
@@ -69,7 +69,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
           content: 'What about Germany?'
         }
       ],
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       // Execute each request in sequence
@@ -131,7 +131,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         temperature: 0.7,
         max_tokens: 1000
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       return context;
@@ -161,7 +161,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         temperature: 0.8,
         max_tokens: 2000
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       return context;
@@ -201,7 +201,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         temperature: 0.7,
         max_tokens: 1000
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       return context;
@@ -229,7 +229,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         ],
         temperature: 0.7
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       return context;
@@ -255,7 +255,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         temperature: 0.7,
         max_tokens: 1000
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       return context;
@@ -283,7 +283,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         invalid_param: { nested: { deep: { value: 'problematic' } } },
         temperature: 0.7
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       return context;
@@ -310,7 +310,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         ],
         temperature: 0.7
       })),
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       const startTime = Date.now();
@@ -345,7 +345,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
       bursts: 5,
       requestsPerBurst: 10,
       delayBetweenBursts: 1000,
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       const allResults = [];
@@ -417,7 +417,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
           content: 'It says "Invalid username or password" but I\'m sure my credentials are correct.'
         }
       ],
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       const request = {
@@ -459,7 +459,7 @@ export const FUNCTIONAL_TEST_SCENARIOS: TestScenario[] = [
         temperature: 0.3,
         max_tokens: 1500
       },
-      virtualModelId: 'test-virtual-model'
+      routingId: 'test-dynamic-routing'
     }),
     execute: async (context) => {
       return context;

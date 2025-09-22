@@ -100,7 +100,7 @@ info_msg "编译主项目..."
 npm run clean 2>/dev/null || true
 # 安装所有已发布的模块作为全局依赖
 info_msg "全局安装所有 RCC 模块..."
-npm install -g rcc-basemodule rcc-underconstruction rcc-debugcenter rcc-server rcc-bootstrap rcc-config-parser rcc-errorhandling rcc-pipeline rcc-virtual-model-rules || warning_msg "部分模块全局安装失败"
+npm install -g rcc-basemodule rcc-underconstruction rcc-debugcenter rcc-server rcc-bootstrap rcc-config-parser rcc-errorhandling rcc-pipeline rcc-dynamic-routing-classification || warning_msg "部分模块全局安装失败"
 npm run build || error_exit "主项目编译失败"
 success_msg "主项目编译完成"
 

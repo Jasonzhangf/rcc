@@ -54,6 +54,16 @@ interface OAuthTokens {
 }
 
 class QwenProvider extends BaseProvider implements IProviderModule {
+  // 实现 BaseProvider 的抽象方法
+  async process(data: any): Promise<any> {
+    // 默认实现，可以根据需要扩展
+    return data;
+  }
+
+  async processResponse(response: any): Promise<any> {
+    // 默认实现，可以根据需要扩展
+    return response;
+  }
   readonly moduleId: string = 'qwen-provider';
   readonly moduleName: string = 'Qwen AI Provider';
   readonly moduleVersion: string = '1.0.0';
@@ -554,7 +564,59 @@ class QwenProvider extends BaseProvider implements IProviderModule {
       console.log(`[QwenProvider] Error response status:`, error.response?.status);
       console.log(`[QwenProvider] Error response data:`, error.response?.data);
 
-      // 临时禁用自动认证，直接返回错误
+      // 检查是否是认证错误 (401)
+      if (error.response?.status === 401) {
+        console.log('[QwenProvider] Authentication error detected, attempting recovery...');
+
+        try {
+          // 尝试自动刷新token
+          if (this.refreshToken) {
+            console.log('[QwenProvider] Attempting token refresh...');
+            await this.refreshAccessToken();
+            console.log('[QwenProvider] Token refreshed successfully');
+          } else {
+            // 没有refresh token，启动重新认证流程
+            console.log('[QwenProvider] No refresh token, starting re-authentication...');
+            const authResult = await this.authenticate(true, {
+              interval: 5,
+              maxAttempts: 60
+            });
+
+            if (!authResult.success) {
+              throw new Error(`Re-authentication failed: ${authResult.error}`);
+            }
+            console.log('[QwenProvider] Re-authentication successful');
+          }
+
+          // 重新尝试API调用
+          console.log('[QwenProvider] Retrying API call with refreshed token...');
+          const qwenRequest = this.convertToQwenFormat(providerRequest);
+          const retryResponse = await axios.post(this.endpoint + '/chat/completions', qwenRequest, {
+            headers: {
+              'Authorization': 'Bearer ' + this.accessToken,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          console.log('[QwenProvider] Retry successful after token refresh');
+          return this.convertQwenResponse(retryResponse.data);
+
+        } catch (recoveryError: any) {
+          console.log('[QwenProvider] Recovery failed:', recoveryError.message);
+
+          // 如果恢复失败，记录错误并抛出
+          this.errorHandler.handleError({
+            error: recoveryError as Error,
+            source: 'QwenProvider.executeChat.recovery',
+            severity: 'high',
+            timestamp: Date.now()
+          });
+
+          throw new Error(`Authentication recovery failed: ${recoveryError.message}. Please manually re-authenticate.`);
+        }
+      }
+
+      // 非认证错误，正常处理
       this.errorHandler.handleError({
         error: error as Error,
         source: 'QwenProvider.executeChat',
@@ -672,6 +734,11 @@ class QwenProvider extends BaseProvider implements IProviderModule {
 
   // 转换OpenAI请求到Qwen格式
   private convertToQwenFormat(openaiRequest: OpenAIChatRequest): any {
+    // 安全检查：确保messages存在且是数组
+    if (!openaiRequest.messages || !Array.isArray(openaiRequest.messages)) {
+      throw new Error('Invalid request: messages is required and must be an array');
+    }
+
     const qwenRequest: any = {
       model: this.defaultModel, // 始终使用配置的模型，忽略请求中的虚拟模型名称
       messages: openaiRequest.messages.map(msg => ({
@@ -807,16 +874,90 @@ class QwenProvider extends BaseProvider implements IProviderModule {
     };
   }
 
-  // 健康检查
+  // 健康检查 - 增强版自动刷新和重新认证
   async healthCheck(): Promise<any> {
     try {
+      // 检查token状态
       if (this.isTokenExpired()) {
-        return {
-          status: 'warning',
-          provider: this.getInfo().name,
-          message: 'Token expired, needs re-authentication',
-          timestamp: Date.now()
-        };
+        console.log('[QwenProvider] Token expired, attempting auto-refresh...');
+
+        // 尝试自动刷新token
+        if (this.refreshToken) {
+          try {
+            await this.refreshAccessToken();
+            console.log('[QwenProvider] Token auto-refresh successful');
+            // 刷新成功后继续健康检查
+          } catch (refreshError) {
+            console.log('[QwenProvider] Token auto-refresh failed:', (refreshError as Error).message);
+
+            // 刷新失败，启动重新认证流程
+            console.log('[QwenProvider] Starting re-authentication process...');
+            try {
+              const authResult = await this.authenticate(true, {
+                interval: 5,
+                maxAttempts: 60
+              });
+
+              if (authResult.success) {
+                console.log('[QwenProvider] Re-authentication successful');
+                // 重新认证成功后继续健康检查
+              } else {
+                console.log('[QwenProvider] Re-authentication failed:', authResult.error);
+                return {
+                  status: 'unhealthy',
+                  provider: this.getInfo().name,
+                  message: 'Re-authentication failed: ' + authResult.error,
+                  error: authResult.error,
+                  needsReauth: true,
+                  timestamp: Date.now()
+                };
+              }
+            } catch (authError) {
+              console.log('[QwenProvider] Re-authentication process failed:', (authError as Error).message);
+              return {
+                status: 'unhealthy',
+                provider: this.getInfo().name,
+                message: 'Authentication process failed: ' + (authError as Error).message,
+                error: (authError as Error).message,
+                needsReauth: true,
+                timestamp: Date.now()
+              };
+            }
+          }
+        } else {
+          console.log('[QwenProvider] No refresh token available, starting authentication...');
+
+          // 没有refresh token，直接启动认证流程
+          try {
+            const authResult = await this.authenticate(true, {
+              interval: 5,
+              maxAttempts: 60
+            });
+
+            if (authResult.success) {
+              console.log('[QwenProvider] Authentication successful');
+              // 认证成功后继续健康检查
+            } else {
+              return {
+                status: 'unhealthy',
+                provider: this.getInfo().name,
+                message: 'Authentication failed: ' + authResult.error,
+                error: authResult.error,
+                needsReauth: true,
+                timestamp: Date.now()
+              };
+            }
+          } catch (authError) {
+            return {
+              status: 'unhealthy',
+              provider: this.getInfo().name,
+              message: 'Authentication process failed: ' + (authError as Error).message,
+              error: (authError as Error).message,
+              needsReauth: true,
+              timestamp: Date.now()
+            };
+          }
+        }
       }
 
       // 测试API连接
@@ -833,15 +974,73 @@ class QwenProvider extends BaseProvider implements IProviderModule {
         status: 'healthy',
         provider: this.getInfo().name,
         timestamp: Date.now(),
-        models: testData?.data?.length || 0
+        models: testData?.data?.length || 0,
+        tokenStatus: 'valid',
+        autoRefreshEnabled: true
       };
     } catch (error) {
+      console.log('[QwenProvider] Health check failed:', (error as Error).message);
+
+      // 检查是否是认证错误
+      if ((error as any).response?.status === 401) {
+        console.log('[QwenProvider] Authentication error during health check, attempting recovery...');
+
+        try {
+          // 尝试刷新token
+          if (this.refreshToken) {
+            await this.refreshAccessToken();
+            console.log('[QwenProvider] Token refreshed during health check recovery');
+          } else {
+            // 没有refresh token，启动认证流程
+            const authResult = await this.authenticate(true, {
+              interval: 5,
+              maxAttempts: 60
+            });
+
+            if (!authResult.success) {
+              throw new Error(authResult.error);
+            }
+          }
+
+          // 重新测试API连接
+          const retryResponse = await axios.get(this.endpoint + '/models', {
+            headers: {
+              'Authorization': 'Bearer ' + this.accessToken
+            }
+          });
+
+          const retryData = retryResponse.data as any;
+
+          return {
+            status: 'healthy',
+            provider: this.getInfo().name,
+            timestamp: Date.now(),
+            models: retryData?.data?.length || 0,
+            tokenStatus: 'refreshed',
+            recovery: 'successful'
+          };
+
+        } catch (recoveryError) {
+          console.log('[QwenProvider] Recovery failed:', (recoveryError as Error).message);
+          return {
+            status: 'unhealthy',
+            provider: this.getInfo().name,
+            message: 'Authentication recovery failed: ' + (recoveryError as Error).message,
+            error: (recoveryError as Error).message,
+            needsReauth: true,
+            recovery: 'failed',
+            timestamp: Date.now()
+          };
+        }
+      }
+
       this.errorHandler.handleError({
         error: error as Error,
         source: 'QwenProvider.healthCheck',
         severity: 'medium',
         timestamp: Date.now()
       });
+
       return {
         status: 'unhealthy',
         provider: this.getInfo().name,
@@ -921,6 +1120,15 @@ class QwenProvider extends BaseProvider implements IProviderModule {
     }
 
     try {
+      // 调试日志：检查传入的request结构
+      console.log('[QwenProvider] executeRequest received request:', {
+        hasMessages: !!request.messages,
+        messagesType: typeof request.messages,
+        messagesLength: request.messages?.length,
+        requestKeys: Object.keys(request),
+        messages: request.messages
+      });
+
       // 转换为OpenAI格式并执行
       const openaiRequest = new OpenAIChatRequest(request);
       return await this.executeChat(openaiRequest);

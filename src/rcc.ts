@@ -16,7 +16,7 @@ import { DynamicImportManager } from './utils/dynamic-import-manager';
 import {
   RccConfig,
   ProviderConfig,
-  VirtualModelConfig,
+  DynamicRoutingConfig,
   PackageJson,
   ServerModuleConfig,
   DebugCenterModule,
@@ -25,7 +25,7 @@ import {
 } from './types';
 
 // Import wrapper generation functions from config-parser
-import { generateAllWrappers } from 'rcc-config-parser';
+import { generateAllWrappers } from 'rcc-config-parser'; // @ts-ignore
 import { WrapperGenerator, ConfigValidator } from './utils/config-validation';
 
 // Get current directory for ES modules
@@ -111,7 +111,7 @@ async function loadRccConfig(configPath: string): Promise<RccConfig> {
               },
             },
           },
-          virtualModels: {
+          dynamicRouting: {
             type: 'object',
             additionalProperties: {
               type: 'object',
@@ -133,7 +133,7 @@ async function loadRccConfig(configPath: string): Promise<RccConfig> {
     return (
       configData || {
         providers: {},
-        virtualModels: {},
+        dynamicRouting: {},
         pipeline: {},
       }
     );
@@ -141,7 +141,7 @@ async function loadRccConfig(configPath: string): Promise<RccConfig> {
     console.warn(`⚠️ Configuration file not found or invalid: ${configPath}`);
     return {
       providers: {},
-      virtualModels: {},
+      dynamicRouting: {},
       pipeline: {},
     };
   }
@@ -172,7 +172,7 @@ async function initializeServerModules() {
       console.log('   ⚠️  ServerModule not found - building...');
       return importManager.buildAndImport(serverPath, 'cd sharedmodule/server && npm run build');
     },
-    validate: (module) => !!(module.ServerModule || module.default),
+    validator: (module) => !!(module.ServerModule || module.default),
   });
 
   const ServerModule = serverModuleResult.ServerModule || serverModuleResult.default;
@@ -185,7 +185,7 @@ async function initializeServerModules() {
     default?: DebugCenterModule;
   }>(debugCenterPath, {
     required: false,
-    validate: (module) => !!(module.DebugCenter || module.default),
+    validator: (module) => !!(module.DebugCenter || module.default),
   });
 
   const DebugCenter = debugCenterResult?.DebugCenter || debugCenterResult?.default;
@@ -269,7 +269,7 @@ async function initializeServer(
     console.log(`✅ Server wrapper generated and validated successfully`);
     console.log(`   - Generation time: ${wrapperResult.metadata?.generationTime}ms`);
     console.log(`   - Providers: ${wrapperResult.metadata?.providerCount}`);
-    console.log(`   - Virtual models: ${wrapperResult.metadata?.virtualModelCount}`);
+    console.log(`   - Dynamic routing configs: ${wrapperResult.metadata?.dynamicRoutingCount}`);
 
     return createServerConfig(wrapperResult.server!, options, config);
   } catch (error) {
@@ -317,7 +317,7 @@ function createServerConfig(
     bodyLimit: serverWrapper.bodyLimit || '50mb',
 
     // RCC-specific configuration
-    enableVirtualModels: true,
+    enableDynamicRouting: true,
     enablePipeline: enablePipelineTracking,
     debug: {
       enabled: true,
@@ -331,7 +331,7 @@ function createServerConfig(
     },
     parsedConfig: {
       providers: config.providers || {},
-      virtualModels: config.virtualModels || {},
+      dynamicRouting: config.dynamicRouting || {},
       pipeline: config.pipeline || {},
     },
     basePath: debugPath,
@@ -403,7 +403,7 @@ async function resolvePortConflict(port: number): Promise<void> {
     const pids = processes
       .trim()
       .split('\n')
-      .filter((pid) => pid.trim());
+      .filter((pid: string) => pid.trim());
 
     for (const pid of pids) {
       try {
@@ -474,7 +474,9 @@ async function initializePipelineSystem(
 
     console.log(`✅ Pipeline wrapper generated and validated successfully`);
     console.log(`   - Generation time: ${wrapperResult.metadata?.generationTime}ms`);
-    console.log(`   - Virtual models: ${wrapperResult.pipeline?.virtualModels?.length || 0}`);
+    console.log(
+      `   - Dynamic routing configs: ${wrapperResult.pipeline?.dynamicRouting?.length || 0}`
+    );
     console.log(`   - Modules: ${wrapperResult.pipeline?.modules?.length || 0}`);
 
     return createPipelineSystem(wrapperResult.pipeline!, config, systemDebugPath, verbose);
@@ -502,24 +504,23 @@ async function createPipelineSystem(
   try {
     if (verbose) {
       console.log(`📋 Pipeline wrapper contains:`);
-      console.log(`   - Virtual models: ${pipelineWrapper.virtualModels?.length || 0}`);
+      console.log(`   - Dynamic routing configs: ${pipelineWrapper.dynamicRouting?.length || 0}`);
       console.log(`   - Modules: ${pipelineWrapper.modules?.length || 0}`);
       console.log(`   - Routing strategy: ${pipelineWrapper.routing?.strategy || 'default'}`);
     }
 
     // Pipeline module import with type safety
     const pipelineModule = await importManager.import<PipelineModule>('rcc-pipeline', {
-      validate: (module) =>
+      validator: (module) =>
         !!(
           module.Pipeline &&
-          module.VirtualModelSchedulerManager &&
+          module.DynamicManager &&
           module.PipelineAssembler &&
           module.PipelineTracker
         ),
     });
 
-    const { Pipeline, VirtualModelSchedulerManager, PipelineAssembler, PipelineTracker } =
-      pipelineModule;
+    const { Pipeline, DynamicManager, PipelineAssembler, PipelineTracker } = pipelineModule;
     console.log(`✅ Pipeline module loaded successfully`);
 
     // Create PipelineTracker
@@ -534,8 +535,8 @@ async function createPipelineSystem(
     console.log(`✅ PipelineTracker initialized`);
 
     // Validate wrapper configuration (additional safety check)
-    if (!pipelineWrapper.virtualModels || pipelineWrapper.virtualModels.length === 0) {
-      throw new Error('Pipeline wrapper validation failed: No virtual models configured');
+    if (!pipelineWrapper.dynamicRouting || pipelineWrapper.dynamicRouting.length === 0) {
+      throw new Error('Pipeline wrapper validation failed: No dynamic routing configs configured');
     }
 
     // Use wrapper configuration for assembler
@@ -548,7 +549,7 @@ async function createPipelineSystem(
 
     if (verbose) {
       console.log(
-        `📋 Virtual models in wrapper: ${pipelineWrapper.virtualModels.map((vm) => vm.id).join(', ')}`
+        `📋 Dynamic routing configs in wrapper: ${pipelineWrapper.dynamicRouting.map((dr: any) => dr.id).join(', ')}`
       );
     }
 
@@ -570,12 +571,12 @@ async function createPipelineSystem(
       fallbackStrategy: 'first-available',
     };
 
-    // Use virtual models from wrapper
-    const virtualModelConfigs = pipelineWrapper.virtualModels;
+    // Use dynamic routing configs from wrapper
+    const dynamicRoutingConfigs = pipelineWrapper.dynamicRouting;
 
     if (verbose) {
       console.log(`✅ Pipeline system created successfully`);
-      console.log(`   - Virtual model count: ${virtualModelConfigs.length}`);
+      console.log(`   - Dynamic routing config count: ${dynamicRoutingConfigs.length}`);
       console.log(`   - Routing strategy: ${pipelineWrapper.routing.strategy}`);
       console.log(`   - Fallback strategy: ${pipelineWrapper.routing.fallbackStrategy}`);
     }
@@ -584,7 +585,7 @@ async function createPipelineSystem(
       PipelineAssembler,
       pipelineTracker,
       assemblerConfig,
-      virtualModelConfigs,
+      dynamicRoutingConfigs,
       pipelineWrapper,
     };
   } catch (error) {
@@ -752,8 +753,8 @@ program
       );
 
       if (debugCenter) {
-        global.debugCenter = debugCenter;
-        global.systemStartSessionId = systemStartSessionId;
+        (globalThis as any).debugCenter = debugCenter;
+        (globalThis as any).systemStartSessionId = systemStartSessionId;
       }
 
       // Initialize server

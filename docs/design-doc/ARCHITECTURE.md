@@ -176,7 +176,7 @@ sharedmodule/
 ├── server/                 # 服务器框架
 ├── underconstruction/      # 开发模式支持
 ├── bootstrap/              # 启动引导
-└── virtual-model-rules/    # 虚拟模型规则
+└── dynamic-routing-rules/    # 动态路由规则
 ```
 
 #### 主应用目录结构

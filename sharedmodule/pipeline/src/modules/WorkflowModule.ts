@@ -130,7 +130,7 @@ export class WorkflowModule extends BasePipelineModule implements IWorkflowModul
       };
     }
 
-    this.logInfo('Initializing WorkflowModule', this.config, 'initialize');
+    this.logInfo('Initializing WorkflowModule', this.config as unknown as Record<string, unknown>, 'initialize');
 
     // 验证配置
     this.validateConfig();
@@ -345,7 +345,7 @@ export class WorkflowModule extends BasePipelineModule implements IWorkflowModul
       requestId: 'req-' + Date.now(),
       executionId: 'exec-' + Date.now(),
       traceId: 'trace-' + Date.now(),
-      virtualModelId: 'default',
+      routingId: 'default',
       providerId: 'default-provider',
       startTime: Date.now(),
       stage: PipelineStage.REQUEST_INIT,

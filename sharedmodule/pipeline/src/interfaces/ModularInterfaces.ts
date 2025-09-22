@@ -26,22 +26,23 @@ export interface ExecutionError {
 
 // 定义PipelineWrapper接口
 export interface PipelineWrapper {
-  virtualModels: VirtualModel[];
+  id: string;
+  dynamicRouting: DynamicRouting[];
   modules: ModuleConfig[];
   routing: RoutingConfig;
   metadata: Metadata;
 }
 
-export interface VirtualModel {
+export interface DynamicRouting {
   id: string;
   name: string;
   description?: string;
-  targets: VirtualModelTarget[];
+  targets: DynamicRoutingTarget[];
   capabilities: string[];
   tags?: string[];
 }
 
-export interface VirtualModelTarget {
+export interface DynamicRoutingTarget {
   providerId: string;
   weight?: number;
   fallback?: boolean;
@@ -396,6 +397,10 @@ export interface PipelineExecutionStep {
   input?: any;
   output?: any;
   error?: Error;
+  attempt?: number;
+  strategyApplied?: string;
+  strategyResult?: any;
+  strategyAction?: string;
 }
 
 /**
@@ -410,12 +415,12 @@ export interface IModularPipelineExecutor {
   /**
    * 执行请求
    */
-  execute(request: any, virtualModelId: string, context?: Partial<PipelineExecutionContext>): Promise<PipelineExecutionResult>;
+  execute(request: any, routingId: string, context?: Partial<PipelineExecutionContext>): Promise<PipelineExecutionResult>;
 
   /**
    * 执行流式请求
    */
-  executeStreaming(request: any, virtualModelId: string, context?: Partial<PipelineExecutionContext>): AsyncGenerator<PipelineExecutionStep>;
+  executeStreaming(request: any, routingId: string, context?: Partial<PipelineExecutionContext>): AsyncGenerator<PipelineExecutionStep>;
 
   /**
    * 获取执行器状态

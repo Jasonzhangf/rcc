@@ -5,10 +5,10 @@
 
 import { BaseProvider } from './BaseProvider';
 import { PipelineTarget } from './Pipeline';
-import { VirtualModelConfig } from '../types/virtual-model';
+import { DynamicRoutingConfig } from '../types/dynamic-routing';
 import QwenProvider from '../providers/qwen';
 import IFlowProvider from '../providers/iflow';
-import { UnifiedPipelineBaseModule, PipelineModuleConfig } from '../modules/PipelineBaseModule';
+import { UnifiedPipelineBaseModule, PipelineModuleConfig, ProviderInfo as BaseProviderInfo } from '../modules/PipelineBaseModule';
 
 export interface ProviderDiscoveryOptions {
   enabledProviders?: string[]; // Specific providers to enable, if empty enable all
@@ -149,32 +149,27 @@ export class ModuleScanner extends UnifiedPipelineBaseModule {
     const supportedModels = config.models ? Object.keys(config.models) : [];
     const firstModel = supportedModels.length > 0 ? supportedModels[0] : 'unknown';
 
-    switch (providerId) {
-      case 'qwen':
-        return {
-          name: config.name || 'Qwen Provider',
-          endpoint: config.endpoint,  // Use endpoint from config
-          supportedModels: supportedModels,
-          defaultModel: firstModel,
-          apiKey: config.auth?.keys?.[0] || 'qwen-auth-1'
-        };
-      case 'iflow':
-        return {
-          name: config.name || 'iFlow Provider',
-          endpoint: config.endpoint,  // Use endpoint from config
-          supportedModels: supportedModels,
-          defaultModel: firstModel,
-          apiKey: config.auth?.keys?.[0] || 'iflow-auth-1'
-        };
-      default:
-        return {
-          name: config.name || `${providerId} Provider`,
-          endpoint: config.endpoint,
-          supportedModels: supportedModels,
-          defaultModel: firstModel,
-          apiKey: config.auth?.keys?.[0]
-        };
-    }
+    // DEBUG: Log the input config
+    console.log(`[ModuleScanner] DEBUG: Transforming config for provider ${providerId}`, {
+      inputConfig: config,
+      endpoint: config.endpoint,
+      models: config.models,
+      supportedModels,
+      firstModel
+    });
+
+    const transformedConfig = {
+      name: config.name || `${providerId} Provider`,
+      endpoint: config.endpoint,  // Use endpoint from config
+      supportedModels: supportedModels,
+      defaultModel: firstModel,
+      apiKey: config.auth?.keys?.[0] || `${providerId}-auth-1`
+    };
+
+    // DEBUG: Log the transformed config
+    console.log(`[ModuleScanner] DEBUG: Transformed config for provider ${providerId}`, transformedConfig);
+
+    return transformedConfig;
   }
 
   /**
@@ -210,7 +205,10 @@ export class ModuleScanner extends UnifiedPipelineBaseModule {
 
       return provider as BaseProvider;
     } catch (error) {
-      this.logError('Failed to load provider', { providerId: providerInfo.id, error: error.message || error }, 'provider-scanning');
+      this.logError('Failed to load provider', {
+        providerId: providerInfo.id,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'provider-scanning');
       return null;
     }
   }
@@ -232,10 +230,10 @@ export class ModuleScanner extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * Get provider information
-   * 获取provider信息
+   * Get provider information by ID
+   * 通过ID获取provider信息
    */
-  getProviderInfo(providerId: string): ProviderInfo | null {
+  getProviderInfoById(providerId: string): ProviderInfo | null {
     return this.availableProviders.get(providerId) || null;
   }
 
@@ -279,25 +277,25 @@ export class ModuleScanner extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * Create pipeline targets from virtual model configuration and discovered providers
-   * 从虚拟模型配置和发现的provider创建流水线目标
+   * Create pipeline targets from routing configuration and discovered providers
+   * 从路由配置和发现的provider创建流水线目标
    */
-  createTargetsFromVirtualModel(virtualModel: VirtualModelConfig): PipelineTarget[] {
+  createTargetsFromRoutingConfig(routingConfig: DynamicRoutingConfig): PipelineTarget[] {
     const targets: PipelineTarget[] = [];
 
-    if (!virtualModel.targets || virtualModel.targets.length === 0) {
+    if (!routingConfig.targets || routingConfig.targets.length === 0) {
       return targets;
     }
 
-    virtualModel.targets.forEach(targetConfig => {
+    routingConfig.targets.forEach(targetConfig => {
       const provider = this.getProvider(targetConfig.providerId);
       if (!provider) {
-        this.logWarn('Provider not found for virtual model', { providerId: targetConfig.providerId, virtualModelId: virtualModel.id }, 'target-creation');
+        this.logWarn('Provider not found for routing configuration', { providerId: targetConfig.providerId, routingId: routingConfig.id }, 'target-creation');
         return;
       }
 
       const target: PipelineTarget = {
-        id: `${virtualModel.id}_${targetConfig.providerId}_${targetConfig.modelId}`,
+        id: `${routingConfig.id}_${targetConfig.providerId}_${targetConfig.modelId}`,
         provider,
         weight: targetConfig.weight || 1,
         enabled: targetConfig.enabled !== false,
@@ -307,7 +305,7 @@ export class ModuleScanner extends UnifiedPipelineBaseModule {
         errorCount: 0,
         metadata: {
           keyIndex: targetConfig.keyIndex,
-          virtualModelId: virtualModel.id,
+          routingId: routingConfig.id,
           ...targetConfig
         }
       };
@@ -333,6 +331,43 @@ export class ModuleScanner extends UnifiedPipelineBaseModule {
       totalProviders: this.availableProviders.size,
       availableProviders: this.providerInstances.size,
       providerIds: Array.from(this.providerInstances.keys())
+    };
+  }
+
+  /**
+   * Process method - Required by BasePipelineModule interface
+   * 处理方法 - BasePipelineModule接口必需
+   */
+  async process(request: any): Promise<any> {
+    this.logInfo('Processing request in ModuleScanner', { requestType: typeof request }, 'process');
+
+    // ModuleScanner is primarily a discovery component, return request as-is
+    // ModuleScanner主要是发现组件，直接返回请求
+    return request;
+  }
+
+  /**
+   * Process response method - Required by BasePipelineModule interface
+   * 处理响应方法 - BasePipelineModule接口必需
+   */
+  async processResponse(response: any): Promise<any> {
+    this.logInfo('Processing response in ModuleScanner', { responseType: typeof response }, 'processResponse');
+
+    // ModuleScanner is primarily a discovery component, return response as-is
+    // ModuleScanner主要是发现组件，直接返回响应
+    return response;
+  }
+
+  /**
+   * Get provider info method - Override base class method
+   * 获取provider信息方法 - 覆盖基类方法
+   */
+  getProviderInfo(): BaseProviderInfo {
+    return {
+      name: 'Module Scanner',
+      type: 'pipeline',
+      supportedModels: [],
+      defaultModel: undefined
     };
   }
 

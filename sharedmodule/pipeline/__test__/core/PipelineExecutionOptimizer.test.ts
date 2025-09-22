@@ -808,14 +808,14 @@ describe('PipelineExecutionOptimizer', () => {
       expect(id1).not.toBe(id2);
     });
 
-    test('should return virtual model object', () => {
+    test('should return dynamic routing object', () => {
       const optimizerInstance = optimizer as any;
-      const virtualModel = optimizerInstance.getVirtualModel('test-model');
+      const dynamicRouting = optimizerInstance.getDynamicRouting('test-model');
 
-      expect(virtualModel).toBeDefined();
-      expect(virtualModel.id).toBe('test-model');
-      expect(virtualModel.name).toBe('test-model');
-      expect(virtualModel.targets).toHaveLength(1);
+      expect(dynamicRouting).toBeDefined();
+      expect(dynamicRouting.id).toBe('test-model');
+      expect(dynamicRouting.name).toBe('test-model');
+      expect(dynamicRouting.targets).toHaveLength(1);
     });
 
     test('should sleep for specified duration', async () => {

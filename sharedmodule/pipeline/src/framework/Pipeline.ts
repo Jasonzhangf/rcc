@@ -25,7 +25,7 @@ export interface PipelineTarget {
 export interface PipelineConfig {
   id: string;
   name: string;
-  virtualModelId: string;
+  routingId: string;
   description?: string;
   targets: PipelineTarget[];
   loadBalancingStrategy: 'round-robin' | 'weighted' | 'least-connections' | 'random';
@@ -137,7 +137,7 @@ export class Pipeline {
           {
             pipelineId: this.config.id,
             targetId: target.id,
-            virtualModelId: this.config.virtualModelId,
+            routingId: this.config.routingId,
             ...options?.metadata
           }
         );
@@ -265,7 +265,7 @@ export class Pipeline {
           {
             pipelineId: this.config.id,
             targetId: target.id,
-            virtualModelId: this.config.virtualModelId,
+            routingId: this.config.routingId,
             ...options?.metadata
           }
         );

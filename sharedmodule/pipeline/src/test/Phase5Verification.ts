@@ -382,16 +382,16 @@ export class Phase5Verification {
       }
 
       // 场景3: 虚拟模型路由功能
-      console.log('🎭 测试虚拟模型路由功能...');
+      console.log('🎭 测试动态路由功能...');
       try {
-        const virtualModelResult = await this.testVirtualModelRouting();
+        const routingResult = await this.testDynamicRouting();
         scenarios.push({
-          scenario: 'Virtual Model Routing',
-          passed: virtualModelResult.passed,
-          details: virtualModelResult
+          scenario: 'Dynamic Routing',
+          passed: routingResult.passed,
+          details: routingResult
         });
-        if (!virtualModelResult.passed) {
-          errors.push('虚拟模型路由测试失败');
+        if (!routingResult.passed) {
+          errors.push('动态路由测试失败');
         }
       } catch (error) {
         errors.push(`虚拟模型路由测试异常: ${error}`);
@@ -1003,8 +1003,8 @@ export class Phase5Verification {
     return { passed: true };
   }
 
-  private async testVirtualModelRouting(): Promise<any> {
-    // 测试虚拟模型路由
+  private async testDynamicRouting(): Promise<any> {
+    // 测试动态路由
     return { passed: true };
   }
 

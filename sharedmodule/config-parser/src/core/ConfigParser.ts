@@ -4,7 +4,7 @@
  * 负责将原始配置数据解析为标准化的ConfigData结构
  */
 
-import { ConfigData, ProviderConfig, ModelConfig, VirtualModelConfig, ServerWrapper, PipelineWrapper, ModuleConfig, RoutingConfig } from './ConfigData';
+import { ConfigData, ProviderConfig, ModelConfig, DynamicRoutingConfig, ServerWrapper, PipelineWrapper, ModuleConfig, RoutingConfig } from './ConfigData';
 import { BaseModule, ModuleInfo } from 'rcc-basemodule';
 import * as fs from 'fs/promises';
 import path from 'path';
@@ -61,13 +61,13 @@ export class ConfigParser extends BaseModule {
     this.startIOTracking(operationId, { dataSize: JSON.stringify(rawData).length }, 'parseConfig');
 
     try {
-      this.logInfo(`Starting configuration parsing - dataSize: ${JSON.stringify(rawData).length}, hasProviders: ${!!rawData.providers}, hasVirtualModels: ${!!rawData.virtualModels}`);
+      this.logInfo(`Starting configuration parsing - dataSize: ${JSON.stringify(rawData).length}, hasProviders: ${!!rawData.providers}, hasDynamicRouting: ${!!rawData.dynamicRouting}`);
 
       // 解析基本配置信息
       const config: ConfigData = {
         version: rawData.version || '1.0.0',
         providers: {},
-        virtualModels: {},
+        dynamicRouting: {},
         createdAt: rawData.createdAt || new Date().toISOString(),
         updatedAt: rawData.updatedAt || new Date().toISOString()
       };
@@ -78,10 +78,10 @@ export class ConfigParser extends BaseModule {
         this.logInfo(`Providers parsed successfully - providerCount: ${Object.keys(rawData.providers).length}`);
       }
 
-      // 解析虚拟模型配置
-      if (rawData.virtualModels) {
-        config.virtualModels = this.parseVirtualModels(rawData.virtualModels);
-        this.logInfo(`Virtual models parsed successfully - vmCount: ${Object.keys(rawData.virtualModels).length}`);
+      // 解析动态路由配置
+      if (rawData.dynamicRouting) {
+        config.dynamicRouting = this.parseDynamicRouting(rawData.dynamicRouting);
+        this.logInfo(`Dynamic routing parsed successfully - routingCount: ${Object.keys(rawData.dynamicRouting).length}`);
       }
 
       // 更新时间戳
@@ -90,7 +90,7 @@ export class ConfigParser extends BaseModule {
       this.logInfo('Configuration parsed successfully');
       const result = {
         providerCount: Object.keys(config.providers).length,
-        virtualModelCount: Object.keys(config.virtualModels).length
+        routingConfigCount: Object.keys(config.dynamicRouting).length
       };
       this.endIOTracking(operationId, result);
       return config;
@@ -187,30 +187,30 @@ export class ConfigParser extends BaseModule {
   }
 
   /**
-   * 解析虚拟模型配置
+   * 解析动态路由配置
    */
-  private parseVirtualModels(rawVirtualModels: any): Record<string, VirtualModelConfig> {
-    const virtualModels: Record<string, VirtualModelConfig> = {};
+  private parseDynamicRouting(rawDynamicRouting: any): Record<string, DynamicRoutingConfig> {
+    const dynamicRouting: Record<string, DynamicRoutingConfig> = {};
 
-    for (const [vmId, rawVm] of Object.entries(rawVirtualModels)) {
-      if (typeof rawVm !== 'object' || rawVm === null) {
+    for (const [routingId, rawRouting] of Object.entries(rawDynamicRouting)) {
+      if (typeof rawRouting !== 'object' || rawRouting === null) {
         continue;
       }
 
       // 处理targets数组
       let targets = [];
-      if (Array.isArray((rawVm as any).targets)) {
-        targets = (rawVm as any).targets.map((target: any) => ({
+      if (Array.isArray((rawRouting as any).targets)) {
+        targets = (rawRouting as any).targets.map((target: any) => ({
           providerId: target.providerId || '',
           modelId: target.modelId || '',
           keyIndex: target.keyIndex || 0
         }));
-      } else if ((rawVm as any).targetProvider && (rawVm as any).targetModel) {
+      } else if ((rawRouting as any).targetProvider && (rawRouting as any).targetModel) {
         // 兼容旧格式，转换为新格式
         targets = [{
-          providerId: (rawVm as any).targetProvider || '',
-          modelId: (rawVm as any).targetModel || '',
-          keyIndex: (rawVm as any).keyIndex || 0
+          providerId: (rawRouting as any).targetProvider || '',
+          modelId: (rawRouting as any).targetModel || '',
+          keyIndex: (rawRouting as any).keyIndex || 0
         }];
       } else {
         // 默认空目标
@@ -221,18 +221,18 @@ export class ConfigParser extends BaseModule {
         }];
       }
 
-      const virtualModel: VirtualModelConfig = {
-        id: vmId,
-        name: vmId, // Use ID as name
+      const routingConfig: DynamicRoutingConfig = {
+        id: routingId,
+        name: routingId, // Use ID as name
         targets: targets,
-        enabled: (rawVm as any).enabled !== false,
-        priority: (rawVm as any).priority || 1
+        enabled: (rawRouting as any).enabled !== false,
+        priority: (rawRouting as any).priority || 1
       };
 
-      virtualModels[vmId] = virtualModel;
+      dynamicRouting[routingId] = routingConfig;
     }
 
-    return virtualModels;
+    return dynamicRouting;
   }
 
   /**
@@ -272,7 +272,7 @@ export class ConfigParser extends BaseModule {
       const result = {
         configPath,
         providerCount: Object.keys(config.providers).length,
-        virtualModelCount: Object.keys(config.virtualModels).length,
+        routingConfigCount: Object.keys(config.dynamicRouting).length,
         options: opts
       };
       this.endIOTracking(operationId, result);
@@ -503,8 +503,8 @@ export class ConfigParser extends BaseModule {
         throw new Error('Configuration providers must be an object');
       }
 
-      if (data.virtualModels !== undefined && typeof data.virtualModels !== 'object') {
-        throw new Error('Configuration virtualModels must be an object');
+      if (data.dynamicRouting !== undefined && typeof data.dynamicRouting !== 'object') {
+        throw new Error('Configuration dynamicRouting must be an object');
       }
 
       let validationErrors: string[] = [];
@@ -547,33 +547,33 @@ export class ConfigParser extends BaseModule {
         }
       }
 
-      // 验证虚拟模型配置结构
-      if (data.virtualModels) {
-        for (const [vmId, vm] of Object.entries(data.virtualModels as Record<string, any>)) {
-          if (typeof vm !== 'object' || vm === null) {
-            throw new Error(`Virtual model ${vmId} must be an object`);
+      // 验证动态路由配置结构
+      if (data.dynamicRouting) {
+        for (const [routingId, routing] of Object.entries(data.dynamicRouting as Record<string, any>)) {
+          if (typeof routing !== 'object' || routing === null) {
+            throw new Error(`Dynamic routing ${routingId} must be an object`);
           }
 
           // 检查targets数组
-          if (vm.targets !== undefined && !Array.isArray(vm.targets)) {
-            throw new Error(`Virtual model ${vmId} targets must be an array`);
+          if (routing.targets !== undefined && !Array.isArray(routing.targets)) {
+            throw new Error(`Dynamic routing ${routingId} targets must be an array`);
           }
 
-          if (vm.targets) {
-            for (let i = 0; i < vm.targets.length; i++) {
-              const target = vm.targets[i];
+          if (routing.targets) {
+            for (let i = 0; i < routing.targets.length; i++) {
+              const target = routing.targets[i];
               if (typeof target !== 'object' || target === null) {
-                throw new Error(`Virtual model ${vmId} target ${i} must be an object`);
+                throw new Error(`Dynamic routing ${routingId} target ${i} must be an object`);
               }
 
               if (!target.providerId) {
-                validationErrors.push(`Virtual model ${vmId} target ${i} missing providerId`);
-                this.warn(`Virtual model ${vmId} target ${i} missing providerId`);
+                validationErrors.push(`Dynamic routing ${routingId} target ${i} missing providerId`);
+                this.warn(`Dynamic routing ${routingId} target ${i} missing providerId`);
               }
 
               if (!target.modelId) {
-                validationErrors.push(`Virtual model ${vmId} target ${i} missing modelId`);
-                this.warn(`Virtual model ${vmId} target ${i} missing modelId`);
+                validationErrors.push(`Dynamic routing ${routingId} target ${i} missing modelId`);
+                this.warn(`Dynamic routing ${routingId} target ${i} missing modelId`);
               }
             }
           }
@@ -584,7 +584,7 @@ export class ConfigParser extends BaseModule {
         valid: validationErrors.length === 0,
         validationErrors,
         providerCount: data.providers ? Object.keys(data.providers).length : 0,
-        virtualModelCount: data.virtualModels ? Object.keys(data.virtualModels).length : 0
+        routingConfigCount: data.dynamicRouting ? Object.keys(data.dynamicRouting).length : 0
       };
       this.endIOTracking(operationId, result);
       return true;
@@ -635,7 +635,7 @@ export class ConfigParser extends BaseModule {
    * Generate ServerModule wrapper from ConfigData
    *
    * Transforms ConfigData into ServerModule-compatible format
-   * Contains only HTTP server configuration, no virtual model information
+   * Contains only HTTP server configuration, no dynamic routing information
    *
    * @param config Parsed configuration data
    * @returns ServerWrapper configuration
@@ -698,7 +698,7 @@ export class ConfigParser extends BaseModule {
    * Generate PipelineAssembler wrapper from ConfigData
    *
    * Transforms ConfigData into PipelineAssembler-compatible format
-   * Contains virtual model routing tables and module configurations
+   * Contains dynamic routing tables and module configurations
    *
    * @param config Parsed configuration data
    * @returns PipelineWrapper configuration
@@ -708,14 +708,14 @@ export class ConfigParser extends BaseModule {
     this.startIOTracking(operationId, {
       configVersion: config.version,
       providerCount: Object.keys(config.providers).length,
-      virtualModelCount: Object.keys(config.virtualModels).length
+      routingConfigCount: Object.keys(config.dynamicRouting).length
     }, 'generatePipelineWrapper');
 
     try {
       this.logInfo('Generating PipelineAssembler wrapper configuration');
 
-      // Transform virtual models
-      const virtualModels = this.transformVirtualModels(config.virtualModels);
+      // Transform dynamic routing
+      const dynamicRouting = this.transformDynamicRouting(config.dynamicRouting);
 
       // Generate module configurations
       const modules = this.generateModuleConfigs(config);
@@ -724,7 +724,7 @@ export class ConfigParser extends BaseModule {
       const routing = this.generateRoutingConfig(config);
 
       const pipelineWrapper: PipelineWrapper = {
-        virtualModels,
+        dynamicRouting,
         modules,
         routing,
         metadata: {
@@ -732,13 +732,13 @@ export class ConfigParser extends BaseModule {
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
           providerCount: Object.keys(config.providers).length,
-          virtualModelCount: Object.keys(config.virtualModels).length
+          routingConfigCount: Object.keys(config.dynamicRouting).length
         }
       };
 
       this.logInfo('PipelineAssembler wrapper generated successfully');
       this.endIOTracking(operationId, {
-        virtualModelCount: pipelineWrapper.virtualModels.length,
+        routingConfigCount: pipelineWrapper.dynamicRouting.length,
         moduleCount: pipelineWrapper.modules.length,
         routingStrategy: pipelineWrapper.routing.strategy
       });
@@ -770,32 +770,32 @@ export class ConfigParser extends BaseModule {
   }
 
   /**
-   * Transform virtual models for PipelineAssembler format
+   * Transform dynamic routing for PipelineAssembler format
    */
-  private transformVirtualModels(virtualModels: Record<string, VirtualModelConfig>): VirtualModelConfig[] {
-    const transformed: VirtualModelConfig[] = [];
+  private transformDynamicRouting(dynamicRouting: Record<string, DynamicRoutingConfig>): DynamicRoutingConfig[] {
+    const transformed: DynamicRoutingConfig[] = [];
 
-    for (const [vmId, vmConfig] of Object.entries(virtualModels)) {
-      if (!vmConfig.enabled) {
-        continue; // Skip disabled virtual models
+    for (const [routingId, routingConfig] of Object.entries(dynamicRouting)) {
+      if (!routingConfig.enabled) {
+        continue; // Skip disabled dynamic routing
       }
 
-      // Transform to PipelineAssembler VirtualModelConfig format
-      const transformedVm: VirtualModelConfig = {
-        id: vmId,
-        name: vmConfig.id, // Use ID as name for now
-        targets: vmConfig.targets.map(target => ({
+      // Transform to PipelineAssembler DynamicRoutingConfig format
+      const transformedRouting: DynamicRoutingConfig = {
+        id: routingId,
+        name: routingConfig.id, // Use ID as name for now
+        targets: routingConfig.targets.map(target => ({
           providerId: target.providerId,
           modelId: target.modelId,
           enabled: true,
-          weight: vmConfig.weight || 1.0,
+          weight: routingConfig.weight || 1.0,
           keyIndex: target.keyIndex || 0
         })),
-        enabled: vmConfig.enabled,
-        priority: vmConfig.priority
+        enabled: routingConfig.enabled,
+        priority: routingConfig.priority
       };
 
-      transformed.push(transformedVm);
+      transformed.push(transformedRouting);
     }
 
     return transformed;
@@ -906,7 +906,7 @@ export class ConfigParser extends BaseModule {
         serverGenerated: true,
         pipelineGenerated: true,
         serverPort: server.port,
-        pipelineVmCount: pipeline.virtualModels.length
+        pipelineRoutingCount: pipeline.dynamicRouting.length
       });
 
       return { server, pipeline };

@@ -8,7 +8,7 @@ export declare class ServerModule extends BaseModule implements IServerModule {
     private serverCore;
     private requestHandlerService;
     private serverConfig;
-    private isInitialized;
+    private _isInitialized;
     private isRunning;
     constructor();
     /**
@@ -32,9 +32,9 @@ export declare class ServerModule extends BaseModule implements IServerModule {
      */
     setSchedulerManager(schedulerManager: any): void;
     /**
-     * 设置虚拟模型调度器管理器 - 连接pipeline虚拟模型路由系统
+     * 设置动态路由管理器 - 连接pipeline动态路由系统
      */
-    setVirtualModelSchedulerManager(schedulerManager: any): void;
+    setDynamicRoutingManager(schedulerManager: any): void;
     /**
      * 获取调度器管理器
      */

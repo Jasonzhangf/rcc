@@ -40,7 +40,7 @@
   "dependencies": {
     "axios": "^1.12.2",
     "open": "^10.2.0",
-    "rcc-basemodule": "^0.2.3",
+    "rcc-basemodule": "^0.2.6",
     "rcc-config-parser": ">=0.1.0",
     "rcc-debugcenter": "^0.1.0",
     "rcc-errorhandling": "^1.0.6"

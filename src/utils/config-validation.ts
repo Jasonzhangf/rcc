@@ -11,7 +11,6 @@
 import {
   RccConfig,
   ProviderConfig,
-  VirtualModelConfig,
   ServerWrapper,
   PipelineWrapper,
   ConfigValidationError,
@@ -58,20 +57,20 @@ export class ConfigValidator {
       }
     }
 
-    // Validate virtual models
-    if (config.virtualModels !== undefined) {
-      if (typeof config.virtualModels !== 'object' || config.virtualModels === null) {
+    // Validate dynamic routing
+    if (config.dynamicRouting !== undefined) {
+      if (typeof config.dynamicRouting !== 'object' || config.dynamicRouting === null) {
         errors.push({
-          code: 'INVALID_VIRTUAL_MODELS',
-          message: 'Virtual models must be an object',
-          path: 'virtualModels',
-          actual: typeof config.virtualModels,
+          code: 'INVALID_DYNAMIC_ROUTING',
+          message: 'Dynamic routing must be an object',
+          path: 'dynamicRouting',
+          actual: typeof config.dynamicRouting,
           expected: 'object',
           severity: 'error',
         });
       } else {
-        Object.entries(config.virtualModels).forEach(([vmId, vm]: [string, any]) => {
-          errors.push(...this.validateVirtualModel(vmId, vm));
+        Object.entries(config.dynamicRouting).forEach(([routingId, routing]: [string, any]) => {
+          errors.push(...this.validateDynamicRouting(routingId, routing));
         });
       }
     }
@@ -183,18 +182,18 @@ export class ConfigValidator {
   }
 
   /**
-   * Validate individual virtual model configuration
+   * Validate individual dynamic routing configuration
    */
-  private static validateVirtualModel(vmId: string, vm: any): ConfigValidationError[] {
+  private static validateDynamicRouting(routingId: string, routing: any): ConfigValidationError[] {
     const errors: ConfigValidationError[] = [];
-    const basePath = `virtualModels.${vmId}`;
+    const basePath = `dynamicRouting.${routingId}`;
 
-    if (typeof vm !== 'object' || vm === null) {
+    if (typeof routing !== 'object' || routing === null) {
       errors.push({
-        code: 'INVALID_VIRTUAL_MODEL',
-        message: `Virtual model ${vmId} must be an object`,
+        code: 'INVALID_DYNAMIC_ROUTING',
+        message: `Dynamic routing ${routingId} must be an object`,
         path: basePath,
-        actual: typeof vm,
+        actual: typeof routing,
         expected: 'object',
         severity: 'error',
       });
@@ -202,28 +201,28 @@ export class ConfigValidator {
     }
 
     // Validate targets array
-    if (!Array.isArray(vm.targets)) {
+    if (!Array.isArray(routing.targets)) {
       errors.push({
         code: 'INVALID_TARGETS',
-        message: `Virtual model ${vmId} targets must be an array`,
+        message: `Dynamic routing ${routingId} targets must be an array`,
         path: `${basePath}.targets`,
-        actual: typeof vm.targets,
+        actual: typeof routing.targets,
         expected: 'array',
         severity: 'error',
       });
-    } else if (vm.targets.length === 0) {
+    } else if (routing.targets.length === 0) {
       errors.push({
         code: 'EMPTY_TARGETS',
-        message: `Virtual model ${vmId} must have at least one target`,
+        message: `Dynamic routing ${routingId} must have at least one target`,
         path: `${basePath}.targets`,
         severity: 'error',
       });
     } else {
-      vm.targets.forEach((target: any, index: number) => {
+      routing.targets.forEach((target: any, index: number) => {
         if (typeof target !== 'object' || target === null) {
           errors.push({
             code: 'INVALID_TARGET',
-            message: `Virtual model ${vmId} target ${index} must be an object`,
+            message: `Dynamic routing ${routingId} target ${index} must be an object`,
             path: `${basePath}.targets[${index}]`,
             actual: typeof target,
             expected: 'object',
@@ -233,7 +232,7 @@ export class ConfigValidator {
           if (!target.providerId) {
             errors.push({
               code: 'MISSING_TARGET_PROVIDER',
-              message: `Virtual model ${vmId} target ${index} missing providerId`,
+              message: `Dynamic routing ${routingId} target ${index} missing providerId`,
               path: `${basePath}.targets[${index}].providerId`,
               severity: 'error',
             });
@@ -242,7 +241,7 @@ export class ConfigValidator {
           if (!target.modelId) {
             errors.push({
               code: 'MISSING_TARGET_MODEL',
-              message: `Virtual model ${vmId} target ${index} missing modelId`,
+              message: `Dynamic routing ${routingId} target ${index} missing modelId`,
               path: `${basePath}.targets[${index}].modelId`,
               severity: 'error',
             });
@@ -252,12 +251,12 @@ export class ConfigValidator {
     }
 
     // Validate boolean fields
-    if (vm.enabled !== undefined && typeof vm.enabled !== 'boolean') {
+    if (routing.enabled !== undefined && typeof routing.enabled !== 'boolean') {
       errors.push({
         code: 'INVALID_ENABLED',
-        message: `Virtual model ${vmId} enabled must be a boolean`,
+        message: `Dynamic routing ${routingId} enabled must be a boolean`,
         path: `${basePath}.enabled`,
-        actual: typeof vm.enabled,
+        actual: typeof routing.enabled,
         expected: 'boolean',
         severity: 'error',
       });
@@ -336,11 +335,11 @@ export class ConfigValidator {
   static validateServerWrapper(wrapper: ServerWrapper): ConfigValidationError[] {
     const errors: ConfigValidationError[] = [];
 
-    // Ensure no virtual model information is present
-    if ((wrapper as any).virtualModels || (wrapper as any).providers) {
+    // Ensure no dynamic routing information is present
+    if ((wrapper as any).dynamicRouting || (wrapper as any).providers) {
       errors.push({
-        code: 'SERVER_WRAPPER_CONTAINS_VIRTUAL_MODELS',
-        message: 'ServerWrapper should not contain virtual model or provider information',
+        code: 'SERVER_WRAPPER_CONTAINS_DYNAMIC_ROUTING',
+        message: 'ServerWrapper should not contain dynamic routing or provider information',
         path: 'wrapper',
         severity: 'error',
       });
@@ -390,30 +389,35 @@ export class ConfigValidator {
   static validatePipelineWrapper(wrapper: PipelineWrapper): ConfigValidationError[] {
     const errors: ConfigValidationError[] = [];
 
-    // Ensure virtual models are present and properly formatted
-    if (!Array.isArray(wrapper.virtualModels)) {
+    // Ensure dynamic routing configurations are present and properly formatted
+    if (!Array.isArray(wrapper.dynamicRouting)) {
       errors.push({
-        code: 'PIPELINE_WRAPPER_MISSING_VIRTUAL_MODELS',
-        message: 'PipelineWrapper must have virtualModels array',
-        path: 'wrapper.virtualModels',
-        actual: typeof wrapper.virtualModels,
+        code: 'PIPELINE_WRAPPER_MISSING_DYNAMIC_ROUTING',
+        message: 'PipelineWrapper must have dynamicRouting array',
+        path: 'wrapper.dynamicRouting',
+        actual: typeof wrapper.dynamicRouting,
         expected: 'array',
         severity: 'error',
       });
-    } else if (wrapper.virtualModels.length === 0) {
+    } else if (wrapper.dynamicRouting.length === 0) {
       errors.push({
-        code: 'PIPELINE_WRAPPER_EMPTY_VIRTUAL_MODELS',
-        message: 'PipelineWrapper virtualModels array cannot be empty',
-        path: 'wrapper.virtualModels',
+        code: 'PIPELINE_WRAPPER_EMPTY_DYNAMIC_ROUTING',
+        message: 'PipelineWrapper dynamicRouting array cannot be empty',
+        path: 'wrapper.dynamicRouting',
         severity: 'error',
       });
     } else {
-      wrapper.virtualModels.forEach((vm, index) => {
-        if (!vm.id || !vm.targets || !Array.isArray(vm.targets) || vm.targets.length === 0) {
+      wrapper.dynamicRouting.forEach((routing, index) => {
+        if (
+          !routing.id ||
+          !routing.targets ||
+          !Array.isArray(routing.targets) ||
+          routing.targets.length === 0
+        ) {
           errors.push({
-            code: 'INVALID_PIPELINE_WRAPPER_VIRTUAL_MODEL',
-            message: `Virtual model at index ${index} is invalid`,
-            path: `wrapper.virtualModels[${index}]`,
+            code: 'INVALID_PIPELINE_WRAPPER_DYNAMIC_ROUTING',
+            message: `Dynamic routing at index ${index} is invalid`,
+            path: `wrapper.dynamicRouting[${index}]`,
             severity: 'error',
           });
         }
@@ -481,8 +485,8 @@ export class WrapperGenerator {
       metadata: {
         generationTime: 0,
         providerCount: Object.keys(config.providers || {}).length,
-        virtualModelCount: Object.keys(config.virtualModels || {}).length,
-        configVersion: config.version || '1.0.0',
+        dynamicRoutingCount: Object.keys(config.dynamicRouting || {}).length,
+        configVersion: (config as any)['version'] || '1.0.0',
       },
     };
 
@@ -501,16 +505,18 @@ export class WrapperGenerator {
       // Validate server wrapper
       const serverErrors = ConfigValidator.validateServerWrapper(wrappers.server);
       if (serverErrors.length > 0) {
+        if (!result.errors) result.errors = [];
         result.errors.push(...serverErrors);
       }
 
       // Validate pipeline wrapper
       const pipelineErrors = ConfigValidator.validatePipelineWrapper(wrappers.pipeline);
       if (pipelineErrors.length > 0) {
+        if (!result.errors) result.errors = [];
         result.errors.push(...pipelineErrors);
       }
 
-      if (result.errors.length === 0) {
+      if ((result.errors || []).length === 0) {
         result.success = true;
         result.server = wrappers.server;
         result.pipeline = wrappers.pipeline;
@@ -520,7 +526,8 @@ export class WrapperGenerator {
 
       return result;
     } catch (error) {
-      result.errors.push({
+      if (!result.errors) result.errors = [];
+      (result.errors as any[]).push({
         code: 'WRAPPER_GENERATION_FAILED',
         message: `Wrapper generation failed: ${error instanceof Error ? error.message : String(error)}`,
         path: '',
@@ -567,24 +574,24 @@ export class WrapperGenerator {
         },
       },
       pipeline: {
-        virtualModels: Object.values(config.virtualModels || {}).map((vm) => ({
-          id: vm.id,
-          name: vm.id,
-          modelId: vm.targets[0]?.modelId || '',
-          provider: vm.targets[0]?.providerId || '',
-          enabled: vm.enabled,
-          targets: vm.targets.map((target) => ({
+        dynamicRouting: Object.values(config.dynamicRouting || {}).map((routing) => ({
+          id: routing.id,
+          name: routing.name || routing.id,
+          modelId: routing.targets[0]?.modelId || '',
+          provider: routing.targets[0]?.providerId || '',
+          enabled: routing.enabled,
+          targets: routing.targets.map((target) => ({
             providerId: target.providerId,
             modelId: target.modelId,
             weight: 1.0,
             enabled: true,
             keyIndex: target.keyIndex || 0,
           })),
-          capabilities: ['chat', 'function-calling'],
+          capabilities: routing.capabilities || ['chat', 'function-calling'],
           metadata: {
-            priority: vm.priority,
-            weight: vm.weight,
-            targetCount: vm.targets.length,
+            priority: (routing as any)['priority'],
+            weight: (routing as any)['weight'],
+            targetCount: routing.targets.length,
           },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -614,11 +621,11 @@ export class WrapperGenerator {
           rules: [{ condition: 'default', action: 'allow', target: 'primary' }],
         },
         metadata: {
-          version: config.version || '1.0.0',
+          version: (config as any)['version'] || '1.0.0',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           providerCount: Object.keys(config.providers || {}).length,
-          virtualModelCount: Object.keys(config.virtualModels || {}).length,
+          dynamicRoutingCount: Object.keys(config.dynamicRouting || {}).length,
         },
       },
     };

@@ -263,6 +263,69 @@
       "description": "CodeBuddy相关文档",
       "category": "docs",
       "allowed": true
+    },
+    "sharedmodule/pipeline/src/auth/": {
+      "type": "directory",
+      "purpose": "Authentication error handling modules",
+      "description": "认证错误处理模块目录",
+      "category": "source",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/src/auth/AuthenticationErrorHandler.ts": {
+      "type": "file",
+      "purpose": "Base authentication error handler with auto-refresh and re-authentication",
+      "description": "基础认证错误处理器，提供自动刷新和重新认证功能",
+      "category": "source",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/src/auth/IFlowAuthHandler.ts": {
+      "type": "file",
+      "purpose": "IFlow-specific authentication error handler extending base class",
+      "description": "IFlow专用认证错误处理器，继承基础类",
+      "category": "source",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/test-auth-integration-final.js": {
+      "type": "file",
+      "purpose": "Comprehensive authentication error handling integration test",
+      "description": "综合认证错误处理集成测试",
+      "category": "test",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/test-complete-auth-flow.js": {
+      "type": "file",
+      "purpose": "Complete authentication flow simulation test",
+      "description": "完整认证流程模拟测试",
+      "category": "test",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/test-auth-integration-simple.js": {
+      "type": "file",
+      "purpose": "Simple authentication integration test",
+      "description": "简单认证集成测试",
+      "category": "test",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/test-error-handling-center.js": {
+      "type": "file",
+      "purpose": "Error handling center integration test",
+      "description": "错误处理中心集成测试",
+      "category": "test",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/test-auth-error-handling.js": {
+      "type": "file",
+      "purpose": "Provider authentication error handling test",
+      "description": "Provider认证错误处理测试",
+      "category": "test",
+      "allowed": true
+    },
+    "sharedmodule/pipeline/test-qwen-auth.js": {
+      "type": "file",
+      "purpose": "Qwen provider authentication test",
+      "description": "Qwen提供者认证测试",
+      "category": "test",
+      "allowed": true
     }
   }
 }

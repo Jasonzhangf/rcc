@@ -225,7 +225,7 @@ export class DebugCenter {
 
   private createSessionFromEvent(event: DebugEvent): PipelineSession {
     return {
-      sessionId: event.sessionId,
+      sessionId: event.sessionId || `session_${Date.now()}`,
       pipelineId: event.data?.pipelineId || 'unknown',
       startTime: event.timestamp,
       status: 'active',

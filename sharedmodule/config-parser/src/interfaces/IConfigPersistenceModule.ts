@@ -5,12 +5,13 @@
  * including file systems, databases, cloud storage, and memory stores.
  */
 
-import { 
-  ConfigData, 
-  ConfigPersistenceOptions, 
-  BackupOptions, 
+import {
+  ConfigData,
+  ConfigPersistenceOptions,
+  BackupOptions,
   EncryptionOptions
 } from '../core/ConfigData';
+import type { BufferEncoding } from 'buffer';
 
 /**
  * Storage backend types

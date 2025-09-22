@@ -8,7 +8,7 @@ import {
   PipelineExecutionContext,
   PipelineExecutionStep,
   PipelineExecutionResult,
-  VirtualModel
+  DynamicRouting
 } from '../interfaces/ModularInterfaces';
 import { RoutingOptimizer } from './RoutingOptimizer';
 import { IOTracker } from './IOTracker';
@@ -38,7 +38,7 @@ interface BatchRequest {
   id: string;
   requests: Array<{
     request: any;
-    virtualModelId: string;
+    routingId: string;
     context?: Partial<PipelineExecutionContext>;
   }>;
   timestamp: number;
@@ -161,8 +161,8 @@ export class PipelineExecutionOptimizer {
    */
   async executeOptimized(
     request: any,
-    virtualModelId: string,
-    executeFn: (request: any, virtualModelId: string, context?: Partial<PipelineExecutionContext>) => Promise<PipelineExecutionResult>,
+    routingId: string,
+    executeFn: (request: any, routingId: string, context?: Partial<PipelineExecutionContext>) => Promise<PipelineExecutionResult>,
     context?: Partial<PipelineExecutionContext>
   ): Promise<PipelineExecutionResult> {
     const requestId = context?.requestId || this.generateRequestId();
@@ -171,15 +171,15 @@ export class PipelineExecutionOptimizer {
     try {
       // 检查缓存
       if (this.config.enableCaching) {
-        const cachedResult = this.getFromCache(request, virtualModelId);
+        const cachedResult = this.getFromCache(request, routingId);
         if (cachedResult) {
           return cachedResult;
         }
       }
 
       // 获取路由决策
-      const virtualModel = this.getVirtualModel(virtualModelId);
-      const routingDecision = await this.routingOptimizer.getRoutingDecision(virtualModel, context);
+      const dynamicRouting = this.getDynamicRouting(routingId);
+      const routingDecision = await this.routingOptimizer.getRoutingDecision(dynamicRouting, context);
 
       // 创建优化上下文
       const optimizedContext: Partial<PipelineExecutionContext> = {
@@ -201,7 +201,7 @@ export class PipelineExecutionOptimizer {
       // 执行请求（带重试）
       const result = await this.executeWithRetry(
         request,
-        virtualModelId,
+        routingId,
         executeFn,
         optimizedContext,
         routingDecision
@@ -216,7 +216,7 @@ export class PipelineExecutionOptimizer {
 
       // 缓存结果
       if (this.config.enableCaching && result.success) {
-        this.addToCache(request, virtualModelId, result);
+        this.addToCache(request, routingId, result);
       }
 
       // 结束跟踪
@@ -250,8 +250,8 @@ export class PipelineExecutionOptimizer {
    */
   private async executeWithRetry(
     request: any,
-    virtualModelId: string,
-    executeFn: (request: any, virtualModelId: string, context?: Partial<PipelineExecutionContext>) => Promise<PipelineExecutionResult>,
+    routingId: string,
+    executeFn: (request: any, routingId: string, context?: Partial<PipelineExecutionContext>) => Promise<PipelineExecutionResult>,
     context: Partial<PipelineExecutionContext>,
     routingDecision: any
   ): Promise<PipelineExecutionResult> {
@@ -267,7 +267,7 @@ export class PipelineExecutionOptimizer {
           context.requestId!,
           'optimizer',
           `execution_attempt_${attempt}`,
-          async () => executeFn(request, virtualModelId, context)
+          async () => executeFn(request, routingId, context)
         );
 
         // 如果成功，返回结果
@@ -289,8 +289,8 @@ export class PipelineExecutionOptimizer {
 
           // 更新路由决策（可能切换提供商）
           try {
-            const virtualModel = this.getVirtualModel(virtualModelId);
-            const newRoutingDecision = await this.routingOptimizer.getRoutingDecision(virtualModel, context);
+            const dynamicRouting = this.getDynamicRouting(routingId);
+            const newRoutingDecision = await this.routingOptimizer.getRoutingDecision(dynamicRouting, context);
             if (newRoutingDecision.providerId !== routingDecision.providerId) {
               context.providerId = newRoutingDecision.providerId;
               routingDecision = newRoutingDecision;
@@ -356,14 +356,14 @@ export class PipelineExecutionOptimizer {
    */
   addToBatch(
     request: any,
-    virtualModelId: string,
+    routingId: string,
     context?: Partial<PipelineExecutionContext>
   ): Promise<PipelineExecutionResult> {
     return new Promise((resolve, reject) => {
       const batchId = this.generateBatchId();
       const batchRequest: BatchRequest = {
         id: batchId,
-        requests: [{ request, virtualModelId, context }],
+        requests: [{ request, routingId, context }],
         timestamp: Date.now()
       };
 
@@ -434,7 +434,7 @@ export class PipelineExecutionOptimizer {
     try {
       // 批处理执行逻辑
       const results = await Promise.all(
-        batch.requests.map(async ({ request, virtualModelId, context }) => {
+        batch.requests.map(async ({ request, routingId, context }) => {
           // 这里应该调用实际的执行函数
           // 暂时返回模拟结果
           return {
@@ -503,8 +503,8 @@ export class PipelineExecutionOptimizer {
   /**
    * 缓存操作
    */
-  private getFromCache(request: any, virtualModelId: string): PipelineExecutionResult | null {
-    const key = this.generateCacheKey(request, virtualModelId);
+  private getFromCache(request: any, routingId: string): PipelineExecutionResult | null {
+    const key = this.generateCacheKey(request, routingId);
     const item = this.cache.get(key);
 
     if (!item) {
@@ -523,8 +523,8 @@ export class PipelineExecutionOptimizer {
     return item.value;
   }
 
-  private addToCache(request: any, virtualModelId: string, result: PipelineExecutionResult): void {
-    const key = this.generateCacheKey(request, virtualModelId);
+  private addToCache(request: any, routingId: string, result: PipelineExecutionResult): void {
+    const key = this.generateCacheKey(request, routingId);
     const item: CacheItem = {
       key,
       value: result,
@@ -539,8 +539,8 @@ export class PipelineExecutionOptimizer {
     this.cleanupCache();
   }
 
-  private generateCacheKey(request: any, virtualModelId: string): string {
-    return `${virtualModelId}_${JSON.stringify(request)}`;
+  private generateCacheKey(request: any, routingId: string): string {
+    return `${routingId}_${JSON.stringify(request)}`;
   }
 
   private cleanupCache(): void {
@@ -567,15 +567,9 @@ export class PipelineExecutionOptimizer {
     return `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private getVirtualModel(virtualModelId: string): VirtualModel {
-    // 这里应该从实际配置中获取虚拟模型
-    // 暂时返回模拟对象
-    return {
-      id: virtualModelId,
-      name: virtualModelId,
-      targets: [{ providerId: 'default' }],
-      capabilities: []
-    };
+  private getDynamicRouting(routingId: string): DynamicRouting {
+    // 这里应该从实际配置中获取动态路由配置
+    throw new Error(`Dynamic routing configuration not found for routing ID: ${routingId}. Ensure dynamic routing is properly configured.`);
   }
 
   private sleep(ms: number): Promise<void> {

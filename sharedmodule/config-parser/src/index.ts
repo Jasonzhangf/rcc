@@ -6,7 +6,7 @@
 
 // 导出核心类型
 export * from './core/ConfigData';
-export * from './types/index';
+export type * from './types/index';
 export * from './constants/ConfigurationConstants';
 
 // 导出核心功能类

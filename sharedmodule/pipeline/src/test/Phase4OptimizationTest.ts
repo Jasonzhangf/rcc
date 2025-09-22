@@ -44,8 +44,8 @@ async function testRoutingOptimization() {
 
     const routingOptimizer = new RoutingOptimizer(routingConfig);
 
-    // 模拟虚拟模型
-    const virtualModel = {
+    // 模拟动态路由配置
+    const dynamicRouting = {
       id: 'test-model',
       name: 'Test Model',
       targets: [
@@ -56,7 +56,7 @@ async function testRoutingOptimization() {
     };
 
     // 测试路由决策
-    const routingDecision = await routingOptimizer.getRoutingDecision(virtualModel);
+    const routingDecision = await routingOptimizer.getRoutingDecision(dynamicRouting);
     console.log('✅ 路由决策:', routingDecision);
 
     // 测试性能指标
@@ -231,7 +231,7 @@ async function testExecutionOptimization() {
     );
 
     // 模拟执行函数
-    const mockExecuteFn = async (request: any, virtualModelId: string, context?: any) => {
+    const mockExecuteFn = async (request: any, routingId: string, context?: any) => {
       await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
 
       if (Math.random() < 0.1) { // 10% 失败率
@@ -243,7 +243,7 @@ async function testExecutionOptimization() {
         response: {
           id: 'test-response',
           content: 'This is a test response',
-          model: virtualModelId
+          model: routingId
         },
         executionTime: 200 + Math.random() * 300,
         steps: [],

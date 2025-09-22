@@ -282,9 +282,9 @@ export interface RoutingMatchResult {
  */
 export interface RoutingDecision {
   /**
-   * 目标虚拟模型ID
+   * 目标路由ID
    */
-  targetVirtualModelId: string;
+  targetRoutingId: string;
 
   /**
    * 选择的流水线池ID
@@ -300,7 +300,7 @@ export interface RoutingDecision {
    * 备选方案
    */
   alternatives?: Array<{
-    virtualModelId: string;
+    routingId: string;
     matchScore: number;
     reason: string;
   }>;
@@ -353,7 +353,7 @@ export interface RoutingRule {
    * 动作
    */
   actions: Array<{
-    type: 'select_virtual_model' | 'set_priority' | 'add_metadata' | 'transform_request';
+    type: 'select_routing' | 'set_priority' | 'add_metadata' | 'transform_request';
     target: string;
     parameters?: Record<string, any>;
   }>;
@@ -419,9 +419,9 @@ export interface RoutingStrategyConfig {
   };
 
   /**
-   * 默认回退虚拟模型
+   * 默认回退路由
    */
-  fallbackVirtualModel?: string;
+  fallbackRouting?: string;
 
   /**
    * 负载均衡配置

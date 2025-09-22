@@ -40,9 +40,9 @@ export interface ModelConfig {
 }
 
 /**
- * 虚拟模型目标配置
+ * 动态路由目标配置
  */
-export interface VirtualModelTarget {
+export interface DynamicRoutingTarget {
   /** 目标供应商ID */
   providerId: string;
   /** 目标模型ID */
@@ -52,15 +52,15 @@ export interface VirtualModelTarget {
 }
 
 /**
- * 虚拟模型配置
+ * 动态路由配置
  */
-export interface VirtualModelConfig {
-  /** 虚拟模型ID */
+export interface DynamicRoutingConfig {
+  /** 路由ID */
   id: string;
-  /** 虚拟模型名称 */
+  /** 路由名称 */
   name: string;
   /** 目标配置列表 */
-  targets: VirtualModelTarget[];
+  targets: DynamicRoutingTarget[];
   /** 是否启用 */
   enabled: boolean;
   /** 优先级 */
@@ -77,8 +77,8 @@ export interface ConfigData {
   version: string;
   /** 供应商配置 */
   providers: Record<string, ProviderConfig>;
-  /** 虚拟模型配置 */
-  virtualModels: Record<string, VirtualModelConfig>;
+  /** 动态路由配置 */
+  dynamicRouting: Record<string, DynamicRoutingConfig>;
   /** 创建时间 */
   createdAt: string;
   /** 更新时间 */
@@ -599,7 +599,7 @@ export interface ConfigChangeEvent {
  * Server Module Wrapper - HTTP server configuration only
  *
  * Transforms ConfigData into ServerModule-compatible format
- * Contains only HTTP server configuration, no virtual model information
+ * Contains only HTTP server configuration, no dynamic routing information
  */
 export interface ServerWrapper {
   /** Server port */
@@ -666,14 +666,14 @@ export interface RoutingConfig {
 }
 
 /**
- * Pipeline Module Wrapper - Virtual model routing and execution configuration
+ * Pipeline Module Wrapper - Dynamic routing and execution configuration
  *
  * Transforms ConfigData into PipelineAssembler-compatible format
- * Contains virtual model routing tables and module configurations
+ * Contains dynamic routing tables and module configurations
  */
 export interface PipelineWrapper {
-  /** Virtual model configurations */
-  virtualModels: VirtualModelConfig[];
+  /** Dynamic routing configurations */
+  dynamicRouting: DynamicRoutingConfig[];
   /** Module configurations */
   modules: ModuleConfig[];
   /** Routing configuration */
@@ -684,6 +684,6 @@ export interface PipelineWrapper {
     createdAt: string;
     updatedAt: string;
     providerCount: number;
-    virtualModelCount: number;
+    routingConfigCount: number;
   };
 }

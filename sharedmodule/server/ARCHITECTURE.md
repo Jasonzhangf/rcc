@@ -77,11 +77,11 @@ ServerModule (Main Entry Point)
 // Core Framework
 import { BaseModule, ModuleInfo } from 'rcc-basemodule';        // v0.1.8
 import { UnderConstruction } from 'rcc-underconstruction';     // v0.1.0
-import { VirtualModelRulesModule } from 'rcc-virtual-model-rules'; // v1.0.5
+import { DynamicRoutingClassificationModule } from 'rcc-dynamic-routing-classification'; // v1.0.0
 
 // Pipeline Integration
 import {
-  VirtualModelSchedulerManager,
+  DynamicRoutingManager,
   PipelineTracker,
   BaseProvider,
   PipelineScheduler

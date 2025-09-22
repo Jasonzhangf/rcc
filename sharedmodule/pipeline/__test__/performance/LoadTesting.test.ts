@@ -33,13 +33,13 @@ describe('Load Testing - Stress Conditions', () => {
     test('should handle extreme concurrency (500+ concurrent requests)', async () => {
       const concurrency = 500;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
 
       // Execute extremely high concurrency
       const promises = Array(concurrency).fill(null).map((_, i) =>
-        executor.execute(request, virtualModelId).catch(error => ({
+        executor.execute(request, routingId).catch(error => ({
           success: false,
           error: error.message,
           requestId: i
@@ -71,7 +71,7 @@ describe('Load Testing - Stress Conditions', () => {
       const maxConcurrency = 200;
       const rampUpTime = 30000; // 30 seconds to reach max concurrency
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
       const results: any[] = [];
@@ -84,7 +84,7 @@ describe('Load Testing - Stress Conditions', () => {
 
         // Add new requests to reach target concurrency
         while (activePromises.length < currentConcurrency && activePromises.length < maxConcurrency) {
-          const promise = executor.execute(request, virtualModelId)
+          const promise = executor.execute(request, routingId)
             .then(result => ({ ...result, success: true }))
             .catch(error => ({ success: false, error: error.message }))
             .finally(() => {
@@ -126,7 +126,7 @@ describe('Load Testing - Stress Conditions', () => {
       const duration = 300000; // 5 minutes
       const targetRPS = 50; // 50 requests per second
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
       const results: any[] = [];
@@ -136,7 +136,7 @@ describe('Load Testing - Stress Conditions', () => {
       const loadGenerator = setInterval(() => {
         if (Date.now() - startTime < duration) {
           requestCount++;
-          executor.execute(request, virtualModelId)
+          executor.execute(request, routingId)
             .then(result => results.push({ ...result, timestamp: Date.now() }))
             .catch(error => results.push({
               success: false,
@@ -204,7 +204,7 @@ describe('Load Testing - Stress Conditions', () => {
     test('should handle memory pressure under sustained load', async () => {
       const duration = 120000; // 2 minutes
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const initialMemory = process.memoryUsage();
       const memorySnapshots: any[] = [];
@@ -212,7 +212,7 @@ describe('Load Testing - Stress Conditions', () => {
       // Generate sustained load
       const loadGenerator = setInterval(() => {
         if (Date.now() - initialMemory.heapUsed < duration) {
-          executor.execute(request, virtualModelId);
+          executor.execute(request, routingId);
         }
       }, 50); // High frequency request generation
 
@@ -254,7 +254,7 @@ describe('Load Testing - Stress Conditions', () => {
       const spikeLoad = 100; // Spike concurrent requests
       const spikeDuration = 10000; // 10 seconds spike
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const results: any[] = [];
       let activePromises: Promise<any>[] = [];
@@ -264,7 +264,7 @@ describe('Load Testing - Stress Conditions', () => {
       // Phase 1: Normal load
       console.log('Phase 1: Normal load...');
       for (let i = 0; i < normalLoad; i++) {
-        const promise = executor.execute(request, virtualModelId)
+        const promise = executor.execute(request, routingId)
           .then(result => ({ ...result, phase: 'normal', success: true }))
           .catch(error => ({ success: false, error: error.message, phase: 'normal' }))
           .finally(() => {
@@ -282,7 +282,7 @@ describe('Load Testing - Stress Conditions', () => {
       // Phase 2: Spike load
       console.log('Phase 2: Spike load...');
       for (let i = 0; i < spikeLoad - normalLoad; i++) {
-        const promise = executor.execute(request, virtualModelId)
+        const promise = executor.execute(request, routingId)
           .then(result => ({ ...result, phase: 'spike', success: true }))
           .catch(error => ({ success: false, error: error.message, phase: 'spike' }))
           .finally(() => {
@@ -326,7 +326,7 @@ describe('Load Testing - Stress Conditions', () => {
       const spikeDuration = 5000;
       const restDuration = 3000;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const allResults: any[] = [];
 
@@ -335,7 +335,7 @@ describe('Load Testing - Stress Conditions', () => {
 
         // Generate spike
         const spikePromises = Array(spikeIntensity).fill(null).map(() =>
-          executor.execute(request, virtualModelId)
+          executor.execute(request, routingId)
             .then(result => ({ ...result, spike: spike + 1, success: true }))
             .catch(error => ({ success: false, error: error.message, spike: spike + 1 }))
         );
@@ -381,12 +381,12 @@ describe('Load Testing - Stress Conditions', () => {
       const overloadDuration = 10000;
       const recoveryDuration = 10000;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       // Create system overload
       console.log('Creating system overload...');
       const overloadPromises = Array(200).fill(null).map(() =>
-        executor.execute(request, virtualModelId)
+        executor.execute(request, routingId)
       );
 
       // Wait for some to complete during overload
@@ -406,7 +406,7 @@ describe('Load Testing - Stress Conditions', () => {
       const recoveryResults: any[] = [];
 
       for (let i = 0; i < recoveryRequests; i++) {
-        const result = await executor.execute(request, virtualModelId);
+        const result = await executor.execute(request, routingId);
         recoveryResults.push(result);
       }
 
@@ -422,7 +422,7 @@ describe('Load Testing - Stress Conditions', () => {
 
     test('should handle partial system failures gracefully', async () => {
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       // Test with some requests designed to potentially fail
       const mixedRequests = [

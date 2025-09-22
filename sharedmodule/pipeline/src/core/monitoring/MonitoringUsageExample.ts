@@ -6,12 +6,22 @@
  * with the RCC pipeline architecture.
  */
 
+import { ErrorHandlingCenter as ErrorHandlingCenterType } from 'rcc-errorhandling';
+
+// Create a simple mock for demonstration purposes
+class MockErrorHandlingCenter {
+  handleError(error: any, options?: any): void {
+    console.log('Mock error handling:', error);
+  }
+  async destroy(): Promise<void> {
+    // Mock implementation
+  }
+}
 import {
-  ErrorHandlingCenter,
   ErrorContext,
   ErrorSeverity,
   ErrorCategory
-} from 'rcc-errorhandling';
+} from './ErrorMonitoringInterfaces';
 
 import {
   MonitoringIntegration,
@@ -28,14 +38,14 @@ import { ModularPipelineExecutor } from '../ModularPipelineExecutor';
  * 监控系统设置示例
  */
 export class MonitoringSystemExample {
-  private errorHandlingCenter: ErrorHandlingCenter;
+  private errorHandlingCenter: MockErrorHandlingCenter;
   private strategyManager?: StrategyManager;
   private pipelineExecutor?: ModularPipelineExecutor;
   private monitoringIntegration: MonitoringIntegration;
 
   constructor() {
     // Initialize error handling center
-    this.errorHandlingCenter = new ErrorHandlingCenter();
+    this.errorHandlingCenter = new MockErrorHandlingCenter();
 
     // Create monitoring integration with custom configuration
     this.monitoringIntegration = new MonitoringIntegration(
@@ -461,7 +471,7 @@ export class MonitoringSystemExample {
     }
   }
 
-  private sleep(ms: number): Promise<void> {
+  public sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 

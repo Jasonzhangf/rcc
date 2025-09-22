@@ -12,7 +12,7 @@ import { BaseModuleRecordingConfig } from 'rcc-basemodule';
 export interface PipelineExecutionContext {
   sessionId: string;
   requestId: string;
-  virtualModelId: string;
+  routingId: string;
   providerId: string;
   startTime: number;
   routingDecision?: any;
@@ -176,7 +176,7 @@ export interface ExecutionContextOptions {
   metadata?: Record<string, any>;
   inheritFrom?: PipelineExecutionContext;
   requestId?: string;
-  virtualModelId?: string;
+  routingId?: string;
   providerId?: string;
   startTime?: number;
   stage?: string;
@@ -223,7 +223,7 @@ export class ExecutionContextFactory {
       traceId,
       sessionId,
       requestId,
-      virtualModelId: moduleInfo.moduleId,
+      routingId: moduleInfo.moduleId,
       providerId: moduleInfo.providerName || 'unknown',
       startTime: Date.now(),
       stage,

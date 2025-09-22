@@ -92,7 +92,10 @@ export class SafeJson {
             }
           } catch (fallbackError) {
             if (!silent) {
-              console.warn('Fallback recovery failed:', fallbackError.message);
+              console.warn(
+                'Fallback recovery failed:',
+                fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+              );
             }
           }
         }
@@ -107,7 +110,10 @@ export class SafeJson {
       return parsed as T;
     } catch (error) {
       if (required && !silent) {
-        console.error('SafeJSON parse error:', error.message);
+        console.error(
+          'SafeJSON parse error:',
+          error instanceof Error ? error.message : String(error)
+        );
       }
 
       // Try fallback if available
@@ -116,7 +122,10 @@ export class SafeJson {
           return fallback();
         } catch (fallbackError) {
           if (!silent) {
-            console.warn('Fallback failed:', fallbackError.message);
+            console.warn(
+              'Fallback failed:',
+              fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+            );
           }
         }
       }
@@ -149,7 +158,10 @@ export class SafeJson {
       return this.parse<T>(fileContent, options);
     } catch (error) {
       if (required && !silent) {
-        console.error(`SafeJSON file parse error (${filePath}):`, error.message);
+        console.error(
+          `SafeJSON file parse error (${filePath}):`,
+          error instanceof Error ? error.message : String(error)
+        );
       }
       return options.defaultValue || null;
     }
@@ -391,9 +403,9 @@ export class SafeJson {
   compileTimeValidate<T>(data: T, schema: any): { valid: boolean; errors?: string[] } {
     try {
       const errors = this.validateSchema(data, schema, true);
-      return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
+      return { valid: errors.length === 0, errors: errors.length > 0 ? errors : [] };
     } catch (error) {
-      return { valid: false, errors: [error.message] };
+      return { valid: false, errors: [error instanceof Error ? error.message : String(error)] };
     }
   }
 
@@ -413,7 +425,7 @@ export class SafeJson {
         validationErrors: errors,
       };
     } catch (error) {
-      return { success: false, error };
+      return { success: false, error: error instanceof Error ? error : new Error(String(error)) };
     }
   }
 
@@ -531,7 +543,7 @@ export class SafeJson {
 
       if (schema.properties && typeof data === 'object' && data !== null) {
         for (const [prop, propSchema] of Object.entries(schema.properties)) {
-          if (propSchema.required && !(prop in data)) {
+          if ((propSchema as any).required && !(prop in data)) {
             errors.push(`Missing required property: ${prop}`);
           } else if (prop in data) {
             const propErrors = this.validateProperty(data[prop], propSchema as any, prop);
@@ -553,7 +565,9 @@ export class SafeJson {
       if (!silent) {
         console.error('Schema validation error:', error);
       }
-      return [`Schema validation system error: ${error.message}`];
+      return [
+        `Schema validation system error: ${error instanceof Error ? error.message : String(error)}`,
+      ];
     }
   }
 
@@ -620,9 +634,9 @@ export class SafeJson {
     let type = typeof value;
 
     if (value === null) {
-      type = 'null';
+      type = 'null' as any; // null特殊处理
     } else if (Array.isArray(value)) {
-      type = 'array';
+      type = 'array' as any; // 数组特殊处理
     }
 
     return (
@@ -665,7 +679,9 @@ export class SafeJson {
 
       return JSON.stringify(data, replacer, space);
     } catch (error) {
-      throw new Error(`JSON stringify failed: ${error.message}`);
+      throw new Error(
+        `JSON stringify failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

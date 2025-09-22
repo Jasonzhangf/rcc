@@ -106,7 +106,7 @@ export interface RCCConfig {
     };
   };
   providers: Record<string, ProviderConfig>;
-  virtualModels: Record<string, VirtualModelConfig>;
+  dynamicRouting: Record<string, DynamicRoutingConfig>;
   pipeline: PipelineConfig;
   debugging?: {
     enabled?: boolean;
@@ -203,9 +203,9 @@ export interface ProviderConfig {
 }
 
 /**
- * 虚拟模型目标配置
+ * 动态路由目标配置
  */
-export interface VirtualModelTarget {
+export interface DynamicRoutingTarget {
   providerId: string;
   modelId: string;
   keyIndex?: number;
@@ -224,13 +224,13 @@ export interface VirtualModelTarget {
 }
 
 /**
- * 虚拟模型配置
+ * 动态路由配置
  */
-export interface VirtualModelConfig {
+export interface DynamicRoutingConfig {
   id: string;
   name: string;
   enabled: boolean;
-  targets: VirtualModelTarget[];
+  targets: DynamicRoutingTarget[];
   capabilities?: string[];
   maxTokens?: number;
   temperature?: number;
@@ -503,8 +503,8 @@ export const unifiedConfigSchema = z.object({
           .optional(),
       })
       .optional(),
-    providers: z.record(z.any()),
-    virtualModels: z.record(z.any()),
+    providers: z.record(z.string(), z.any()),
+    dynamicRouting: z.record(z.string(), z.any()),
     pipeline: z
       .object({
         enabled: z.boolean().optional(),
@@ -639,7 +639,7 @@ export const unifiedConfigSchema = z.object({
         z.object({
           id: z.string(),
           type: z.string(),
-          config: z.record(z.any()).optional(),
+          config: z.record(z.string(), z.any()).optional(),
           enabled: z.boolean().optional(),
         })
       )
@@ -649,7 +649,7 @@ export const unifiedConfigSchema = z.object({
         z.object({
           id: z.string(),
           type: z.enum(['input', 'output', 'both']),
-          config: z.record(z.any()).optional(),
+          config: z.record(z.string(), z.any()).optional(),
           priority: z.number().int().optional(),
         })
       )
@@ -659,7 +659,7 @@ export const unifiedConfigSchema = z.object({
         z.object({
           id: z.string(),
           type: z.enum(['request', 'response', 'both']),
-          config: z.record(z.any()).optional(),
+          config: z.record(z.string(), z.any()).optional(),
           conditions: z.array(z.string()).optional(),
         })
       )
@@ -778,7 +778,7 @@ export const unifiedConfigSchema = z.object({
             password: z.string().optional(),
           })
           .optional(),
-        options: z.record(z.any()).optional(),
+        options: z.record(z.string(), z.any()).optional(),
       })
       .optional(),
   }),
@@ -802,8 +802,8 @@ export const CONFIG_SEARCH_PATHS = [
   process.cwd(),
   '/etc/rcc',
   '/usr/local/etc/rcc',
-  process.env.HOME || '',
-  process.env.USERPROFILE || '',
+  process.env['HOME'] || '',
+  process.env['USERPROFILE'] || '',
 ];
 
 // 类型导出

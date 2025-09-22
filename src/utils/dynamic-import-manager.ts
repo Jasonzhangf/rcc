@@ -185,7 +185,10 @@ export class DynamicImportManager {
         }
         return fallbackResult;
       } catch (fallbackError) {
-        console.warn('Fallback import failed:', fallbackError.message);
+        console.warn(
+          'Fallback import failed:',
+          fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+        );
       }
     }
 
@@ -226,7 +229,7 @@ export class DynamicImportManager {
 
     // Skip if already built recently
     if (this.buildCache.has(buildKey)) {
-      return this.import<T>(modulePath, { validator, cacheKey });
+      return this.import<T>(modulePath, { validator: validator ?? undefined, cacheKey } as any);
     }
 
     try {
@@ -253,10 +256,11 @@ export class DynamicImportManager {
       this.clearCacheForPath(modulePath);
 
       // Import the newly built module
-      return this.import<T>(modulePath, { validator, cacheKey });
+      return this.import<T>(modulePath, { validator: validator ?? undefined, cacheKey } as any);
     } catch (buildError) {
-      console.error(`❌ Build failed: ${buildError.message}`);
-      throw new Error(`Failed to build module ${modulePath}: ${buildError.message}`);
+      const errorMessage = buildError instanceof Error ? buildError.message : String(buildError);
+      console.error(`❌ Build failed: ${errorMessage}`);
+      throw new Error(`Failed to build module ${modulePath}: ${errorMessage}`);
     }
   }
 
@@ -275,7 +279,9 @@ export class DynamicImportManager {
           errors.push('Custom validator rejected module');
         }
       } catch (validationError) {
-        errors.push(`Validation error: ${validationError.message}`);
+        errors.push(
+          `Validation error: ${validationError instanceof Error ? validationError.message : String(validationError)}`
+        );
       }
     }
 
@@ -312,7 +318,10 @@ export class DynamicImportManager {
 
       return meta;
     } catch (error) {
-      console.warn(`Failed to get metadata for ${modulePath}:`, error.message);
+      console.warn(
+        `Failed to get metadata for ${modulePath}:`,
+        error instanceof Error ? error.message : String(error)
+      );
       return null;
     }
   }
@@ -388,7 +397,7 @@ export class DynamicImportManager {
 
         attempts.push({
           success: false,
-          error,
+          error: error instanceof Error ? error : new Error(String(error)),
           strategy: 'import',
           duration,
         });
@@ -396,7 +405,7 @@ export class DynamicImportManager {
         if (attempt < retryAttempts) {
           const delay = 1000 * Math.pow(2, attempt); // Exponential backoff
           console.warn(
-            `Import attempt ${attempt + 1} failed, retrying in ${delay}ms: ${error.message}`
+            `Import attempt ${attempt + 1} failed, retrying in ${delay}ms: ${error instanceof Error ? error.message : String(error)}`
           );
           await this.delay(delay);
         }
@@ -443,7 +452,9 @@ export class DynamicImportManager {
         return this.importLocalFile<T>(modulePath);
       }
     } catch (error) {
-      throw new Error(`Import failed for ${modulePath}: ${error.message}`);
+      throw new Error(
+        `Import failed for ${modulePath}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -455,7 +466,9 @@ export class DynamicImportManager {
       const module = await import(packageName);
       return module;
     } catch (error) {
-      throw new Error(`NPM package import failed: ${error.message}`);
+      throw new Error(
+        `NPM package import failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -469,7 +482,9 @@ export class DynamicImportManager {
       const module = await import(resolvedPath);
       return module;
     } catch (error) {
-      throw new Error(`Local file import failed: ${error.message}`);
+      throw new Error(
+        `Local file import failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -560,7 +575,7 @@ export class DynamicImportManager {
   private extractVersionFromContent(content: string): string | null {
     const versionRegex = /version\s*[=:]\s*["']([0-9]+\.[0-9]+\.[0-9]+[^"']*)["']/i;
     const match = content.match(versionRegex);
-    return match ? match[1] : null;
+    return match ? (match[1] as string) : null;
   }
 
   /**
@@ -575,14 +590,14 @@ export class DynamicImportManager {
     let match;
     while ((match = importRegex.exec(content)) !== null) {
       const moduleName = match[1];
-      if (!this.isLocalImport(moduleName)) {
+      if (moduleName && !this.isLocalImport(moduleName)) {
         dependencies.add(moduleName);
       }
     }
 
     while ((match = requireRegex.exec(content)) !== null) {
       const moduleName = match[1];
-      if (!this.isLocalImport(moduleName)) {
+      if (moduleName && !this.isLocalImport(moduleName)) {
         dependencies.add(moduleName);
       }
     }
@@ -600,7 +615,9 @@ export class DynamicImportManager {
 
     let match;
     while ((match = exportRegex.exec(content)) !== null) {
-      exports.add(match[1]);
+      if (match[1]) {
+        exports.add(match[1]);
+      }
     }
 
     return Array.from(exports);

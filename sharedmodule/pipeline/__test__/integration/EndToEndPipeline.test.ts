@@ -47,9 +47,9 @@ describe('End-to-End Pipeline Integration Tests', () => {
       await executor.initialize(testWrapper);
 
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
-      const result = await executor.execute(request, virtualModelId);
+      const result = await executor.execute(request, routingId);
 
       expect(result.success).toBe(true);
       expect(result.response).toBeDefined();
@@ -71,10 +71,10 @@ describe('End-to-End Pipeline Integration Tests', () => {
       await executor.initialize(testWrapper);
 
       const request = createStreamingTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const streamingSteps: any[] = [];
-      const streamingGenerator = executor.executeStreaming(request, virtualModelId);
+      const streamingGenerator = executor.executeStreaming(request, dynamicRoutingId);
 
       for await (const step of streamingGenerator) {
         streamingSteps.push(step);
@@ -86,11 +86,11 @@ describe('End-to-End Pipeline Integration Tests', () => {
     }, TEST_TIMEOUT);
   });
 
-  describe('Virtual Model Routing', () => {
-    test('should route requests to correct virtual model', async () => {
+  describe('Dynamic Routing Classification', () => {
+    test('should route requests to correct dynamic routing classification', async () => {
       const testWrapper = {
         ...createTestPipelineWrapper(),
-        virtualModels: [
+        dynamicRoutingClassification: [
           {
             id: 'model-a',
             name: 'Model A',
@@ -129,15 +129,15 @@ describe('End-to-End Pipeline Integration Tests', () => {
       // Test routing to model A
       const resultA = await executor.execute(request, 'model-a');
       expect(resultA.success).toBe(true);
-      expect(resultA.context.virtualModelId).toBe('model-a');
+      expect(resultA.context.dynamicRoutingId).toBe('model-a');
 
       // Test routing to model B
       const resultB = await executor.execute(request, 'model-b');
       expect(resultB.success).toBe(true);
-      expect(resultB.context.virtualModelId).toBe('model-b');
+      expect(resultB.context.dynamicRoutingId).toBe('model-b');
     }, TEST_TIMEOUT);
 
-    test('should handle invalid virtual model routing', async () => {
+    test('should handle invalid dynamic routing classification', async () => {
       const testWrapper = createTestPipelineWrapper();
       await executor.initialize(testWrapper);
 
@@ -189,7 +189,7 @@ describe('End-to-End Pipeline Integration Tests', () => {
         invalid_param: 'this_should_be_ignored'
       };
 
-      const result = await executor.execute(problematicRequest, 'test-virtual-model');
+      const result = await executor.execute(problematicRequest, 'test-dynamic-routing');
 
       // Should either succeed gracefully or fail with clear error
       expect(result).toBeDefined();
@@ -208,7 +208,7 @@ describe('End-to-End Pipeline Integration Tests', () => {
       await executor.initialize(testWrapper);
 
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const requestCount = 20;
 
       const startTime = Date.now();
@@ -216,7 +216,7 @@ describe('End-to-End Pipeline Integration Tests', () => {
 
       // Execute requests in sequence
       for (let i = 0; i < requestCount; i++) {
-        const result = await executor.execute(request, virtualModelId);
+        const result = await executor.execute(request, routingId);
         results.push(result);
       }
 
@@ -236,7 +236,7 @@ describe('End-to-End Pipeline Integration Tests', () => {
       await executor.initialize(testWrapper);
 
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const concurrency = 10;
 
       const startTime = Date.now();
@@ -266,9 +266,9 @@ describe('End-to-End Pipeline Integration Tests', () => {
       await executor.initialize(testWrapper);
 
       const originalRequest = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
-      const result = await executor.execute(originalRequest, virtualModelId);
+      const result = await executor.execute(originalRequest, dynamicRoutingId);
 
       expect(result.success).toBe(true);
 
@@ -331,7 +331,7 @@ describe('End-to-End Pipeline Integration Tests', () => {
         max_tokens: 1000
       };
 
-      const result = await executor.execute(complexRequest, 'test-virtual-model');
+      const result = await executor.execute(complexRequest, 'test-dynamic-routing');
 
       expect(result).toBeDefined();
       if (result.success) {
@@ -348,12 +348,12 @@ describe('End-to-End Pipeline Integration Tests', () => {
       await executor.initialize(testWrapper);
 
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const iterations = 50;
 
       // Execute multiple requests to test memory management
       for (let i = 0; i < iterations; i++) {
-        const result = await executor.execute(request, virtualModelId);
+        const result = await executor.execute(request, routingId);
         expect(result.success).toBe(true);
       }
 
@@ -374,7 +374,7 @@ describe('End-to-End Pipeline Integration Tests', () => {
         invalid_field: 'test'
       };
 
-      const result = await executor.execute(invalidRequest, 'test-virtual-model');
+      const result = await executor.execute(invalidRequest, 'test-dynamic-routing');
       expect(result.success).toBe(false);
 
       // System should still be operational after failure
@@ -383,7 +383,7 @@ describe('End-to-End Pipeline Integration Tests', () => {
 
       // Should be able to execute subsequent requests
       const validRequest = createTestRequest();
-      const secondResult = await executor.execute(validRequest, 'test-virtual-model');
+      const secondResult = await executor.execute(validRequest, 'test-dynamic-routing');
       expect(secondResult.success).toBe(true);
     }, TEST_TIMEOUT);
   });
@@ -404,17 +404,17 @@ describe('End-to-End Pipeline Integration Tests', () => {
       await expect(executor.initialize(customWrapper)).resolves.not.toThrow();
 
       const request = createTestRequest();
-      const result = await executor.execute(request, 'test-virtual-model');
+      const result = await executor.execute(request, 'test-dynamic-routing');
 
       expect(result.success).toBe(true);
     }, TEST_TIMEOUT);
 
     test('should handle missing optional configuration parameters', async () => {
       const minimalWrapper = {
-        virtualModels: [
+        dynamicRouting: [
           {
-            id: 'minimal-model',
-            name: 'Minimal Model',
+            id: 'minimal-routing',
+            name: 'Minimal Routing',
             targets: [
               {
                 providerId: 'test-provider',

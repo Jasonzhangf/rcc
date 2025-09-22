@@ -49,12 +49,12 @@
 
 #### 5. rcc-server
 - **版本**: 0.1.0
-- **描述**: RCC Server Module - 带虚拟模型路由的客户端输入代理响应服务器
-- **功能**: HTTP服务器、代理、虚拟模型路由、模块化架构
+- **描述**: RCC Server Module - 带动态路由分类的客户端输入代理响应服务器
+- **功能**: HTTP服务器、代理、动态路由分类、模块化架构
 - **依赖**:
   - rcc-basemodule (>=0.1.0)
   - rcc-underconstruction (>=0.1.0)
-  - rcc-virtual-model-rules (^1.0.5)
+  - rcc-dynamic-routing-classification (^1.0.0)
   - uuid (^9.0.1)
   - express (^4.18.2)
   - cors (^2.8.5)

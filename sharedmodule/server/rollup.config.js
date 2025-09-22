@@ -31,7 +31,7 @@ export default {
     'body-parser',
     'uuid',
     'rcc-underconstruction',
-    'rcc-virtual-model-rules',
+    'rcc-dynamic-routing-classification',
     'axios',
     'form-data',
     'http',

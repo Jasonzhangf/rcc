@@ -1,7 +1,7 @@
 // Main Server Module for RCC - 纯转发架构 (v3.0)
 // 职责: 仅HTTP接入和请求转发，不做任何模型选择或路由决策
 
-import { BaseModule, ModuleInfo } from 'rcc-basemodule';
+import { BaseModule, ModuleInfo, MessageCenter } from 'rcc-basemodule';
 import { IServerModule } from './interfaces/IServerModule';
 import { HttpServerComponent } from './components/HttpServer';
 import { RequestForwarder } from './components/RequestForwarder';
@@ -23,11 +23,11 @@ import {
 
 export class ServerModule extends BaseModule implements IServerModule {
   private httpServer: HttpServerComponent;
-  private forwarder: RequestForwarder;  // 替换 VirtualModelRouter
+  private forwarder: RequestForwarder;  // 替换 DynamicRoutingRouter
   private serverCore: ServerCore;
   private requestHandlerService: RequestHandlerService;
   private serverConfig: ServerConfig | null = null;
-  private isInitialized: boolean = false;
+  private _isInitialized: boolean = false;
   private isRunning: boolean = false;
 
   constructor() {
@@ -51,7 +51,7 @@ export class ServerModule extends BaseModule implements IServerModule {
     this.serverCore = new ServerCore();
     this.requestHandlerService = new RequestHandlerService();
     this.serverConfig = null;
-    this.isInitialized = false;
+    this._isInitialized = false;
     this.isRunning = false;
   }
 
@@ -78,7 +78,7 @@ export class ServerModule extends BaseModule implements IServerModule {
    * 初始化服务器 - 只初始化HTTP组件和转发器
    */
   public override async initialize(): Promise<void> {
-    if (this.isInitialized) {
+    if (this._isInitialized) {
       this.warn('Server module is already initialized');
       return;
     }
@@ -105,7 +105,7 @@ export class ServerModule extends BaseModule implements IServerModule {
       // 连接请求处理器到HTTP服务器
       this.httpServer.setRequestHandler(this.handleRequest.bind(this));
 
-      this.isInitialized = true;
+      this._isInitialized = true;
       this.log('Server Module initialized successfully');
 
     } catch (error) {
@@ -164,11 +164,11 @@ export class ServerModule extends BaseModule implements IServerModule {
   }
 
   /**
-   * 设置虚拟模型调度器管理器 - 连接pipeline虚拟模型路由系统
+   * 设置动态路由管理器 - 连接pipeline动态路由系统
    */
-  public setVirtualModelSchedulerManager(schedulerManager: any): void {
-    this.forwarder.setVirtualModelSchedulerManager(schedulerManager);
-    this.log('Virtual model scheduler manager connected to server');
+  public setDynamicRoutingManager(schedulerManager: any): void {
+    this.forwarder.setDynamicRoutingManager(schedulerManager);
+    this.log('Dynamic routing manager connected to server');
   }
 
   /**
@@ -291,7 +291,7 @@ export class ServerModule extends BaseModule implements IServerModule {
     }
 
     // 简化清理 - 其他组件会在stop()中处理
-    this.isInitialized = false;
+    this._isInitialized = false;
   }
 
   // 缓冲配置验证

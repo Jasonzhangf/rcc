@@ -31,10 +31,10 @@ declare module 'rcc-pipeline' {
     execute(request: any, operationType: string): Promise<PipelineExecutionResult>;
   }
 
-  export class VirtualModelSchedulerManager {
+  export class DynamicRoutingManager {
     constructor(config: any);
-    registerVirtualModel(config: any): Promise<void>;
-    getVirtualModel(modelId: string): any;
-    scheduleRequest(request: any, modelId: string): Promise<any>;
+    registerPipeline(config: any): Promise<void>;
+    getPipeline(pipelineId: string): any;
+    scheduleRequest(request: any, pipelineId: string): Promise<any>;
   }
 }

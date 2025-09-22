@@ -6,12 +6,12 @@
  * for provider timeouts and temporary failures.
  */
 
+import { ErrorHandlingCenter } from 'rcc-errorhandling';
 import {
-  ErrorHandlingCenter,
   ErrorHandlingResult,
   ErrorCategory,
   ErrorSeverity
-} from 'rcc-errorhandling';
+} from './StrategyInterfaces';
 
 import {
   IErrorHandlingStrategy,
@@ -216,7 +216,7 @@ export class RetryStrategy implements IErrorHandlingStrategy {
             jitter: this.config.jitter
           }
         }
-      };
+      } as ErrorHandlingResult;
 
     } catch (retryError) {
       const executionTime = Date.now() - startTime;
@@ -242,7 +242,7 @@ export class RetryStrategy implements IErrorHandlingStrategy {
           method: 'exponential_backoff',
           error: retryError instanceof Error ? retryError : new Error(String(retryError))
         }
-      };
+      } as ErrorHandlingResult;
     }
   }
 
@@ -331,7 +331,7 @@ export class RetryStrategy implements IErrorHandlingStrategy {
    * 更新策略健康状态
    */
   private updateHealth(): void {
-    this.health.lastExecutionTime = Date.now();
+    this.health.lastExecution = Date.now();
     this.health.averageResponseTime = this.metrics.averageExecutionTime;
     this.health.successRate = this.metrics.successRate;
 

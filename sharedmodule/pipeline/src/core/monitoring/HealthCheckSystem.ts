@@ -7,9 +7,7 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorContext,
-  ErrorSeverity
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -19,7 +17,9 @@ import {
   Alert,
   ErrorEvent,
   ProviderErrorMetrics,
-  ModuleErrorMetrics
+  ModuleErrorMetrics,
+  ErrorContext,
+  ErrorSeverity
 } from './ErrorMonitoringInterfaces';
 
 import { IModularPipelineExecutor } from '../../interfaces/ModularInterfaces';
@@ -796,7 +796,7 @@ export class HealthCheckSystem {
 
     const alert: Alert = {
       alertId,
-      type: 'anomaly_detection',
+      type: 'health_check',
       severity: zScore > 4 ? 'critical' as ErrorSeverity : 'high' as ErrorSeverity,
       timestamp: Date.now(),
       message: `Anomaly detected in ${metric} for ${target}: ${currentValue.toFixed(2)} (Z-score: ${zScore.toFixed(2)})`,

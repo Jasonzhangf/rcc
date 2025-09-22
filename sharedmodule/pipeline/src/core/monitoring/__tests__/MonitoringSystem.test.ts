@@ -18,7 +18,9 @@ import {
   StrategyContext,
   HealthStatus,
   Alert,
-  RecoveryAction
+  RecoveryAction,
+  ErrorSeverity,
+  ErrorCategory
 } from '../index';
 
 // Mock ErrorHandlingCenter
@@ -84,7 +86,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -119,7 +121,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -154,7 +156,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -165,8 +167,8 @@ describe('ErrorMonitor', () => {
         timestamp: 0,
         errorType: 'TestError',
         errorMessage: 'Test error message',
-        severity: 'high',
-        category: 'validation',
+        severity: ErrorSeverity.HIGH,
+        category: ErrorCategory.VALIDATION,
         moduleId: 'test-module',
         moduleName: 'Test Module',
         component: 'test-component',
@@ -203,7 +205,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -216,8 +218,8 @@ describe('ErrorMonitor', () => {
           timestamp: Date.now(),
           errorType: 'TestError',
           errorMessage: 'Test error message',
-          severity: 'high',
-          category: 'validation',
+          severity: ErrorSeverity.HIGH,
+          category: ErrorCategory.VALIDATION,
           moduleId: 'test-module',
           moduleName: 'Test Module',
           component: 'test-component',
@@ -257,7 +259,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -270,8 +272,8 @@ describe('ErrorMonitor', () => {
           timestamp: 0,
           errorType: 'TestError',
           errorMessage: 'Test error 1',
-          severity: 'high',
-          category: 'validation',
+          severity: ErrorSeverity.HIGH,
+          category: ErrorCategory.VALIDATION,
           moduleId: 'test-module',
           moduleName: 'Test Module',
           component: 'test-component',
@@ -285,8 +287,8 @@ describe('ErrorMonitor', () => {
           timestamp: 0,
           errorType: 'TestError',
           errorMessage: 'Test error 2',
-          severity: 'high',
-          category: 'validation',
+          severity: ErrorSeverity.HIGH,
+          category: ErrorCategory.VALIDATION,
           moduleId: 'test-module',
           moduleName: 'Test Module',
           component: 'test-component',
@@ -330,7 +332,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -360,7 +362,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -391,7 +393,7 @@ describe('ErrorMonitor', () => {
         },
         notifications: {
           enabled: false,
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       };
 
@@ -444,8 +446,8 @@ describe('AutomatedRecoverySystem', () => {
         timestamp: 0,
         errorType: 'TimeoutError',
         errorMessage: 'Request timeout after 5000ms',
-        severity: 'high',
-        category: 'timeout',
+        severity: ErrorSeverity.HIGH,
+        category: ErrorCategory.TIMEOUT,
         moduleId: 'test-provider',
         moduleName: 'Test Provider',
         component: 'request-executor',
@@ -458,7 +460,23 @@ describe('AutomatedRecoverySystem', () => {
       const context: StrategyContext = {
         operationId: uuidv4(),
         moduleId: 'test-provider',
-        pipelineContext: {},
+        pipelineContext: {
+          sessionId: uuidv4(),
+          requestId: uuidv4(),
+          routingId: 'test-model',
+          providerId: 'test-provider',
+          executionId: uuidv4(),
+          traceId: uuidv4(),
+          stage: 'test',
+          timing: {
+          startTime: Date.now(),
+          stageTimings: new Map(),
+          status: 'pending' as const
+        },
+          startTime: Date.now(),
+          ioRecords: [],
+          metadata: {}
+        },
         startTime: Date.now(),
         attempt: 1,
         maxAttempts: 3
@@ -477,8 +495,8 @@ describe('AutomatedRecoverySystem', () => {
         timestamp: 0,
         errorType: 'TimeoutError',
         errorMessage: 'Request timeout after 5000ms',
-        severity: 'high',
-        category: 'timeout',
+        severity: ErrorSeverity.HIGH,
+        category: ErrorCategory.TIMEOUT,
         moduleId: 'test-provider',
         moduleName: 'Test Provider',
         component: 'request-executor',
@@ -491,7 +509,23 @@ describe('AutomatedRecoverySystem', () => {
       const context: StrategyContext = {
         operationId: uuidv4(),
         moduleId: 'test-provider',
-        pipelineContext: {},
+        pipelineContext: {
+          sessionId: uuidv4(),
+          requestId: uuidv4(),
+          routingId: 'test-model',
+          providerId: 'test-provider',
+          executionId: uuidv4(),
+          traceId: uuidv4(),
+          stage: 'test',
+          timing: {
+          startTime: Date.now(),
+          stageTimings: new Map(),
+          status: 'pending' as const
+        },
+          startTime: Date.now(),
+          ioRecords: [],
+          metadata: {}
+        },
         startTime: Date.now(),
         attempt: 1,
         maxAttempts: 3
@@ -526,7 +560,23 @@ describe('AutomatedRecoverySystem', () => {
       const context: StrategyContext = {
         operationId: uuidv4(),
         moduleId: 'test-module',
-        pipelineContext: {},
+        pipelineContext: {
+          sessionId: uuidv4(),
+          requestId: uuidv4(),
+          routingId: 'test-model',
+          providerId: 'test-provider',
+          executionId: uuidv4(),
+          traceId: uuidv4(),
+          stage: 'test',
+          timing: {
+          startTime: Date.now(),
+          stageTimings: new Map(),
+          status: 'pending' as const
+        },
+          startTime: Date.now(),
+          ioRecords: [],
+          metadata: {}
+        },
         startTime: Date.now(),
         attempt: 1,
         maxAttempts: 3
@@ -687,7 +737,7 @@ describe('MonitoringIntegration', () => {
           },
           notifications: {
             enabled: false,
-            severityFilter: ['high', 'critical']
+            severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
           }
         },
         automatedRecovery: {
@@ -735,7 +785,7 @@ describe('MonitoringIntegration', () => {
         notifications: {
           enabled: false,
           channels: ['webhook'],
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       }
     );
@@ -809,8 +859,8 @@ describe('MonitoringIntegration', () => {
         timestamp: 0,
         errorType: 'TestError',
         errorMessage: 'Test error message',
-        severity: 'high',
-        category: 'validation',
+        severity: ErrorSeverity.HIGH,
+        category: ErrorCategory.VALIDATION,
         moduleId: 'test-module',
         moduleName: 'Test Module',
         component: 'test-component',
@@ -900,7 +950,7 @@ describe('MonitoringIntegration', () => {
             },
             notifications: {
               enabled: false,
-              severityFilter: ['high', 'critical']
+              severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
             }
           },
           automatedRecovery: {
@@ -948,7 +998,7 @@ describe('MonitoringIntegration', () => {
           notifications: {
             enabled: false,
             channels: ['webhook'],
-            severityFilter: ['high', 'critical']
+            severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
           }
         },
         eventHandlers
@@ -963,8 +1013,8 @@ describe('MonitoringIntegration', () => {
         timestamp: 0,
         errorType: 'TestError',
         errorMessage: 'Test error message',
-        severity: 'high',
-        category: 'validation',
+        severity: ErrorSeverity.HIGH,
+        category: ErrorCategory.VALIDATION,
         moduleId: 'test-module',
         moduleName: 'Test Module',
         component: 'test-component',
@@ -1018,7 +1068,7 @@ describe('Monitoring System End-to-End', () => {
           },
           notifications: {
             enabled: false,
-            severityFilter: ['high', 'critical']
+            severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
           }
         },
         automatedRecovery: {
@@ -1066,7 +1116,7 @@ describe('Monitoring System End-to-End', () => {
         notifications: {
           enabled: false,
           channels: ['webhook'],
-          severityFilter: ['high', 'critical']
+          severityFilter: [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]
         }
       }
     );
@@ -1083,8 +1133,8 @@ describe('Monitoring System End-to-End', () => {
           timestamp: 0,
           errorType: 'TimeoutError',
           errorMessage: 'Request timeout',
-          severity: 'high',
-          category: 'timeout',
+          severity: ErrorSeverity.HIGH,
+          category: ErrorCategory.TIMEOUT,
           moduleId: 'test-provider',
           moduleName: 'Test Provider',
           component: 'request-executor',
@@ -1098,8 +1148,8 @@ describe('Monitoring System End-to-End', () => {
           timestamp: 0,
           errorType: 'AuthenticationError',
           errorMessage: 'Invalid credentials',
-          severity: 'high',
-          category: 'authentication',
+          severity: ErrorSeverity.HIGH,
+          category: ErrorCategory.AUTHENTICATION,
           moduleId: 'test-provider',
           moduleName: 'Test Provider',
           component: 'auth-validator',

@@ -1,7 +1,7 @@
 {
   "name": "rcc-server",
   "version": "0.2.3",
-  "description": "RCC Server Module - Client input proxy response server with virtual model routing",
+  "description": "RCC Server Module - Client input proxy response server with dynamic routing",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -42,20 +42,19 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
+    "rcc-basemodule": "^0.2.6",
     "rcc-config-parser": ">=0.1.0",
-    "rcc-debugcenter": "^0.1.0",
+    "rcc-debugcenter": "^0.1.2",
     "rcc-errorhandling": ">=1.0.0",
     "rcc-pipeline": ">=0.1.0",
     "rcc-underconstruction": ">=0.1.0",
-    "rcc-virtual-model-rules": ">=1.0.0",
     "uuid": "^9.0.1"
   },
   "peerDependencies": {
-    "rcc-basemodule": "^0.2.2",
+    "rcc-basemodule": "^0.2.6",
     "rcc-config-parser": ">=0.1.0",
     "rcc-errorhandling": ">=1.0.0",
-    "rcc-underconstruction": ">=0.1.0",
-    "rcc-virtual-model-rules": ">=1.0.0"
+    "rcc-underconstruction": ">=0.1.0"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^5.1.1",

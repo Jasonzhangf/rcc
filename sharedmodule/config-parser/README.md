@@ -54,7 +54,7 @@ rcc-config-parser/
 │   │   │   └── 条目过滤 (启用/禁用状态)
 │   │   └── ConfigData.ts           # 数据结构定义 (594行)
 │   │       ├── ProviderConfig: 供应商配置
-│   │       ├── VirtualModelConfig: 虚拟模型配置
+│   │       ├── DynamicRoutingConfig: 动态路由配置
 │   │       ├── ConfigValidationResult: 验证结果
 │   │       └── PipelineExecutionRecord: 执行记录
 │   ├── interfaces/               # 接口定义
@@ -117,7 +117,7 @@ rcc-config-parser/
 │                    数据层 (Data)                             │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │                 ConfigData                              │ │
-│  │  • ProviderConfig • VirtualModelConfig • Validation    │ │
+│  │  • ProviderConfig • DynamicRoutingConfig • Validation    │ │
 │  └─────────────────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────┤
 │                    基础层 (Infrastructure)                   │
@@ -226,7 +226,7 @@ class PipelineConfigGenerator extends BaseModule {
   async generatePipelineTable(config: ConfigData): Promise<PipelineTable>
 
   // 创建执行记录
-  private createExecutionRecord(virtualModelId: string, providerId: string, modelId: string): PipelineExecutionRecord
+  private createExecutionRecord(dynamicRoutingId: string, providerId: string, modelId: string): PipelineExecutionRecord
 
   // 完成执行记录
   private completeExecutionRecord(recordId: string, output?: any, error?: string): void
@@ -241,7 +241,7 @@ class PipelineConfigGenerator extends BaseModule {
 interface ConfigData {
   version: string;                                    // 配置版本
   providers: Record<string, ProviderConfig>;         // 供应商配置
-  virtualModels: Record<string, VirtualModelConfig>; // 虚拟模型配置
+  dynamicRoutingConfigs: Record<string, DynamicRoutingConfig>; // 动态路由配置
   createdAt: string;                                 // 创建时间
   updatedAt: string;                                 // 更新时间
 }
@@ -263,18 +263,18 @@ interface ProviderConfig {
 }
 ```
 
-### VirtualModelConfig (虚拟模型配置)
+### DynamicRoutingConfig (动态路由配置)
 
 ```typescript
-interface VirtualModelConfig {
-  id: string;                           // 虚拟模型ID
-  targets: VirtualModelTarget[];        // 目标配置列表
+interface DynamicRoutingConfig {
+  id: string;                           // 动态路由ID
+  targets: DynamicRoutingTarget[];        // 目标配置列表
   enabled: boolean;                     // 是否启用
   priority: number;                     // 优先级
   weight?: number;                      // 权重
 }
 
-interface VirtualModelTarget {
+interface DynamicRoutingTarget {
   providerId: string;                   // 目标供应商ID
   modelId: string;                      // 目标模型ID
   keyIndex: number;                     // 密钥索引
@@ -372,7 +372,7 @@ const configData = {
       }
     }
   },
-  virtualModels: {}
+  dynamicRoutingConfigs: {}
 };
 
 // 处理配置
@@ -401,7 +401,7 @@ const configData = {
       }
     }
   },
-  virtualModels: {
+  dynamicRoutingConfigs: {
     'gpt-4-virtual': {
       id: 'gpt-4-virtual',
       enabled: true,
@@ -425,9 +425,9 @@ const pipelineTable = await generator.generatePipelineTable(configData);
 const entries = pipelineTable.getEntries();
 console.log('流水线条目:', entries);
 
-// 按虚拟模型过滤
-const gpt4Entries = pipelineTable.getEntriesByVirtualModel('gpt-4-virtual');
-console.log('GPT-4虚拟模型条目:', gpt4Entries);
+// 按动态路由过滤
+const gpt4Entries = pipelineTable.getEntriesByDynamicRouting('gpt-4-virtual');
+console.log('GPT-4动态路由条目:', gpt4Entries);
 ```
 
 ## 高级使用
@@ -482,7 +482,7 @@ await loader.startWatching('./config.json', (newConfig) => {
 });
 
 // 监听多个文件
-const watchFiles = ['./config.json', './providers.json', './virtual-models.json'];
+const watchFiles = ['./config.json', './providers.json', './dynamic-routings.json'];
 
 for (const filePath of watchFiles) {
   await loader.startWatching(filePath, (config) => {
@@ -614,7 +614,7 @@ async function loadConfigWithFallback(primaryPath: string, fallbackPath: string)
       return {
         version: '1.0.0',
         providers: {},
-        virtualModels: {},
+        dynamicRoutingConfigs: {},
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

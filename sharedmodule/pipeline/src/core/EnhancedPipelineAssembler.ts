@@ -7,10 +7,9 @@
 import {
   PipelineWrapper,
   ModuleConfig,
-  VirtualModel,
+  DynamicRouting,
   RoutingConfig,
   RoutingOptimizationConfig,
-  DebugConfig,
   IModularPipelineExecutor,
   RoutingDecision,
   PerformanceMetrics
@@ -70,9 +69,9 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
   private ioTracker: IOTracker | null = null;
   private executionOptimizer: PipelineExecutionOptimizer | null = null;
 
-  private config: AssemblerConfig;
+  protected config: AssemblerConfig;
   private routingConfig: RoutingOptimizationConfig;
-  private debugConfig: DebugConfig;
+  protected debugConfig: any;
   private providerDiscoveryConfig: ProviderDiscoveryConfig;
   private monitoringConfig: MonitoringConfig;
 
@@ -118,7 +117,18 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
       logLevel: 'info',
       maxLogEntries: 1000,
       enableSampling: false,
-      sampleRate: 0.1
+      sampleRate: 0.1,
+      baseDirectory: '~/.rcc/debug-logs',
+      ioTracking: {
+        enabled: true,
+        autoRecord: false,
+        saveIndividualFiles: true,
+        saveSessionFiles: false,
+        ioDirectory: '~/.rcc/debug-logs/io',
+        includeTimestamp: true,
+        includeDuration: true,
+        maxEntriesPerFile: 100
+      }
     };
 
     this.providerDiscoveryConfig = {
@@ -194,7 +204,7 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
       this.isInitialized = true;
 
       this.logInfo('Enhanced Pipeline Assembler initialized successfully', {
-        virtualModels: wrapper.virtualModels.length,
+        dynamicRouting: wrapper.dynamicRouting.length,
         modules: wrapper.modules.length,
         routingStrategy: wrapper.routing.strategy,
         optimization: this.config.enableOptimization,
@@ -202,7 +212,11 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
       }, 'initialization');
 
     } catch (error) {
-      this.logError('Enhanced Pipeline Assembler initialization failed', error, 'initialization');
+      this.logError('Enhanced Pipeline Assembler initialization failed', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : 'Error'
+      }, 'initialization');
       throw error;
     }
   }
@@ -224,7 +238,8 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
    */
   private createDefaultPipelineWrapper(): PipelineWrapper {
     return {
-      virtualModels: [
+      id: 'default-pipeline-wrapper',
+      dynamicRouting: [
         {
           id: 'claude-3-sonnet',
           name: 'Claude 3 Sonnet',
@@ -306,7 +321,8 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
     const defaultConfig = this.createDefaultPipelineWrapper();
 
     return {
-      virtualModels: config.virtualModels || defaultConfig.virtualModels,
+      id: config.id || defaultConfig.id,
+      dynamicRouting: config.dynamicRouting || defaultConfig.dynamicRouting,
       modules: config.modules || defaultConfig.modules,
       routing: {
         ...defaultConfig.routing,
@@ -331,12 +347,20 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
       try {
         await this.discoverProviders();
       } catch (error) {
-        this.logError('Auto discovery failed', error, 'provider-discovery');
+        this.logError('Auto discovery failed', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : 'Error'
+        }, 'provider-discovery');
       }
     }, this.config.scanInterval);
 
     // 立即执行一次发现
-    this.discoverProviders().catch(error => this.logError('Discover providers failed', error, 'provider-discovery'));
+    this.discoverProviders().catch(error => this.logError('Discover providers failed', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Error'
+    }, 'provider-discovery'));
   }
 
   /**
@@ -371,7 +395,10 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
         try {
           await this.registerDiscoveredProvider(provider);
         } catch (error) {
-          this.logError('Failed to register provider', { providerId: provider.id, error: error.message || error }, 'provider-registration');
+          this.logError('Failed to register provider', {
+            providerId: provider.id,
+            error: error instanceof Error ? error.message : String(error)
+          }, 'provider-registration');
         }
       }
     }
@@ -399,7 +426,11 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
         await this.checkSystemHealth();
         await this.collectMetrics();
       } catch (error) {
-        this.logError('Monitoring check failed', error, 'monitoring');
+        this.logError('Monitoring check failed', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : 'Error'
+        }, 'monitoring');
       }
     }, this.monitoringConfig.metricsInterval);
 
@@ -433,7 +464,7 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
       }
 
     } catch (error) {
-      this.logError('Health check failed', error, 'health-check');
+      this.logError('Health check failed', error as unknown as Record<string, unknown>, 'health-check');
     }
   }
 
@@ -461,7 +492,9 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
               Object.values(healthData.providers || {}).filter((h: any) => h.isHealthy).length
           }, 'metrics-collection');
         } catch (routingError) {
-          this.logWarn('Routing metrics collection failed', { error: routingError.message || routingError }, 'metrics-collection');
+          this.logWarn('Routing metrics collection failed', {
+            error: routingError instanceof Error ? routingError.message : String(routingError)
+          }, 'metrics-collection');
         }
       }
 
@@ -475,12 +508,18 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
             bottleneck: 'N/A'
           }, 'metrics-collection');
         } catch (trackingError) {
-          this.logWarn('Performance metrics collection failed', { error: trackingError.message || trackingError }, 'metrics-collection');
+          this.logWarn('Performance metrics collection failed', {
+            error: trackingError instanceof Error ? trackingError.message : String(trackingError)
+          }, 'metrics-collection');
         }
       }
 
     } catch (error) {
-      this.logError('Metrics collection failed', error, 'metrics-collection');
+      this.logError('Metrics collection failed', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : 'Error'
+      }, 'metrics-collection');
     }
   }
 
@@ -539,15 +578,15 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
   }
 
   /**
-   * 动态添加虚拟模型
+   * 动态添加动态路由配置
    */
-  async addVirtualModel(virtualModel: VirtualModel): Promise<void> {
+  async addDynamicRouting(dynamicRouting: DynamicRouting): Promise<void> {
     if (!this.executor) {
       throw new Error('Executor not initialized');
     }
 
-    // 这里应该实现动态添加虚拟模型的逻辑
-    this.logInfo('Adding virtual model', { name: virtualModel.name }, 'model-management');
+    // 这里应该实现动态添加动态路由配置的逻辑
+    this.logInfo('Adding dynamic routing', { name: dynamicRouting.name }, 'routing-management');
 
     // 需要重新初始化执行器以应用新配置
     // 注意：这会影响正在进行的请求
@@ -571,6 +610,43 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
     }
 
     this.logInfo('Configuration updated', {}, 'configuration-management');
+  }
+
+  /**
+   * 处理请求 - 实现UnifiedPipelineBaseModule的抽象方法
+   */
+  public async process(request: any): Promise<any> {
+    if (!this.isInitialized || !this.executor) {
+      throw new Error('Enhanced Pipeline Assembler not initialized');
+    }
+
+    try {
+      // 使用默认动态路由ID执行请求
+      const routingId = 'claude-3-sonnet';
+      const result = await this.executor.execute(request, routingId);
+
+      if (result.success) {
+        return result.response;
+      } else {
+        throw result.error || new Error('Pipeline execution failed');
+      }
+    } catch (error) {
+      this.logError('Process request failed', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : 'Error'
+      }, 'process');
+      throw error;
+    }
+  }
+
+  /**
+   * 处理响应 - 实现UnifiedPipelineBaseModule的抽象方法
+   */
+  public async processResponse(response: any): Promise<any> {
+    // 响应处理逻辑 - 通常由各个模块在流水线中处理
+    // 这里可以直接返回响应，因为已经经过了完整的流水线处理
+    return response;
   }
 
   /**
@@ -615,7 +691,11 @@ export class EnhancedPipelineAssembler extends UnifiedPipelineBaseModule {
       this.logInfo('Enhanced Pipeline Assembler stopped', {}, 'shutdown');
 
     } catch (error) {
-      this.logError('Stop assembler error', error, 'shutdown');
+      this.logError('Stop assembler error', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : 'Error'
+      }, 'shutdown');
       throw error;
     }
   }

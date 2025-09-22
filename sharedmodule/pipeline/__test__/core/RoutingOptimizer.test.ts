@@ -6,7 +6,6 @@ import { RoutingOptimizer } from '../../src/core/RoutingOptimizer';
 import {
   RoutingDecision,
   RoutingOptimizationConfig,
-  VirtualModel,
   PipelineExecutionContext,
   ProviderInfo
 } from '../../src/interfaces/ModularInterfaces';
@@ -19,7 +18,7 @@ const mockUuid = uuidv4 as jest.MockedFunction<typeof uuidv4>;
 describe('RoutingOptimizer', () => {
   let routingOptimizer: RoutingOptimizer;
   let config: RoutingOptimizationConfig;
-  let mockVirtualModel: VirtualModel;
+  let mockVirtualModel: any;
   let mockContext: Partial<PipelineExecutionContext>;
 
   beforeEach(() => {
@@ -41,7 +40,7 @@ describe('RoutingOptimizer', () => {
     mockVirtualModel = {
       id: 'test-model',
       name: 'Test Model',
-      description: 'Test virtual model',
+      description: 'Test routing model',
       targets: [
         { providerId: 'provider-1', modelId: 'model-1' },
         { providerId: 'provider-2', modelId: 'model-2' },
@@ -682,7 +681,7 @@ describe('RoutingOptimizer', () => {
 
   describe('边界情况和错误处理', () => {
     test('应该处理空提供商列表', async () => {
-      const emptyVirtualModel: VirtualModel = {
+      const emptyVirtualModel: any = {
         id: 'empty-model',
         name: 'Empty Model',
         description: 'Model with no targets',
@@ -694,7 +693,7 @@ describe('RoutingOptimizer', () => {
     });
 
     test('应该处理单个提供商', async () => {
-      const singleProviderModel: VirtualModel = {
+      const singleProviderModel: any = {
         id: 'single-model',
         name: 'Single Provider Model',
         description: 'Model with one provider',

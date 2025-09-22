@@ -5,8 +5,9 @@
 
 import { BaseProvider, ProviderConfig } from '../framework/BaseProvider';
 import { IProviderModule, ProtocolType, PipelineExecutionContext, ModuleConfig, PipelineStage, ProviderInfo } from '../interfaces/ModularInterfaces';
-import { ErrorHandlingCenter as ErrorHandlingCenterImpl } from 'rcc-errorhandling';
+import { ErrorHandlingCenter } from 'rcc-errorhandling';
 import { OpenAIChatRequest, OpenAIChatResponse } from '../framework/OpenAIInterface';
+import { IFlowAuthHandler, IFlowAuthConfig } from '../auth/IFlowAuthHandler';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import open from 'open';
@@ -80,6 +81,7 @@ class IFlowProvider extends BaseProvider implements IProviderModule {
   private tokenExpiry: number = 0;
   private authMode: 'oauth' | 'apikey';
   private apiKey: string = '';
+  private authHandler: IFlowAuthHandler;
   
   // OAuth configuration for iFlow
   private oauthConfig = {
@@ -113,6 +115,22 @@ class IFlowProvider extends BaseProvider implements IProviderModule {
     this.authMode = finalConfig.authMode || 'oauth';
     this.credentialsPath = finalConfig.credentialsPath || path.join(os.homedir(), '.iflow', 'oauth_creds.json');
     this.apiKey = finalConfig.apiKey || '';
+
+    // 初始化认证错误处理器 - 使用简单对象作为临时解决方案
+    const errorHandlingCenter = {
+      handleError: (error: any) => console.error('Error:', error),
+      logError: (error: any) => console.log('Logging error:', error)
+    };
+    const authConfig: IFlowAuthConfig = {
+      providerName: 'IFlowProvider',
+      clientId: this.oauthConfig.clientId,
+      tokenUrl: this.oauthConfig.tokenUrl,
+      deviceCodeUrl: this.oauthConfig.deviceCodeUrl,
+      maxRefreshAttempts: 3,
+      autoReauthEnabled: true,
+      reauthTimeout: 300000
+    };
+    this.authHandler = new IFlowAuthHandler(authConfig, errorHandlingCenter);
 
     this.log(`iFlow Provider initialized (auth mode: ${this.authMode})`);
 
@@ -298,6 +316,11 @@ class IFlowProvider extends BaseProvider implements IProviderModule {
    * 将OpenAI请求转换为iFlow请求格式
    */
   private convertToIFlowRequest(openaiRequest: OpenAIChatRequest): any {
+    // 安全检查：确保messages存在且是数组
+    if (!openaiRequest.messages || !Array.isArray(openaiRequest.messages)) {
+      throw new Error('Invalid request: messages is required and must be an array');
+    }
+
     const iflowRequest: any = {
       model: this.defaultModel, // 始终使用配置的模型，忽略请求中的虚拟模型名称
       messages: openaiRequest.messages.map(msg => ({
@@ -360,12 +383,12 @@ class IFlowProvider extends BaseProvider implements IProviderModule {
   }
 
   /**
-   * 执行聊天请求
+   * 执行聊天请求 - 增强版本包含认证错误恢复
    */
   async executeChat(providerRequest: OpenAIChatRequest): Promise<OpenAIChatResponse> {
     let retryCount = 0;
     const maxRetries = 2;
-    
+
     while (retryCount <= maxRetries) {
       try {
         // 确保有效的认证凭据，支持自动刷新
@@ -389,30 +412,53 @@ class IFlowProvider extends BaseProvider implements IProviderModule {
         });
 
         return this.convertToOpenAIResponse(response.data);
-        
+
       } catch (error: any) {
         this.log(`Chat request failed (attempt ${retryCount + 1}): ${error.response?.data?.error || error.message}`);
-        
-        retryCount++;
-        
-        // 如果是认证错误且还有重试机会
-        if (error.response?.status === 401 && retryCount <= maxRetries) {
-          this.log('Authentication error, attempting token refresh and retry...');
-          
-          if (this.authMode === 'oauth') {
-            // 清除当前token强制重新加载
-            this.accessToken = '';
-            this.refreshToken = '';
-          } else {
-            this.apiKey = '';
+
+        // 如果是认证错误，使用认证错误处理器进行恢复
+        if (error.response?.status === 401 && this.authMode === 'oauth') {
+          this.log('Authentication error detected, attempting recovery...');
+
+          try {
+            const recoveryResult = await this.authHandler.handleIFlowAuthError(
+              {
+                operation: 'chat_request',
+                originalError: error,
+                providerInfo: {
+                  name: 'IFlow AI Provider',
+                  endpoint: this.endpoint
+                }
+              },
+              () => this.refreshAccessToken(),
+              () => this.reauthenticate()
+            );
+
+            if (recoveryResult.success) {
+              this.log(`Authentication recovery successful: ${recoveryResult.action}`);
+              continue; // 恢复成功，重试请求
+            } else {
+              this.log(`Authentication recovery failed: ${recoveryResult.error}`);
+              throw new Error(`Authentication recovery failed: ${recoveryResult.error}`);
+            }
+          } catch (recoveryError) {
+            this.log(`Authentication recovery process failed: ${(recoveryError as Error).message}`);
+            throw recoveryError;
           }
-          continue; // 重试
         }
-        
-        throw error;
+
+        retryCount++;
+
+        // 非认证错误或重试次数用完，直接抛出错误
+        if (retryCount > maxRetries) {
+          throw new Error('Max retries exceeded for chat request');
+        }
+
+        // 短暂延迟后重试
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
-    
+
     throw new Error('Max retries exceeded for chat request');
   }
 
@@ -973,30 +1019,109 @@ class IFlowProvider extends BaseProvider implements IProviderModule {
   }
 
   /**
-   * 检查健康状态 (实现IProviderModule接口)
+   * 检查健康状态 (实现IProviderModule接口) - 增强版本包含自动刷新和重新认证
    */
   async checkHealth(): Promise<{
     isHealthy: boolean;
     responseTime: number;
     error?: string;
+    needsReauth?: boolean;
+    tokenStatus?: string;
   }> {
     const startTime = Date.now();
 
     try {
-      // 简单的健康检查：检查认证和连接
-      const isHealthy = this.hasValidAuthentication();
-      const responseTime = Date.now() - startTime;
+      // 使用增强的健康检查，包含自动刷新和重新认证
+      if (this.authMode === 'oauth') {
+        const healthResult = await this.authHandler.enhancedHealthCheck(
+          () => this.isTokenExpired(),
+          () => this.refreshAccessToken(),
+          () => this.reauthenticate(),
+          () => this.testAPIConnection()
+        );
 
-      return {
-        isHealthy,
-        responseTime,
-        error: isHealthy ? undefined : 'No valid authentication'
-      };
+        const responseTime = Date.now() - startTime;
+
+        return {
+          isHealthy: healthResult.status === 'healthy',
+          responseTime,
+          error: healthResult.status === 'unhealthy' ? healthResult.error : undefined,
+          needsReauth: healthResult.needsReauth,
+          tokenStatus: healthResult.tokenStatus
+        };
+      } else {
+        // API Key模式的健康检查
+        const isHealthy = this.hasValidAuthentication();
+        const responseTime = Date.now() - startTime;
+
+        return {
+          isHealthy,
+          responseTime,
+          error: isHealthy ? undefined : 'No valid API key',
+          tokenStatus: isHealthy ? 'valid' : 'invalid'
+        };
+      }
     } catch (error) {
       const responseTime = Date.now() - startTime;
       return {
         isHealthy: false,
         responseTime,
+        error: error instanceof Error ? error.message : String(error),
+        tokenStatus: 'error'
+      };
+    }
+  }
+
+  /**
+   * 检查Token是否过期
+   */
+  private isTokenExpired(): boolean {
+    return !this.isTokenValid();
+  }
+
+  /**
+   * 测试API连接
+   */
+  private async testAPIConnection(): Promise<any> {
+    const testRequest: OpenAIChatRequest = {
+      model: this.defaultModel,
+      messages: [{ role: 'user', content: 'test' }],
+      max_tokens: 1,
+      stream: false,
+      validate: () => false
+    };
+
+    const iflowRequest = this.convertToIFlowRequest(testRequest);
+    const authHeaders = this.getAuthHeaders();
+
+    const response = await axios.post(`${this.endpoint}/chat/completions`, iflowRequest, {
+      headers: {
+        ...authHeaders,
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000 // 10秒超时用于测试
+    });
+
+    return { success: true, model: response.data.model };
+  }
+
+  /**
+   * 重新认证（用于auth handler）
+   */
+  private async reauthenticate(): Promise<{ success: boolean; tokens?: any; error?: string }> {
+    try {
+      const tokens = await this.completeOAuthFlow(true);
+      return {
+        success: true,
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiry: Date.now() + (tokens.expiresIn * 1000)
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
         error: error instanceof Error ? error.message : String(error)
       };
     }
@@ -1034,6 +1159,37 @@ class IFlowProvider extends BaseProvider implements IProviderModule {
    */
   private hasValidAuthentication(): boolean {
     return !!(this.accessToken || this.apiKey);
+  }
+
+  /**
+   * 实现BaseProvider的抽象方法 - 处理请求
+   */
+  async process(request: any, context?: any): Promise<any> {
+    if (!this.isInitialized) {
+      throw new Error('IFlowProvider not initialized');
+    }
+
+    try {
+      return await this.executeChat(request);
+    } catch (error) {
+      this.error('Request processing failed', error, 'process');
+      throw error;
+    }
+  }
+
+  /**
+   * 实现BaseProvider的抽象方法 - 处理响应
+   */
+  async processResponse(response: any, context?: any): Promise<any> {
+    // 对于IFlow Provider，响应已经是标准格式，直接返回
+    return response;
+  }
+
+  /**
+   * 健康检查方法（BaseProvider接口）
+   */
+  async healthCheck(): Promise<any> {
+    return this.checkHealth();
   }
 }
 

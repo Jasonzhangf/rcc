@@ -94,7 +94,7 @@ export type PackageJson = z.infer<typeof import('../schemas/core.js').packageJso
 export type TSConfig = z.infer<typeof import('../schemas/core.js').tsconfigSchema>;
 export type RCCConfig = z.infer<typeof import('../schemas/config.js').rccConfigSchema>;
 export type ProviderConfig = z.infer<typeof import('../schemas/config.js').providerConfigSchema>;
-export type VirtualModelConfig = z.infer<typeof import('../schemas/config.js').virtualModelConfigSchema>;
+export type DynamicRoutingConfig = z.infer<typeof import('../schemas/config.js').dynamicRoutingConfigSchema>;
 export type BaseModuleConfig = z.infer<typeof import('../schemas/module.js').baseModuleConfigSchema>;
 
 // 错误类型

@@ -7,10 +7,7 @@
  */
 
 import {
-  ErrorHandlingCenter,
-  ErrorContext,
-  ErrorSeverity,
-  ErrorCategory
+  ErrorHandlingCenter
 } from 'rcc-errorhandling';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -19,7 +16,10 @@ import {
   RecoveryAction,
   RecoveryPattern,
   StrategyContext,
-  ErrorEvent
+  ErrorEvent,
+  ErrorContext,
+  ErrorSeverity,
+  ErrorCategory
 } from './ErrorMonitoringInterfaces';
 
 import { StrategyManager } from '../strategies/StrategyManager';

@@ -33,13 +33,13 @@ describe('Benchmark Tests - System Baselines', () => {
     test('should meet baseline response time targets', async () => {
       const sampleSize = 100;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const responseTimes: number[] = [];
 
       // Collect response times
       for (let i = 0; i < sampleSize; i++) {
         const startTime = Date.now();
-        await executor.execute(request, virtualModelId);
+        await executor.execute(request, routingId);
         const endTime = Date.now();
         responseTimes.push(endTime - startTime);
       }
@@ -70,7 +70,7 @@ describe('Benchmark Tests - System Baselines', () => {
     test('should meet streaming response time benchmarks', async () => {
       const sampleSize = 50;
       const request = createStreamingTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
       const responseTimes: number[] = [];
 
       for (let i = 0; i < sampleSize; i++) {
@@ -101,13 +101,13 @@ describe('Benchmark Tests - System Baselines', () => {
     test('should meet throughput targets for sequential processing', async () => {
       const requestCount = 200;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
 
       // Sequential processing
       for (let i = 0; i < requestCount; i++) {
-        await executor.execute(request, virtualModelId);
+        await executor.execute(request, routingId);
       }
 
       const endTime = Date.now();
@@ -123,13 +123,13 @@ describe('Benchmark Tests - System Baselines', () => {
     test('should meet throughput targets for concurrent processing', async () => {
       const concurrency = 50;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
 
       // Concurrent processing
       const promises = Array(concurrency).fill(null).map(() =>
-        executor.execute(request, virtualModelId)
+        executor.execute(request, routingId)
       );
 
       await Promise.all(promises);
@@ -148,7 +148,7 @@ describe('Benchmark Tests - System Baselines', () => {
       const duration = 60000; // 1 minute
       const targetRate = 30; // requests per second
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
       const completedRequests: any[] = [];
@@ -158,7 +158,7 @@ describe('Benchmark Tests - System Baselines', () => {
       const requestInterval = setInterval(() => {
         if (Date.now() - startTime < duration) {
           requestCount++;
-          executor.execute(request, virtualModelId).then(result => {
+          executor.execute(request, routingId).then(result => {
             completedRequests.push({ ...result, completedAt: Date.now() });
           });
         }
@@ -187,13 +187,13 @@ describe('Benchmark Tests - System Baselines', () => {
     test('should meet memory efficiency targets', async () => {
       const requestCount = 1000;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const initialMemory = process.memoryUsage();
 
       // Execute many requests
       for (let i = 0; i < requestCount; i++) {
-        await executor.execute(request, virtualModelId);
+        await executor.execute(request, routingId);
       }
 
       const finalMemory = process.memoryUsage();
@@ -215,14 +215,14 @@ describe('Benchmark Tests - System Baselines', () => {
       const iterations = 5;
       const requestsPerIteration = 200;
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       for (let iteration = 0; iteration < iterations; iteration++) {
         const memoryBefore = process.memoryUsage().heapUsed;
 
         // Execute batch of requests
         for (let i = 0; i < requestsPerIteration; i++) {
-          await executor.execute(request, virtualModelId);
+          await executor.execute(request, routingId);
         }
 
         // Force garbage collection if available
@@ -279,14 +279,14 @@ describe('Benchmark Tests - System Baselines', () => {
       });
     }, TEST_TIMEOUT * 5);
 
-    test('should handle large numbers of virtual models efficiently', async () => {
-      // Create wrapper with many virtual models
-      const manyModelsWrapper = {
+    test('should handle large numbers of dynamic routing configurations efficiently', async () => {
+      // Create wrapper with many dynamic routing configurations
+      const manyRoutingWrapper = {
         ...testWrapper,
-        virtualModels: Array(100).fill(null).map((_, i) => ({
-          id: `model-${i}`,
-          name: `Test Model ${i}`,
-          description: `Test model ${i}`,
+        dynamicRouting: Array(100).fill(null).map((_, i) => ({
+          id: `routing-${i}`,
+          name: `Test Routing ${i}`,
+          description: `Test routing ${i}`,
           targets: [
             {
               providerId: 'test-provider',
@@ -300,15 +300,15 @@ describe('Benchmark Tests - System Baselines', () => {
       };
 
       const complexExecutor = new ModularPipelineExecutor(moduleFactory, validator);
-      await complexExecutor.initialize(manyModelsWrapper);
+      await complexExecutor.initialize(manyRoutingWrapper);
 
       const request = createTestRequest();
       const startTime = Date.now();
 
-      // Test routing to different models
+      // Test routing to different configurations
       for (let i = 0; i < 50; i++) {
-        const modelId = `model-${i % 100}`;
-        await complexExecutor.execute(request, modelId);
+        const routingId = `routing-${i % 100}`;
+        await complexExecutor.execute(request, routingId);
       }
 
       const endTime = Date.now();
@@ -316,7 +316,7 @@ describe('Benchmark Tests - System Baselines', () => {
 
       expect(averageTime).toBeLessThan(100); // Should handle routing efficiently
 
-      console.log(`Large virtual model count: ${averageTime.toFixed(2)}ms average per request`);
+      console.log(`Large dynamic routing count: ${averageTime.toFixed(2)}ms average per request`);
 
       await complexExecutor.destroy();
     }, TEST_TIMEOUT * 5);
@@ -326,7 +326,7 @@ describe('Benchmark Tests - System Baselines', () => {
     test('should maintain performance over extended periods', async () => {
       const duration = 300000; // 5 minutes
       const request = createTestRequest();
-      const virtualModelId = 'test-virtual-model';
+      const routingId = 'test-dynamic-routing';
 
       const startTime = Date.now();
       const results: any[] = [];
@@ -336,7 +336,7 @@ describe('Benchmark Tests - System Baselines', () => {
       const requestGenerator = setInterval(() => {
         if (Date.now() - startTime < duration) {
           requestCount++;
-          executor.execute(request, virtualModelId).then(result => {
+          executor.execute(request, routingId).then(result => {
             results.push({ ...result, timestamp: Date.now() });
           });
         }

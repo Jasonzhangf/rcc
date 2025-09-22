@@ -34,7 +34,7 @@ import {
   ErrorCategory,
   ErrorSeverity
 } from '../interfaces/ModularInterfaces';
-import { PipelineTracker } from '../framework/PipelineTracker';
+import { IPipelineTracker, PipelineTracker } from '../framework/PipelineTracker';
 
 /**
  * Base IO Tracking Configuration
@@ -133,7 +133,7 @@ export interface PipelineModuleConfig {
   name: string;
   version: string;
   description: string;
-  type: 'provider' | 'scheduler' | 'tracker' | 'pipeline' | 'debuggable-pipeline';
+  type: 'provider' | 'scheduler' | 'tracker' | 'pipeline';
 
   // Pipeline-specific settings
   providerName?: string;
@@ -301,12 +301,12 @@ export interface PipelineMetrics {
  * Unified Pipeline Base Module with enhanced debug capabilities and strict type safety
  * 统一流水线基础模块，具有增强调试功能和严格类型安全
  */
-export class UnifiedPipelineBaseModule extends BaseModule {
+export abstract class UnifiedPipelineBaseModule extends BaseModule {
   protected config: any;
   protected pipelineConfig: PipelineModuleConfig;
   protected errorHandler: any;
   protected debugCenter: any | null = null;
-  protected tracker: PipelineTracker;
+  protected tracker: IPipelineTracker;
   protected contextFactory: ExecutionContextFactory;
   protected twoPhaseDebugSystem: any | null;
 
@@ -629,7 +629,7 @@ export class UnifiedPipelineBaseModule extends BaseModule {
       // Execute operation with timeout and retry logic
       const result = await this.executeWithTimeoutAndRetry(
         () => operation(context),
-        options?.timeout || this.pipelineConfig.executionTimeout || 30000,
+        options?.timeout || this.pipelineConfig.requestTimeout || 30000,
         options?.enableRetry,
         options?.maxRetries,
         options?.retryDelay
@@ -937,10 +937,26 @@ export class UnifiedPipelineBaseModule extends BaseModule {
   }
 
   /**
-   * Log error message with proper typing
-   * 记录错误消息，具有适当的类型
+   * Log info message - public method for child classes
+   * 记录信息消息 - 子类可用的公共方法
    */
-  private logError(message: string, context?: Record<string, unknown>, operation?: string): void {
+  protected logInfo(message: string, context?: Record<string, unknown>, operation?: string): void {
+    this.debug('info', message, context ?? {}, operation ?? 'info');
+  }
+
+  /**
+   * Log warning message - public method for child classes
+   * 记录警告消息 - 子类可用的公共方法
+   */
+  protected logWarn(message: string, context?: Record<string, unknown>, operation?: string): void {
+    this.debug('warn', message, context ?? {}, operation ?? 'warn');
+  }
+
+  /**
+   * Log error message - public method for child classes
+   * 记录错误消息 - 子类可用的公共方法
+   */
+  public logError(message: string, context?: Record<string, unknown>, operation?: string): void {
     this.debug('error', message, context ?? {}, operation ?? 'error');
   }
 
@@ -968,7 +984,7 @@ export class UnifiedPipelineBaseModule extends BaseModule {
       };
     }
 
-    this.logInfo(`Pipeline stage ${status}`, logData, 'recordPipelineStage');
+    this.logInfo(`Pipeline stage ${status}`, logData as unknown as Record<string, unknown>, 'recordPipelineStage');
   }
 
   /**
@@ -1281,7 +1297,7 @@ export class UnifiedPipelineBaseModule extends BaseModule {
       traceId,
       sessionId,
       requestId,
-      virtualModelId: rawContext.module?.moduleId || 'unknown',
+      routingId: rawContext.module?.moduleId || 'unknown',
       providerId: rawContext.module?.providerName || 'unknown',
       startTime: rawContext.timing?.startTime || Date.now(),
       stage,
@@ -1372,7 +1388,7 @@ export class UnifiedPipelineBaseModule extends BaseModule {
    * Get tracer instance
    * 获取跟踪器实例
    */
-  public getTracker(): PipelineTracker {
+  public getTracker(): IPipelineTracker {
     return this.tracker;
   }
 

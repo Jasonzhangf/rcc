@@ -33,7 +33,7 @@ describe('Functional Tests - Basic Scenarios', () => {
         execute: async (context) => {
           if (context.request) {
             // Execute single request
-            const result = await executor.execute(context.request, context.virtualModelId);
+            const result = await executor.execute(context.request, context.routingId);
             return { ...context, result };
           } else if (context.requests) {
             // Execute multiple requests
@@ -46,7 +46,7 @@ describe('Functional Tests - Basic Scenarios', () => {
                 ),
                 temperature: 0.7
               };
-              const result = await executor.execute(request, context.virtualModelId);
+              const result = await executor.execute(request, context.routingId);
               results.push({ request, result });
             }
             return { ...context, results };
@@ -185,7 +185,7 @@ describe('Functional Tests - Performance Scenarios', () => {
 
             // Execute all requests concurrently
             const results = await Promise.all(
-              context.requests.map((request: any) => executor.execute(request, context.virtualModelId))
+              context.requests.map((request: any) => executor.execute(request, context.routingId))
             );
 
             const endTime = Date.now();
@@ -215,7 +215,7 @@ describe('Functional Tests - Performance Scenarios', () => {
               }));
 
               const results = await Promise.all(
-                requests.map((request: any) => executor.execute(request, context.virtualModelId))
+                requests.map((request: any) => executor.execute(request, context.routingId))
               );
 
               const endTime = Date.now();
@@ -290,7 +290,7 @@ describe('Functional Tests - Comprehensive Suite', () => {
         ...scenario,
         execute: async (context) => {
           if (context.request) {
-            const result = await executor.execute(context.request, context.virtualModelId);
+            const result = await executor.execute(context.request, context.routingId);
             return { ...context, result };
           } else if (context.requests) {
             const results = [];
@@ -302,7 +302,7 @@ describe('Functional Tests - Comprehensive Suite', () => {
                 ),
                 temperature: 0.7
               };
-              const result = await executor.execute(request, context.virtualModelId);
+              const result = await executor.execute(request, context.routingId);
               results.push({ request, result });
             }
             return { ...context, results };
@@ -314,7 +314,7 @@ describe('Functional Tests - Comprehensive Suite', () => {
               max_tokens: 1000
             };
 
-            const result = await executor.execute(request, context.virtualModelId);
+            const result = await executor.execute(request, context.routingId);
             return { ...context, result };
           }
           return context;

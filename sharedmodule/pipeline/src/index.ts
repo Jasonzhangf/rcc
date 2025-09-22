@@ -49,7 +49,6 @@ export {
 // Monitoring and metrics system
 export {
   ErrorMonitor,
-  IErrorMonitor,
   AutomatedRecoverySystem,
   HealthCheckSystem,
   MonitoringIntegration,
@@ -58,12 +57,15 @@ export {
   Alert,
   RecoveryAction,
   StrategyContext as MonitoringStrategyContext,
-  RecoveryPattern,
+  RecoveryPattern
+} from './core/monitoring';
+
+// Monitoring configuration types
+export type {
   MonitoringConfig,
   AdaptiveRecoveryConfig,
   HealthCheckConfig,
-  MonitoringIntegrationConfig,
-  UnifiedDashboardData
+  MonitoringIntegrationConfig
 } from './core/monitoring';
 
 // Default configurations
@@ -87,7 +89,7 @@ export const MONITORING_SYSTEM_VERSION = '1.0.0';
 export const MONITORING_SYSTEM_NAME = 'RCC Pipeline Monitoring System';
 
 // Framework components
-export { VirtualModelSchedulerManager } from './framework/VirtualModelSchedulerManager';
+export { DynamicRoutingManager } from './framework/DynamicRoutingManager';
 export { PipelineAssembler } from './framework/PipelineAssembler';
 export { ModuleScanner } from './framework/ModuleScanner';
 export { PipelineTracker } from './framework/PipelineTracker';

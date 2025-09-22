@@ -49,11 +49,11 @@ jest.mock('uuid', () => ({
 
 // Global test utilities
 export const createTestPipelineWrapper = (): PipelineWrapper => ({
-  virtualModels: [
+  dynamicRouting: [
     {
-      id: 'test-virtual-model',
-      name: 'Test Virtual Model',
-      description: 'Test virtual model for unit tests',
+      id: 'test-dynamic-routing',
+      name: 'Test Dynamic Routing',
+      description: 'Test dynamic routing for unit tests',
       targets: [
         {
           providerId: 'test-provider',

@@ -41,7 +41,7 @@
     }
   },
   "routes": {},
-  "virtualModels": {
+  "dynamicRouting": {
     "claude-3-sonnet": {
       "provider": "anthropic",
       "model": "claude-3-sonnet-20240229",

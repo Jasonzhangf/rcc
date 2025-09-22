@@ -20,7 +20,8 @@ export {
   ModuleRegistry,
   RequestManager,
   MessageProcessor,
-  StatisticsTracker
+  StatisticsTracker,
+  TopicSubscriptionManager
 } from './messagecenter/index';
 
 // Export BaseModule

@@ -6,3 +6,6 @@ export { ModuleRegistry } from './messagecenter/ModuleRegistry';
 export { RequestManager } from './messagecenter/RequestManager';
 export { MessageProcessor } from './messagecenter/MessageProcessor';
 export { StatisticsTracker } from './messagecenter/StatisticsTracker';
+
+// Export new topic subscription components
+export { TopicSubscriptionManager } from './messagecenter/TopicSubscriptionManager';

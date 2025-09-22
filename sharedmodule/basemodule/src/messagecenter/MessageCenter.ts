@@ -4,6 +4,7 @@ import { ModuleRegistry } from './ModuleRegistry';
 import { RequestManager } from './RequestManager';
 import { MessageProcessor } from './MessageProcessor';
 import { StatisticsTracker } from './StatisticsTracker';
+import { TopicSubscriptionManager } from './TopicSubscriptionManager';
 
 /**
  * Refactored Message center for module communication
@@ -15,6 +16,7 @@ export class MessageCenter {
   private requestManager: RequestManager;
   private messageProcessor: MessageProcessor;
   private statisticsTracker: StatisticsTracker;
+  private topicSubscriptionManager: TopicSubscriptionManager;
 
   /**
    * Private constructor for singleton pattern
@@ -24,6 +26,7 @@ export class MessageCenter {
     this.requestManager = new RequestManager();
     this.messageProcessor = new MessageProcessor();
     this.statisticsTracker = new StatisticsTracker();
+    this.topicSubscriptionManager = new TopicSubscriptionManager(this.moduleRegistry);
 
     this.setupEventHandlers();
   }
@@ -61,6 +64,9 @@ export class MessageCenter {
 
       // Clean up any pending requests for this module
       this.requestManager.cancelAll(new Error(`Module ${moduleId} was unregistered`));
+
+      // Clean up topic subscriptions
+      this.topicSubscriptionManager.cleanupOrphanedSubscriptions();
 
       // Notify other modules about unregistration
       this.broadcastMessage({
@@ -273,6 +279,139 @@ export class MessageCenter {
   }
 
   /**
+   * Subscribe a module to a specific topic
+   * @param moduleId - Module ID to subscribe
+   * @param topic - Topic to subscribe to
+   * @param options - Subscription options
+   */
+  public subscribeToTopic(
+    moduleId: string,
+    topic: string,
+    options: { wildcard?: boolean } = {}
+  ): void {
+    this.topicSubscriptionManager.subscribeToTopic(moduleId, topic, options);
+  }
+
+  /**
+   * Unsubscribe a module from a specific topic
+   * @param moduleId - Module ID to unsubscribe
+   * @param topic - Topic to unsubscribe from
+   * @param options - Unsubscription options
+   */
+  public unsubscribeFromTopic(
+    moduleId: string,
+    topic: string,
+    options: { wildcard?: boolean } = {}
+  ): void {
+    this.topicSubscriptionManager.unsubscribeFromTopic(moduleId, topic, options);
+  }
+
+  /**
+   * Get all subscribers for a topic
+   * @param topic - Topic to get subscribers for
+   * @returns Array of module IDs subscribed to the topic
+   */
+  public getTopicSubscribers(topic: string): string[] {
+    return this.topicSubscriptionManager.getTopicSubscribers(topic);
+  }
+
+  /**
+   * Check if a module is subscribed to a topic
+   * @param moduleId - Module ID to check
+   * @param topic - Topic to check
+   * @returns True if module is subscribed
+   */
+  public isSubscribed(moduleId: string, topic: string): boolean {
+    return this.topicSubscriptionManager.isSubscribed(moduleId, topic);
+  }
+
+  /**
+   * Get all topics a module is subscribed to
+   * @param moduleId - Module ID to get topics for
+   * @returns Array of topics the module is subscribed to
+   */
+  public getModuleSubscriptions(moduleId: string): string[] {
+    return this.topicSubscriptionManager.getModuleSubscriptions(moduleId);
+  }
+
+  /**
+   * Get all active topics
+   * @returns Array of active topic names
+   */
+  public getAllTopics(): string[] {
+    return this.topicSubscriptionManager.getAllTopics();
+  }
+
+  /**
+   * Get subscription statistics
+   * @returns Subscription statistics
+   */
+  public getSubscriptionStats() {
+    return this.topicSubscriptionManager.getSubscriptionStats();
+  }
+
+  /**
+   * Publish a message to a specific topic
+   * @param topic - Topic to publish to
+   * @param message - Message to publish (without target field)
+   * @returns Array of module IDs that received the message
+   */
+  public publishToTopic(topic: string, message: Omit<Message, 'target'>): string[] {
+    const fullMessage: Message = {
+      ...message,
+      topic
+    };
+
+    if (!this.messageProcessor.validateMessage(fullMessage)) {
+      console.error('Invalid topic message structure:', fullMessage);
+      this.statisticsTracker.incrementMessagesFailed();
+      return [];
+    }
+
+    this.statisticsTracker.incrementTotalMessages();
+
+    const subscribers = this.topicSubscriptionManager.getTopicSubscribers(topic);
+
+    setImmediate(() => {
+      this.deliverToTopicSubscribers(fullMessage, subscribers).catch((error) => {
+        console.error(`Error delivering topic message to ${topic}:`, error);
+        this.statisticsTracker.incrementMessagesFailed();
+      });
+    });
+
+    return subscribers;
+  }
+
+  /**
+   * Deliver message to topic subscribers
+   * @param message - Message to deliver
+   * @param subscribers - Array of subscriber module IDs
+   */
+  private async deliverToTopicSubscribers(message: Message, subscribers: string[]): Promise<void> {
+    const deliveryPromises: Promise<void>[] = [];
+
+    for (const moduleId of subscribers) {
+      if (moduleId !== message.source) {
+        // Don't send back to sender
+        const moduleInstance = this.moduleRegistry.get(moduleId);
+        if (moduleInstance) {
+          const deliveryPromise = this.messageProcessor.deliverMessage(message, moduleInstance)
+            .then(() => {
+              this.statisticsTracker.incrementMessagesDelivered();
+            })
+            .catch((error) => {
+              console.error(`Error delivering topic message to ${moduleId}:`, error);
+              this.statisticsTracker.incrementMessagesFailed();
+            });
+          deliveryPromises.push(deliveryPromise);
+        }
+      }
+    }
+
+    await Promise.allSettled(deliveryPromises);
+  }
+
+  /**
    * Get the number of registered modules
    * @returns Number of registered modules
    */
@@ -319,6 +458,7 @@ export class MessageCenter {
   public destroy(): void {
     this.requestManager.cancelAll();
     this.moduleRegistry.clear();
+    this.topicSubscriptionManager.clear();
     this.statisticsTracker.reset();
   }
 }

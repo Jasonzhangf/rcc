@@ -114,6 +114,11 @@ export class MessageProcessor {
       return false;
     }
 
+    // Validate topic field
+    if (message.topic && (typeof message.topic !== 'string' || message.topic.trim() === '')) {
+      return false;
+    }
+
     if (message.correlationId && (typeof message.correlationId !== 'string' || message.correlationId.trim() === '')) {
       return false;
     }
@@ -146,6 +151,11 @@ export class MessageProcessor {
     // Add optional fields if they exist and are valid
     if (message.target && typeof message.target === 'string' && message.target.trim() !== '') {
       sanitized.target = message.target;
+    }
+
+    // Add topic field
+    if (message.topic && typeof message.topic === 'string' && message.topic.trim() !== '') {
+      sanitized.topic = message.topic;
     }
 
     if (message.correlationId && typeof message.correlationId === 'string' && message.correlationId.trim() !== '') {

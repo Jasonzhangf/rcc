@@ -23,6 +23,11 @@ export interface Message {
   target?: string;
 
   /**
+   * Topic for subscription-based messaging (optional)
+   */
+  topic?: string;
+
+  /**
    * Message payload
    */
   payload: any;

@@ -14,6 +14,7 @@
 1. **Docs**
    - 先写/更新：
      - `docs/PHASE_05_PROVIDER_BLOCK_WORKFLOW.md`
+     - `docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md`（阶段收口时）
      - 当前 batch 文档（如 `docs/PHASE_05_PROVIDER_BLOCK_BATCH_01.md` / `docs/PHASE_05_PROVIDER_BLOCK_BATCH_02.md` / `docs/PHASE_05_PROVIDER_BLOCK_BATCH_03.md` / `docs/PHASE_05_PROVIDER_BLOCK_BATCH_04.md`）
      - `docs/agent-routing/80-provider-block-routing.md`
 2. **Skills**
@@ -103,3 +104,4 @@
 3. `rcc-core-provider` 的边界与第一批最小主链已经锁定。
 4. phase5 verify 脚本与 CI 可自动收口文档/技能阶段。
 5. 当前批次通过后，才允许继续扩 HTTP execute / runtime metadata / SSE transport 分支。
+6. Phase 05A 收口时，必须补 `docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md` 作为阶段 review 真源。

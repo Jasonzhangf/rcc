@@ -20,11 +20,13 @@
    - 第三批最小闭环：runtime metadata attach-read + request preprocess 的最小 transport/runtime 投影。
 5. `docs/PHASE_05_PROVIDER_BLOCK_BATCH_04.md`
    - 第四批最小闭环：streaming / SSE transport boundary。
-6. `.agents/skills/rcc-provider-block-migration/SKILL.md`
+6. `docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md`
+   - Phase 05A 的收口 review 真源，用于回答“provider 已经完成什么、边界锁死到哪里”。
+7. `.agents/skills/rcc-provider-block-migration/SKILL.md`
    - provider block 迁移的可复用动作。
-7. `docs/CRATE_BOUNDARIES.md`
+8. `docs/CRATE_BOUNDARIES.md`
    - 确认唯一真源 crate 仍是 `rcc-core-provider`。
-8. `docs/RUST_WORKSPACE_ARCHITECTURE.md`
+9. `docs/RUST_WORKSPACE_ARCHITECTURE.md`
    - 确认三层结构、host/provider 薄边界与单 runtime 约束。
 
 ## 规则

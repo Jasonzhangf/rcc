@@ -248,3 +248,9 @@
 - Resource decision: 为保持单 runtime 与薄包装，batch04 继续复用同步轻量 HTTP client（`ureq`）读取 raw SSE body，不引入 snapshot attach、event normalizer、Host bridge、独立进程或额外 async runtime；host/orchestrator 仍然保持极薄，没有复制 streaming transport 语义。
 - Skill refined: SSE 迁移先只闭合 `resolve wants_sse -> mark request body -> execute raw SSE -> wrap carrier` 主链；provider 不解释业务级 streaming semantics，也不把协议层 responses/gemini/qwen 专用处理混进同一批。
 - Verification: `cargo fmt --manifest-path rust/Cargo.toml --all`, `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_sse_transport.sh`.
+
+## 2026-04-18 — Phase 05A review doc closed
+- Scope: 已补齐 `docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md`，并同步更新 `docs/PHASE_05_PROVIDER_BLOCK_WORKFLOW.md`、`docs/agent-routing/80-provider-block-routing.md`、`scripts/verify_phase5_provider_block.py`，把 Phase 05A 已完成范围、锁死边界、验证入口与下一步建议收口为单一 review 真源。
+- Locked conclusion: provider 在 Phase 05A 内的唯一真源范围继续固定为 `transport / auth / runtime`；host/orchestrator 继续保持极薄，不复制 provider 语义，不新增 daemon/sidecar/额外 runtime。
+- Reusable rule: 当一个阶段已完成多批迁移后，必须补一份 review 真源回答“已经完成什么/明确不做什么/下一步从哪开始”，避免后续阶段反复回头重新判定边界。
+- Verification: `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_sse_transport.sh`.

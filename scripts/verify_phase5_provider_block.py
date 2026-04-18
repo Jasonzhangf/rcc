@@ -13,6 +13,7 @@ REQUIRED_FILES = [
     'docs/PHASE_05_PROVIDER_BLOCK_BATCH_02.md',
     'docs/PHASE_05_PROVIDER_BLOCK_BATCH_03.md',
     'docs/PHASE_05_PROVIDER_BLOCK_BATCH_04.md',
+    'docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md',
     '.agents/skills/rcc-provider-block-migration/SKILL.md',
     '.github/workflows/phase5-provider-block.yml',
 ]
@@ -61,6 +62,7 @@ if not errors:
         'docs/PHASE_05_PROVIDER_BLOCK_BATCH_02.md',
         'docs/PHASE_05_PROVIDER_BLOCK_BATCH_03.md',
         'docs/PHASE_05_PROVIDER_BLOCK_BATCH_04.md',
+        'docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md',
         '.agents/skills/rcc-provider-block-migration/SKILL.md',
         'transport / auth / runtime',
         'python3 scripts/verify_phase5_provider_block.py',
@@ -79,6 +81,7 @@ if not errors:
         'docs/PHASE_05_PROVIDER_BLOCK_BATCH_02.md',
         'docs/PHASE_05_PROVIDER_BLOCK_BATCH_03.md',
         'docs/PHASE_05_PROVIDER_BLOCK_BATCH_04.md',
+        'docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md',
         'Batch 02：HTTP execute + retry skeleton',
         'Batch 03：runtime metadata / context attach-read',
         'Batch 04：streaming/SSE transport boundary',
@@ -151,6 +154,21 @@ if not errors:
     ]:
         if marker not in batch04:
             errors.append(f'PHASE_05_PROVIDER_BLOCK_BATCH_04 missing marker: {marker}')
+
+    review = read('docs/PHASE_05_PROVIDER_BLOCK_REVIEW.md')
+    for marker in [
+        'Phase 05A',
+        'transport / auth / runtime',
+        'docs/PHASE_05_PROVIDER_BLOCK_BATCH_01.md',
+        'docs/PHASE_05_PROVIDER_BLOCK_BATCH_02.md',
+        'docs/PHASE_05_PROVIDER_BLOCK_BATCH_03.md',
+        'docs/PHASE_05_PROVIDER_BLOCK_BATCH_04.md',
+        'python3 scripts/verify_phase5_provider_block.py',
+        'bash scripts/verify_phase5_provider_sse_transport.sh',
+        '.github/workflows/phase5-provider-block.yml',
+    ]:
+        if marker not in review:
+            errors.append(f'PHASE_05_PROVIDER_BLOCK_REVIEW missing marker: {marker}')
 
     testing = read('docs/TESTING_AND_ACCEPTANCE.md')
     for marker in [

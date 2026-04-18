@@ -37,13 +37,16 @@
    - 作用：定义 domain 纯函数迁移批次与验证闭环。
 8. Servertool block migration：`docs/agent-routing/70-servertool-block-routing.md`
    - 作用：定义 Phase 04A servertool block 真源迁移、批次和验证闭环。
-9. 本地 skills：
+9. Provider block migration：`docs/agent-routing/80-provider-block-routing.md`
+   - 作用：定义 Phase 05A provider block 真源迁移、批次和验证闭环。
+10. 本地 skills：
    - `.agents/skills/rcc-closed-loop/SKILL.md`
    - `.agents/skills/rcc-doc-driven-dev/SKILL.md`
    - `.agents/skills/rcc-test-gate/SKILL.md`
    - `.agents/skills/rcc-rust-skeleton/SKILL.md`
    - `.agents/skills/rcc-pure-functions-migration/SKILL.md`
    - `.agents/skills/rcc-servertool-block-migration/SKILL.md`
+  - `.agents/skills/rcc-provider-block-migration/SKILL.md`
 
 ## 标准执行顺序
 1. 读本文件，确认硬护栏与路由入口。

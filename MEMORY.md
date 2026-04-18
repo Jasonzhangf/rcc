@@ -182,3 +182,10 @@
 - Decision: 为符合“包装尽量薄”，最小可跑 gate 直接复用 phase2 skeleton 现有验证链，不再额外套一层同义 wrapper；同时保留 `bash scripts/verify_phase4_servertool_reasoning_stop_fail_count.sh` 作为当前更强基线验证。
 - Cleanup: 补全 `.gitignore`（editor/python/rust/local runtime/task state），并清理 `rcc-core-servertool` 当前两个 Rust warning，确保提交前 baseline 干净。
 - Verification: `cargo fmt --manifest-path rust/Cargo.toml --all`, `bash scripts/verify_phase2_cargo_skeleton.sh`, `bash scripts/verify_phase4_servertool_reasoning_stop_fail_count.sh`。
+
+
+## 2026-04-18 — Phase 05A provider block docs gate opened
+- Decision: servertool phase4 已形成当前可推送基线后，下一大任务切到 provider block；但边界继续锁死在 `transport / auth / runtime`，不把 route/tool/protocol 业务语义带进 provider。
+- Scope: 已落盘 `docs/PHASE_05_PROVIDER_BLOCK_WORKFLOW.md`、`docs/PHASE_05_PROVIDER_BLOCK_BATCH_01.md`、`docs/agent-routing/80-provider-block-routing.md`、`.agents/skills/rcc-provider-block-migration/SKILL.md`、`scripts/verify_phase5_provider_block.py`、phase5 CI workflow。
+- Batch01 boundary: 先只收 `base_url + endpoint + apikey/no-auth headers + timeout + body -> canonical transport request plan`，不提前做真实 HTTP、OAuth、runtime metadata、SSE 或 provider health。
+- Verification: `python3 scripts/verify_phase5_provider_block.py`。

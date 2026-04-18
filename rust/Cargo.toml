@@ -1,0 +1,28 @@
+[workspace]
+members = [
+  "crates/rcc-core-domain",
+  "crates/rcc-core-pipeline",
+  "crates/rcc-core-router",
+  "crates/rcc-core-servertool",
+  "crates/rcc-core-provider",
+  "crates/rcc-core-orchestrator",
+  "crates/rcc-core-host",
+  "crates/rcc-core-testkit",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+version = "0.1.0"
+publish = false
+
+[workspace.dependencies]
+rcc-core-domain = { path = "crates/rcc-core-domain" }
+rcc-core-pipeline = { path = "crates/rcc-core-pipeline" }
+rcc-core-router = { path = "crates/rcc-core-router" }
+rcc-core-servertool = { path = "crates/rcc-core-servertool" }
+rcc-core-provider = { path = "crates/rcc-core-provider" }
+rcc-core-orchestrator = { path = "crates/rcc-core-orchestrator" }
+rcc-core-host = { path = "crates/rcc-core-host" }
+rcc-core-testkit = { path = "crates/rcc-core-testkit" }

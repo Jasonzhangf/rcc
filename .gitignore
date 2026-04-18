@@ -1,0 +1,29 @@
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Rust / Cargo
+rust/target/
+target/
+
+# Environment / local runtime
+.env
+.env.*
+.direnv/
+*.log
+*.tmp
+/tmp/
+
+# Local project notes / task state
+note.md
+.beads/*
+!.beads/issues.jsonl

@@ -1,0 +1,9 @@
+[package]
+name = "rcc-core-provider"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+rcc-core-domain.workspace = true

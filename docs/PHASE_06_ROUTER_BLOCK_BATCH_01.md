@@ -46,4 +46,7 @@
 
 ## 当前验证入口
 - 当前 docs / skills gate：`python3 scripts/verify_phase6_router_block.py`
-- 当前阶段说明：实现验证脚本在开始 Batch 01 开发时再新增；本文件先锁边界，不提前假装实现已开始。
+- 当前实现 gate：`bash scripts/verify_phase6_router_batch01.sh`
+- 当前实现阶段证据：
+  - `cargo test --manifest-path rust/Cargo.toml -p rcc-core-router -p rcc-core-testkit`
+  - `cargo run --manifest-path rust/Cargo.toml -p rcc-core-host --quiet`

@@ -60,6 +60,7 @@ if not errors:
         'rcc-core-router',
         'route selection / routing state / health-quota',
         'python3 scripts/verify_phase6_router_block.py',
+        'bash scripts/verify_phase6_router_batch01.sh',
         '.github/workflows/phase6-router-block.yml',
     ]:
         if marker not in route:
@@ -71,6 +72,7 @@ if not errors:
         'docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md',
         'route candidate normalization / routing state filter / instruction target',
         'python3 scripts/verify_phase6_router_block.py',
+        'bash scripts/verify_phase6_router_batch01.sh',
         '.github/workflows/phase6-router-block.yml',
         'health/quota/cooldown',
     ]:
@@ -90,6 +92,8 @@ if not errors:
         'routing state filter',
         'instruction target',
         'python3 scripts/verify_phase6_router_block.py',
+        'bash scripts/verify_phase6_router_batch01.sh',
+        'cargo test --manifest-path rust/Cargo.toml -p rcc-core-router -p rcc-core-testkit',
     ]:
         if marker not in batch01:
             errors.append(f'PHASE_06_ROUTER_BLOCK_BATCH_01 missing marker: {marker}')
@@ -98,6 +102,7 @@ if not errors:
     for marker in [
         'Phase 06 router block gate',
         'python3 scripts/verify_phase6_router_block.py',
+        'bash scripts/verify_phase6_router_batch01.sh',
         'phase6 CI workflow',
     ]:
         if marker not in testing:

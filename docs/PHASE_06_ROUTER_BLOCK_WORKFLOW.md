@@ -22,7 +22,7 @@
    - 只做当前批次要求的最小 router 主链，不提前实现完整 TS virtual-router engine。
 4. **Test**
    - 先跑 `python3 scripts/verify_phase6_router_block.py`
-   - 当前阶段先只关闭 docs / skills / CI gate；实现验证脚本在进入 Batch 01 开发时再补。
+   - 再跑 `bash scripts/verify_phase6_router_batch01.sh`
 5. **Close**
    - docs、skills、验证通过后，Batch 01 实现才允许继续展开。
 
@@ -51,6 +51,10 @@
 ## 验证入口
 ### 当前文档/技能阶段
 - `python3 scripts/verify_phase6_router_block.py`
+
+### Batch 01 实现阶段
+- `bash scripts/verify_phase6_router_batch01.sh`
+- 内部包含：phase1/phase2/phase6 docs verify + `cargo test -p rcc-core-router -p rcc-core-testkit` + `cargo run -p rcc-core-host --quiet`
 
 ### 当前 CI 入口
 - `.github/workflows/phase6-router-block.yml`

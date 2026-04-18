@@ -29,7 +29,8 @@ description: rcc-core 的 router block 真源迁移 skill。用于把 route sele
    - routing state filter
    - instruction target
    不提前混入 capability reorder、alias queue、sticky pool、health/quota/cooldown、provider failover。
-8. 变更后先跑 `python3 scripts/verify_phase6_router_block.py`，再进入当前 batch 的实现验证。
+   - provider registry 输入优先收敛为显式最小 view（`provider_id / key_alias / runtime_index / model_id`），不要把完整 provider runtime / auth / transport 配置拖进 router。
+8. 变更后先跑 `python3 scripts/verify_phase6_router_block.py`，再跑 `bash scripts/verify_phase6_router_batch01.sh`。
 
 ## Acceptance Gate
 - router 业务真源留在 `rcc-core-router`。

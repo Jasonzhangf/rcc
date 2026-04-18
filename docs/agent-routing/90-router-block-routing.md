@@ -39,4 +39,5 @@
 
 ## 验证与 CI
 - 文档/技能阶段：`python3 scripts/verify_phase6_router_block.py`
+- Batch 01 实现阶段：`bash scripts/verify_phase6_router_batch01.sh`
 - CI：`.github/workflows/phase6-router-block.yml`

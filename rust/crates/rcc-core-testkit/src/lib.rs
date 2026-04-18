@@ -5,6 +5,10 @@ use rcc_core_provider::{
     extract_client_request_id, extract_entry_endpoint, extract_provider_runtime_metadata,
     preprocess_provider_request,
 };
+use rcc_core_router::{
+    ForcedInstructionTarget, ProviderRegistryView, ProviderRuntimeView, RouteCandidateInput,
+    RouteFeatures, RoutePoolTier, RouterBlock, RoutingInstructionState, RoutingPools,
+};
 use serde_json::json;
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener};
@@ -342,16 +346,98 @@ pub fn run_provider_sse_transport_smoke() -> String {
     )
 }
 
+pub fn run_router_batch01_smoke() -> String {
+    let block = RouterBlock::default();
+    let routing = RoutingPools::from([
+        (
+            "default".to_string(),
+            vec![RoutePoolTier::new(
+                "default.primary",
+                vec!["openai.primary.gpt-5", "anthropic.ops.claude-3"],
+                100,
+            )],
+        ),
+        (
+            "multimodal".to_string(),
+            vec![RoutePoolTier::new(
+                "multimodal.primary",
+                vec!["openai.vision.gpt-4o"],
+                100,
+            )],
+        ),
+    ]);
+    let candidates = block.build_route_candidates(&RouteCandidateInput {
+        requested_route: "default".to_string(),
+        classification_candidates: vec![],
+        features: RouteFeatures {
+            has_image_attachment: true,
+            ..RouteFeatures::default()
+        },
+        routing: routing.clone(),
+    });
+    let mut state = RoutingInstructionState::default();
+    state.allowed_providers.insert("openai".to_string());
+    let filtered = block.filter_candidates_by_routing_state(
+        &candidates,
+        &state,
+        &routing,
+        &ProviderRegistryView::from_runtimes(vec![
+            ProviderRuntimeView::new("openai.primary.gpt-5", "openai")
+                .with_alias("primary")
+                .with_runtime_index(1)
+                .with_model_id("gpt-5"),
+            ProviderRuntimeView::new("openai.vision.gpt-4o", "openai")
+                .with_alias("vision")
+                .with_runtime_index(2)
+                .with_model_id("gpt-4o"),
+            ProviderRuntimeView::new("anthropic.ops.claude-3", "anthropic")
+                .with_alias("ops")
+                .with_runtime_index(1)
+                .with_model_id("claude-3"),
+        ]),
+    );
+    let target = block
+        .resolve_instruction_target(
+            &ForcedInstructionTarget {
+                provider: "openai".to_string(),
+                model: Some("gpt-5".to_string()),
+                key_alias: Some("primary".to_string()),
+                key_index: None,
+                path_length: 3,
+            },
+            &ProviderRegistryView::from_runtimes(vec![
+                ProviderRuntimeView::new("openai.primary.gpt-5", "openai")
+                    .with_alias("primary")
+                    .with_runtime_index(1)
+                    .with_model_id("gpt-5"),
+                ProviderRuntimeView::new("openai.vision.gpt-4o", "openai")
+                    .with_alias("vision")
+                    .with_runtime_index(2)
+                    .with_model_id("gpt-4o"),
+            ]),
+        )
+        .expect("router target");
+
+    format!(
+        "candidates={} filtered={} target_mode={:?} target_key={}",
+        candidates.join(","),
+        filtered.join(","),
+        target.mode,
+        target.keys.first().cloned().unwrap_or_default()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         run_provider_http_execute_smoke, run_provider_runtime_metadata_smoke,
         run_provider_sse_transport_smoke, run_provider_transport_request_plan_smoke,
-        run_servertool_followup_injection_smoke, run_servertool_followup_smoke,
-        run_servertool_followup_system_vision_smoke, run_servertool_followup_tool_governance_smoke,
-        run_servertool_reasoning_stop_arm_smoke, run_servertool_reasoning_stop_clear_smoke,
-        run_servertool_reasoning_stop_mode_sync_smoke, run_servertool_reasoning_stop_read_smoke,
-        run_servertool_reasoning_stop_smoke, run_servertool_reasoning_stop_sticky_load_smoke,
+        run_router_batch01_smoke, run_servertool_followup_injection_smoke,
+        run_servertool_followup_smoke, run_servertool_followup_system_vision_smoke,
+        run_servertool_followup_tool_governance_smoke, run_servertool_reasoning_stop_arm_smoke,
+        run_servertool_reasoning_stop_clear_smoke, run_servertool_reasoning_stop_mode_sync_smoke,
+        run_servertool_reasoning_stop_read_smoke, run_servertool_reasoning_stop_smoke,
+        run_servertool_reasoning_stop_sticky_load_smoke,
         run_servertool_reasoning_stop_sticky_save_smoke, run_servertool_stop_gateway_smoke,
         run_workspace_smoke,
     };
@@ -490,5 +576,14 @@ mod tests {
         assert!(summary.contains("runtime=noop-runtime"));
         assert!(summary.contains("route=servertool"));
         assert!(summary.contains("servertool.reasoning.stop.sticky.load.valid"));
+    }
+
+    #[test]
+    fn router_batch01_smoke_runs_minimal_router_block_path() {
+        let summary = run_router_batch01_smoke();
+        assert!(summary.contains("candidates=multimodal,default"));
+        assert!(summary.contains("filtered=multimodal,default"));
+        assert!(summary.contains("target_mode=Exact"));
+        assert!(summary.contains("target_key=openai.primary.gpt-5"));
     }
 }

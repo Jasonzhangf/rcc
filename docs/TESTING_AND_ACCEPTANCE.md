@@ -112,8 +112,8 @@
 
 ## Phase 06 router block gate
 - 文档/技能阶段：`python3 scripts/verify_phase6_router_block.py`
-- 当前检查对象：Phase 06 路由、workflow/batch 文档、router block migration skill、phase6 CI workflow。
-- 当前阶段说明：本阶段先只关闭 docs / skills / CI gate；Batch 01 的实现验证脚本在进入实现时再单独建立。
+- Batch 01 实现阶段：`bash scripts/verify_phase6_router_batch01.sh`
+- 检查对象：Phase 06 路由、workflow/batch 文档、router block migration skill、router crate Rust 单测、testkit smoke、host smoke、phase6 CI workflow。
 
 ## CI 约束
 1. CI 与本地共用一个验证入口。

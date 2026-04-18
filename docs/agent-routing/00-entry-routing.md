@@ -19,7 +19,8 @@
 7. Pure functions 批次迁移 → `60-pure-functions-routing.md`
 8. Servertool block 真源迁移 → `70-servertool-block-routing.md`
 9. Provider block 真源迁移 → `80-provider-block-routing.md`
-10. 本地闭环 skill 入口 → `../../.agents/skills/rcc-closed-loop/SKILL.md`
+10. Router block 真源迁移 → `90-router-block-routing.md`
+11. 本地闭环 skill 入口 → `../../.agents/skills/rcc-closed-loop/SKILL.md`
 
 ## 标准分发顺序
 1. 先判定当前任务属于“定义规则 / 更新规则 / 按规则实现 / 按规则验收”。

@@ -110,6 +110,11 @@
 - Batch 04 实现阶段：`bash scripts/verify_phase5_provider_sse_transport.sh`
 - 检查对象：Phase 05 路由、workflow/batch 文档、provider block migration skill、provider crate Rust 单测、testkit smoke、host smoke、phase5 CI workflow。
 
+## Phase 06 router block gate
+- 文档/技能阶段：`python3 scripts/verify_phase6_router_block.py`
+- 当前检查对象：Phase 06 路由、workflow/batch 文档、router block migration skill、phase6 CI workflow。
+- 当前阶段说明：本阶段先只关闭 docs / skills / CI gate；Batch 01 的实现验证脚本在进入实现时再单独建立。
+
 ## CI 约束
 1. CI 与本地共用一个验证入口。
 2. CI 失败即视为闭环未完成。

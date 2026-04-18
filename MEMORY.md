@@ -254,3 +254,10 @@
 - Locked conclusion: provider 在 Phase 05A 内的唯一真源范围继续固定为 `transport / auth / runtime`；host/orchestrator 继续保持极薄，不复制 provider 语义，不新增 daemon/sidecar/额外 runtime。
 - Reusable rule: 当一个阶段已完成多批迁移后，必须补一份 review 真源回答“已经完成什么/明确不做什么/下一步从哪开始”，避免后续阶段反复回头重新判定边界。
 - Verification: `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_sse_transport.sh`.
+
+## 2026-04-18 — Phase 06A router block docs gate opened
+- Decision: 在 Phase 05A provider review 收口后，下一大任务切到 `rcc-core-router`；原因是 router 仍停留在 skeleton `select()`，而 domain 已经沉淀了多批 router 相关纯函数，适合进入 block 真源迁移。
+- Scope: 已落盘 `docs/PHASE_06_ROUTER_BLOCK_WORKFLOW.md`、`docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md`、`docs/agent-routing/90-router-block-routing.md`、`.agents/skills/rcc-router-block-migration/SKILL.md`、`scripts/verify_phase6_router_block.py`、phase6 CI workflow，并同步更新 `AGENTS.md`、`docs/agent-routing/00-entry-routing.md`、`docs/TESTING_AND_ACCEPTANCE.md`。
+- Locked boundary: router 在 Phase 06A 内的唯一真源范围固定为 `route selection / routing state / health-quota`；host/orchestrator 继续保持极薄，provider 继续只做 `transport / auth / runtime`，servertool 继续只做 followup/stop/clock。
+- Batch01 boundary: 先只收 `route candidate normalization + routing state filter + instruction target`，不提前混入 alias queue、sticky pool、health/quota/cooldown、provider failover。
+- Verification: `python3 scripts/verify_phase1_foundation.py`, `python3 scripts/verify_phase2_architecture_docs.py`, `python3 scripts/verify_phase5_provider_block.py`, `python3 scripts/verify_phase6_router_block.py`.

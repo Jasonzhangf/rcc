@@ -45,6 +45,7 @@ Rust 目标文件：
    - 空 key 允许返回 no-auth headers `{}`
 7. `Content-Type: application/json` 由 provider transport plan 默认补齐。
 8. `base_url + endpoint` 组装时统一去重多余 `/`，输出稳定 `target_url`。
+9. `timeout_ms` 缺失或非法时，默认回退 `60000`。
 
 ## 输入输出契约
 ### 输入 payload
@@ -96,8 +97,9 @@ Rust 目标文件：
 
 ## 验证与验收
 1. 文档/技能阶段：`python3 scripts/verify_phase5_provider_block.py`
-2. 实现阶段：进入 batch01 开发时再落盘对应验证脚本。
-3. Rust 测试至少覆盖：
+2. 实现阶段：`bash scripts/verify_phase5_provider_transport_request_plan.sh`
+3. 主测试命令：`cargo test --manifest-path rust/Cargo.toml -p rcc-core-provider -p rcc-core-testkit`
+4. Rust 测试至少覆盖：
    - baseURL / endpoint 组装稳定
    - `Authorization` 默认 `Bearer` 头
    - 自定义 header 写入原值

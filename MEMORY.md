@@ -189,3 +189,11 @@
 - Scope: 已落盘 `docs/PHASE_05_PROVIDER_BLOCK_WORKFLOW.md`、`docs/PHASE_05_PROVIDER_BLOCK_BATCH_01.md`、`docs/agent-routing/80-provider-block-routing.md`、`.agents/skills/rcc-provider-block-migration/SKILL.md`、`scripts/verify_phase5_provider_block.py`、phase5 CI workflow。
 - Batch01 boundary: 先只收 `base_url + endpoint + apikey/no-auth headers + timeout + body -> canonical transport request plan`，不提前做真实 HTTP、OAuth、runtime metadata、SSE 或 provider health。
 - Verification: `python3 scripts/verify_phase5_provider_block.py`。
+
+
+## 2026-04-18 — Phase 05A Batch 01 closed
+- Source: `../routecodex/src/providers/core/runtime/runtime-endpoint-resolver.ts`（`resolveEffectiveBaseUrl` / `resolveEffectiveEndpoint`） + `../routecodex/src/providers/auth/apikey-auth.ts`（`buildHeaders` / no-auth） + `../routecodex/src/providers/core/runtime/provider-request-header-orchestrator.ts`（最小 `Content-Type` + auth header build 主链）。
+- Target: `rust/crates/rcc-core-provider/src/transport_request_plan.rs` + `rust/crates/rcc-core-provider/src/auth_apikey.rs` + `rust/crates/rcc-core-provider/src/lib.rs` + `rust/crates/rcc-core-testkit/src/lib.rs`.
+- Kept semantics: batch01 为 `rcc-core-provider` 增加了最小 provider block API：`resolve_effective_base_url(payload)`、`resolve_effective_endpoint(payload)`、`build_apikey_headers(payload)`、`build_transport_request_plan(payload)`；只消费显式 provider/runtime/service config 与 `request_body`，输出 canonical transport request plan（`method/target_url/headers/body/timeout_ms`）。`Authorization` 默认 `Bearer <apiKey>`，自定义 header 直接写原值，空 key 允许 no-auth，`timeout_ms` 缺失或非法时回退 `60000`。
+- Skill refined: provider batch01 先只收 `base_url + endpoint + apikey/no-auth headers + timeout + body -> canonical transport request plan` 这条真实主链；不要把真实 HTTP、OAuth、runtime metadata、SSE、provider health 或 route/tool 业务语义提前混进 provider。
+- Verification: `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_transport_request_plan.sh`, `cargo test --manifest-path rust/Cargo.toml -p rcc-core-provider -p rcc-core-testkit`, `cargo run --manifest-path rust/Cargo.toml -p rcc-core-host --quiet`.

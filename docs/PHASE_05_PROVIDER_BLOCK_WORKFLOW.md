@@ -51,7 +51,8 @@
 - `python3 scripts/verify_phase5_provider_block.py`
 
 ### Batch 01 实现阶段
-- 进入 batch01 实现时再落盘对应验证脚本；当前阶段不提前放空壳脚本。
+- `bash scripts/verify_phase5_provider_transport_request_plan.sh`
+- 内部包含：phase1/phase2/phase5 docs verify + `cargo test -p rcc-core-provider -p rcc-core-testkit` + `cargo run -p rcc-core-host --quiet`
 
 ## 完成判据
 1. Phase 05A docs 与 routing 完整。

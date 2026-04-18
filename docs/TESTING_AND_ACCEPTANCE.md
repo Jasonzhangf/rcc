@@ -104,8 +104,8 @@
 
 ## Phase 05 provider block gate
 - 文档/技能阶段：`python3 scripts/verify_phase5_provider_block.py`
-- Batch 01 实现阶段：进入 batch01 开发时再落盘对应验证脚本。
-- 检查对象：Phase 05 路由、workflow/batch 文档、provider block migration skill、phase5 CI workflow。
+- Batch 01 实现阶段：`bash scripts/verify_phase5_provider_transport_request_plan.sh`
+- 检查对象：Phase 05 路由、workflow/batch 文档、provider block migration skill、provider crate Rust 单测、testkit smoke、host smoke、phase5 CI workflow。
 
 ## CI 约束
 1. CI 与本地共用一个验证入口。

@@ -225,6 +225,7 @@ name = "rcc-core-provider"
 version = "0.1.0"
 dependencies = [
  "rcc-core-domain",
+ "serde_json",
 ]
 
 [[package]]
@@ -248,6 +249,8 @@ version = "0.1.0"
 dependencies = [
  "rcc-core-domain",
  "rcc-core-orchestrator",
+ "rcc-core-provider",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,5 +1,7 @@
 use rcc_core_domain::RequestEnvelope;
 use rcc_core_orchestrator::SkeletonApplication;
+use rcc_core_provider::build_transport_request_plan;
+use serde_json::json;
 
 pub fn run_workspace_smoke() -> String {
     let app = SkeletonApplication::new();
@@ -167,14 +169,41 @@ pub fn run_servertool_reasoning_stop_sticky_load_smoke() -> String {
     )
 }
 
+pub fn run_provider_transport_request_plan_smoke() -> String {
+    let result = build_transport_request_plan(&json!({
+        "provider": {
+            "base_url": "https://api.example.com/v1/",
+            "endpoint": "/chat/completions",
+            "timeout_ms": 60000,
+            "auth": {
+                "type": "apikey",
+                "api_key": "sk-smoke"
+            }
+        },
+        "request_body": {
+            "model": "gpt-5",
+            "messages": []
+        }
+    }))
+    .expect("provider plan");
+
+    format!(
+        "target_url={} auth={} timeout_ms={}",
+        result["target_url"].as_str().unwrap_or(""),
+        result["headers"]["Authorization"].as_str().unwrap_or(""),
+        result["timeout_ms"].as_i64().unwrap_or_default()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        run_servertool_followup_injection_smoke, run_servertool_followup_smoke,
-        run_servertool_followup_system_vision_smoke, run_servertool_followup_tool_governance_smoke,
-        run_servertool_reasoning_stop_arm_smoke, run_servertool_reasoning_stop_clear_smoke,
-        run_servertool_reasoning_stop_mode_sync_smoke, run_servertool_reasoning_stop_read_smoke,
-        run_servertool_reasoning_stop_smoke, run_servertool_reasoning_stop_sticky_load_smoke,
+        run_provider_transport_request_plan_smoke, run_servertool_followup_injection_smoke,
+        run_servertool_followup_smoke, run_servertool_followup_system_vision_smoke,
+        run_servertool_followup_tool_governance_smoke, run_servertool_reasoning_stop_arm_smoke,
+        run_servertool_reasoning_stop_clear_smoke, run_servertool_reasoning_stop_mode_sync_smoke,
+        run_servertool_reasoning_stop_read_smoke, run_servertool_reasoning_stop_smoke,
+        run_servertool_reasoning_stop_sticky_load_smoke,
         run_servertool_reasoning_stop_sticky_save_smoke, run_servertool_stop_gateway_smoke,
         run_workspace_smoke,
     };
@@ -257,6 +286,14 @@ mod tests {
         assert!(summary.contains("runtime=noop-runtime"));
         assert!(summary.contains("route=servertool"));
         assert!(summary.contains("servertool.reasoning.stop.clear.valid"));
+    }
+
+    #[test]
+    fn provider_transport_request_plan_smoke_builds_canonical_plan() {
+        let summary = run_provider_transport_request_plan_smoke();
+        assert!(summary.contains("target_url=https://api.example.com/v1/chat/completions"));
+        assert!(summary.contains("auth=Bearer sk-smoke"));
+        assert!(summary.contains("timeout_ms=60000"));
     }
 
     #[test]

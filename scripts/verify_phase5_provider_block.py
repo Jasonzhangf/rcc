@@ -59,6 +59,8 @@ if not errors:
         'transport / auth / runtime',
         'python3 scripts/verify_phase5_provider_block.py',
         '.github/workflows/phase5-provider-block.yml',
+        'bash scripts/verify_phase5_provider_transport_request_plan.sh',
+    'scripts/verify_phase5_provider_transport_request_plan.sh',
     ]:
         if marker not in route:
             errors.append(f'80-provider-block-routing missing marker: {marker}')
@@ -68,6 +70,7 @@ if not errors:
         'rcc-core-provider',
         'docs/PHASE_05_PROVIDER_BLOCK_BATCH_01.md',
         'python3 scripts/verify_phase5_provider_block.py',
+        'bash scripts/verify_phase5_provider_transport_request_plan.sh',
         'transport request plan',
     ]:
         if marker not in workflow:
@@ -82,6 +85,8 @@ if not errors:
         'rust/crates/rcc-core-provider/src/auth_apikey.rs',
         'canonical transport request plan',
         'python3 scripts/verify_phase5_provider_block.py',
+        'bash scripts/verify_phase5_provider_transport_request_plan.sh',
+        'cargo test --manifest-path rust/Cargo.toml -p rcc-core-provider -p rcc-core-testkit',
     ]:
         if marker not in batch01:
             errors.append(f'PHASE_05_PROVIDER_BLOCK_BATCH_01 missing marker: {marker}')

@@ -40,5 +40,5 @@
 
 ## 验证与 CI
 - 文档/技能阶段：`python3 scripts/verify_phase5_provider_block.py`
+- Batch 01 实现阶段：`bash scripts/verify_phase5_provider_transport_request_plan.sh`
 - CI：`.github/workflows/phase5-provider-block.yml`
-- Batch 01 实现阶段验证脚本在进入实现时随 batch 一起落盘。

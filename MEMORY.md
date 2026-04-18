@@ -268,3 +268,10 @@
 - Kept semantics: Batch01 在不引入 alias queue、sticky pool、health/quota/cooldown、provider failover 的前提下，为 `rcc-core-router` 增加了最小 router block API：`build_route_candidates(payload)`、`filter_candidates_by_routing_state(routes, state, routing, provider_registry)`、`resolve_instruction_target(target, provider_registry)`；provider registry 只以显式最小 view 进入 router（`provider_id / key_alias / runtime_index / model_id`），不拖入完整 provider runtime/auth/transport 配置。
 - Skill refined: router batch01 迁移先只闭合 `route candidate normalization -> routing state filter -> instruction target` 主链；不要把 capability reorder、alias queue、sticky pool、health/quota/cooldown、provider failover 提前混进 block。
 - Verification: `cargo test --manifest-path rust/Cargo.toml -p rcc-core-router -p rcc-core-testkit`, `bash scripts/verify_phase6_router_batch01.sh`。
+
+## 2026-04-18 — Phase 06A Batch 02 closed
+- Source: `../routecodex/sharedmodule/llmswitch-core/src/router/virtual-router/engine-selection/route-utils.ts` + `../routecodex/sharedmodule/llmswitch-core/src/router/virtual-router/provider-registry.ts`。
+- Target: `rust/crates/rcc-core-router/src/route_candidates.rs` + `rust/crates/rcc-core-router/src/routing_state_filter.rs` + `rust/crates/rcc-core-router/src/lib.rs` + `rust/crates/rcc-core-testkit/src/lib.rs` + `scripts/verify_phase6_router_batch02.sh` + `.github/workflows/phase6-router-block.yml`。
+- Kept semantics: Batch02 在不引入 alias queue、sticky pool、health/quota/cooldown、provider failover 的前提下，为 `rcc-core-router` 增加了最小 capability/model reorder API：`route_supports_capability(...)`、`reorder_for_capability(...)`、`reorder_for_preferred_model(...)`；provider registry 仍只以显式最小 view 进入 router，并只新增 `model_capabilities` 字段，不拖入完整 provider registry/runtime/auth/transport 配置。
+- Skill refined: router capability/model reorder 迁移先只闭合 `route candidates -> capability reorder / preferred-model reorder` 主链；支持路由前置时保持输入中的相对顺序，不提前混入 alias/sticky/health/quota/cooldown/failover。
+- Verification: `cargo test --manifest-path rust/Cargo.toml -p rcc-core-router -p rcc-core-testkit`, `bash scripts/verify_phase6_router_batch02.sh`.

@@ -30,7 +30,12 @@ description: rcc-core 的 router block 真源迁移 skill。用于把 route sele
    - instruction target
    不提前混入 capability reorder、alias queue、sticky pool、health/quota/cooldown、provider failover。
    - provider registry 输入优先收敛为显式最小 view（`provider_id / key_alias / runtime_index / model_id`），不要把完整 provider runtime / auth / transport 配置拖进 router。
-8. 变更后先跑 `python3 scripts/verify_phase6_router_block.py`，再跑 `bash scripts/verify_phase6_router_batch01.sh`。
+8. Batch 02 再只收：
+   - capability reorder（`thinking` / `web_search`）
+   - preferred-model reorder
+   不提前混入 alias queue、sticky pool、health/quota/cooldown、provider failover。
+   - provider registry 若需要 capability 信息，仍只扩到最小显式 view（`model_capabilities`），不要把完整 provider registry/config/runtime 带进 router。
+9. 变更后先跑 `python3 scripts/verify_phase6_router_block.py`，再跑当前 batch 验证脚本（如 `bash scripts/verify_phase6_router_batch01.sh` / `bash scripts/verify_phase6_router_batch02.sh`）。
 
 ## Acceptance Gate
 - router 业务真源留在 `rcc-core-router`。
@@ -55,5 +60,6 @@ description: rcc-core 的 router block 真源迁移 skill。用于把 route sele
 - `docs/agent-routing/90-router-block-routing.md`
 - `docs/PHASE_06_ROUTER_BLOCK_WORKFLOW.md`
 - `docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md`
+- `docs/PHASE_06_ROUTER_BLOCK_BATCH_02.md`
 - `docs/CRATE_BOUNDARIES.md`
 - `docs/RUST_WORKSPACE_ARCHITECTURE.md`

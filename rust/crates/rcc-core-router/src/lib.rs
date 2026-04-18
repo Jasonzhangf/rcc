@@ -9,11 +9,12 @@ pub use instruction_target::{
     InstructionTargetResult,
 };
 pub use route_candidates::{
-    build_route_candidates, normalize_route_alias, RouteCandidateInput, RouteFeatures,
+    build_route_candidates, normalize_route_alias, reorder_for_capability,
+    reorder_for_preferred_model, route_supports_capability, RouteCandidateInput, RouteFeatures,
     RoutePoolTier, RoutingPools, DEFAULT_ROUTE,
 };
 pub use routing_state_filter::{
-    filter_candidates_by_routing_state, ProviderRegistryView, ProviderRuntimeView,
+    filter_candidates_by_routing_state, ModelCapability, ProviderRegistryView, ProviderRuntimeView,
     RoutingInstructionState,
 };
 
@@ -43,6 +44,26 @@ impl RouterBlock {
         resolve_instruction_target(target, provider_registry)
     }
 
+    pub fn reorder_for_capability(
+        &self,
+        route_names: &[String],
+        capability: &ModelCapability,
+        routing: &RoutingPools,
+        provider_registry: &ProviderRegistryView,
+    ) -> Vec<String> {
+        reorder_for_capability(route_names, capability, routing, provider_registry)
+    }
+
+    pub fn reorder_for_preferred_model(
+        &self,
+        route_names: &[String],
+        model_id: &str,
+        routing: &RoutingPools,
+        provider_registry: &ProviderRegistryView,
+    ) -> Vec<String> {
+        reorder_for_preferred_model(route_names, model_id, routing, provider_registry)
+    }
+
     pub fn select(&self, request: &RequestEnvelope) -> RouteDecision {
         let target_block = if request.operation.contains("tool") {
             "servertool"
@@ -59,7 +80,8 @@ impl RouterBlock {
 mod tests {
     use super::{
         build_route_candidates, filter_candidates_by_routing_state, normalize_route_alias,
-        resolve_instruction_target, ForcedInstructionTarget, InstructionTargetMode,
+        reorder_for_capability, reorder_for_preferred_model, resolve_instruction_target,
+        route_supports_capability, ForcedInstructionTarget, InstructionTargetMode, ModelCapability,
         ProviderRegistryView, ProviderRuntimeView, RouteCandidateInput, RouteFeatures,
         RoutePoolTier, RouterBlock, RoutingInstructionState, RoutingPools, DEFAULT_ROUTE,
     };
@@ -115,19 +137,23 @@ mod tests {
             ProviderRuntimeView::new("openai.primary.gpt-5", "openai")
                 .with_alias("primary")
                 .with_runtime_index(1)
-                .with_model_id("gpt-5"),
+                .with_model_id("gpt-5")
+                .with_model_capabilities([ModelCapability::Thinking]),
             ProviderRuntimeView::new("openai.vision.gpt-4o", "openai")
                 .with_alias("vision")
                 .with_runtime_index(2)
-                .with_model_id("gpt-4o"),
+                .with_model_id("gpt-4o")
+                .with_model_capabilities([ModelCapability::Multimodal]),
             ProviderRuntimeView::new("openai.video.gpt-4.1", "openai")
                 .with_alias("video")
                 .with_runtime_index(3)
-                .with_model_id("gpt-4.1"),
+                .with_model_id("gpt-4.1")
+                .with_model_capabilities([ModelCapability::Video]),
             ProviderRuntimeView::new("anthropic.ops.claude-3", "anthropic")
                 .with_alias("ops")
                 .with_runtime_index(1)
-                .with_model_id("claude-3"),
+                .with_model_id("claude-3")
+                .with_model_capabilities([ModelCapability::WebSearch]),
         ])
     }
 
@@ -267,6 +293,71 @@ mod tests {
     }
 
     #[test]
+    fn route_supports_capability_detects_route_pool_capability() {
+        let supported = route_supports_capability(
+            "default",
+            &ModelCapability::Thinking,
+            &routing_pools(),
+            &provider_registry(),
+        );
+        let unsupported = route_supports_capability(
+            "tools",
+            &ModelCapability::WebSearch,
+            &routing_pools(),
+            &provider_registry(),
+        );
+
+        assert!(supported);
+        assert!(!unsupported);
+    }
+
+    #[test]
+    fn reorder_for_capability_moves_supported_routes_to_front() {
+        let reordered = reorder_for_capability(
+            &[
+                "tools".to_string(),
+                "default".to_string(),
+                "multimodal".to_string(),
+            ],
+            &ModelCapability::Thinking,
+            &routing_pools(),
+            &provider_registry(),
+        );
+
+        assert_eq!(
+            reordered,
+            vec![
+                "tools".to_string(),
+                "default".to_string(),
+                "multimodal".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn reorder_for_preferred_model_moves_matching_routes_to_front() {
+        let reordered = reorder_for_preferred_model(
+            &[
+                "default".to_string(),
+                "multimodal".to_string(),
+                "tools".to_string(),
+            ],
+            "gpt-4o",
+            &routing_pools(),
+            &provider_registry(),
+        );
+
+        assert_eq!(
+            reordered,
+            vec![
+                "multimodal".to_string(),
+                "default".to_string(),
+                "tools".to_string()
+            ]
+        );
+    }
+
+    #[test]
     fn resolve_instruction_target_filters_by_model_when_alias_is_not_explicit() {
         let result = resolve_instruction_target(
             &ForcedInstructionTarget {
@@ -292,5 +383,18 @@ mod tests {
 
         assert_eq!(tool_route.target_block, "servertool");
         assert_eq!(pipeline_route.target_block, "pipeline");
+    }
+
+    #[test]
+    fn router_block_exposes_batch02_reorder_methods() {
+        let block = RouterBlock::default();
+        let reordered = block.reorder_for_capability(
+            &["tools".to_string(), "default".to_string()],
+            &ModelCapability::Thinking,
+            &routing_pools(),
+            &provider_registry(),
+        );
+
+        assert_eq!(reordered, vec!["tools".to_string(), "default".to_string()]);
     }
 }

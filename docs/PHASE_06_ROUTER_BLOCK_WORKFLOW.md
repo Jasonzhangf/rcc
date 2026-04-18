@@ -15,6 +15,7 @@
    - 先写/更新：
      - `docs/PHASE_06_ROUTER_BLOCK_WORKFLOW.md`
      - `docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md`
+     - `docs/PHASE_06_ROUTER_BLOCK_BATCH_02.md`
      - `docs/agent-routing/90-router-block-routing.md`
 2. **Skills**
    - 建立或更新：`.agents/skills/rcc-router-block-migration/SKILL.md`
@@ -23,8 +24,9 @@
 4. **Test**
    - 先跑 `python3 scripts/verify_phase6_router_block.py`
    - 再跑 `bash scripts/verify_phase6_router_batch01.sh`
+   - 再跑 `bash scripts/verify_phase6_router_batch02.sh`
 5. **Close**
-   - docs、skills、验证通过后，Batch 01 实现才允许继续展开。
+   - docs、skills、验证通过后，后续 batch 才允许继续展开。
 
 ## 当前阶段最小实现范围
 1. 目标 crate 固定为 `rust/crates/rcc-core-router`。
@@ -42,7 +44,7 @@
      - 不做 servertool followup/stop/tool governance
      - 不做 host/orchestrator 额外包装层
 4. 后续批次才允许继续扩：
-   - capability reorder / preferred-model reorder
+   - Batch 02：capability reorder / preferred-model reorder
    - alias / sticky queue
    - health/quota/cooldown
    - tier selection / fallback / analytics
@@ -56,6 +58,10 @@
 - `bash scripts/verify_phase6_router_batch01.sh`
 - 内部包含：phase1/phase2/phase6 docs verify + `cargo test -p rcc-core-router -p rcc-core-testkit` + `cargo run -p rcc-core-host --quiet`
 
+### Batch 02 实现阶段
+- `bash scripts/verify_phase6_router_batch02.sh`
+- 内部包含：phase1/phase2/phase6 docs verify + `cargo test -p rcc-core-router -p rcc-core-testkit` + `cargo run -p rcc-core-host --quiet`
+
 ### 当前 CI 入口
 - `.github/workflows/phase6-router-block.yml`
 
@@ -63,5 +69,5 @@
 1. Phase 06A docs 与 routing 完整。
 2. router block skill 已落盘。
 3. phase6 verify 脚本与 CI 可自动收口文档/技能阶段。
-4. Batch 01 的唯一最小主链已经被文档锁定，没有与 provider/servertool/host 重叠。
+4. 当前 batch 的唯一最小主链已经被文档锁定，没有与 provider/servertool/host 重叠。
 5. 当前 docs gate 通过后，才允许继续进入 router 实现。

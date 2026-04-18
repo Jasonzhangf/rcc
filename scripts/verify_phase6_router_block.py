@@ -10,6 +10,7 @@ REQUIRED_FILES = [
     'docs/agent-routing/90-router-block-routing.md',
     'docs/PHASE_06_ROUTER_BLOCK_WORKFLOW.md',
     'docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md',
+    'docs/PHASE_06_ROUTER_BLOCK_BATCH_02.md',
     '.agents/skills/rcc-router-block-migration/SKILL.md',
     '.github/workflows/phase6-router-block.yml',
 ]
@@ -56,11 +57,13 @@ if not errors:
         '## 索引概要',
         'docs/PHASE_06_ROUTER_BLOCK_WORKFLOW.md',
         'docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md',
+        'docs/PHASE_06_ROUTER_BLOCK_BATCH_02.md',
         '.agents/skills/rcc-router-block-migration/SKILL.md',
         'rcc-core-router',
         'route selection / routing state / health-quota',
         'python3 scripts/verify_phase6_router_block.py',
         'bash scripts/verify_phase6_router_batch01.sh',
+        'bash scripts/verify_phase6_router_batch02.sh',
         '.github/workflows/phase6-router-block.yml',
     ]:
         if marker not in route:
@@ -70,9 +73,12 @@ if not errors:
     for marker in [
         'rcc-core-router',
         'docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md',
+        'docs/PHASE_06_ROUTER_BLOCK_BATCH_02.md',
         'route candidate normalization / routing state filter / instruction target',
+        'capability reorder / preferred-model reorder',
         'python3 scripts/verify_phase6_router_block.py',
         'bash scripts/verify_phase6_router_batch01.sh',
+        'bash scripts/verify_phase6_router_batch02.sh',
         '.github/workflows/phase6-router-block.yml',
         'health/quota/cooldown',
     ]:
@@ -98,11 +104,27 @@ if not errors:
         if marker not in batch01:
             errors.append(f'PHASE_06_ROUTER_BLOCK_BATCH_01 missing marker: {marker}')
 
+    batch02 = read('docs/PHASE_06_ROUTER_BLOCK_BATCH_02.md')
+    for marker in [
+        'engine-selection/route-utils.ts',
+        'provider-registry.ts',
+        'rust/crates/rcc-core-router/src/route_candidates.rs',
+        'rust/crates/rcc-core-router/src/routing_state_filter.rs',
+        'capability reorder',
+        'preferred-model reorder',
+        'model_capabilities',
+        'bash scripts/verify_phase6_router_batch02.sh',
+        'cargo test --manifest-path rust/Cargo.toml -p rcc-core-router -p rcc-core-testkit',
+    ]:
+        if marker not in batch02:
+            errors.append(f'PHASE_06_ROUTER_BLOCK_BATCH_02 missing marker: {marker}')
+
     testing = read('docs/TESTING_AND_ACCEPTANCE.md')
     for marker in [
         'Phase 06 router block gate',
         'python3 scripts/verify_phase6_router_block.py',
         'bash scripts/verify_phase6_router_batch01.sh',
+        'bash scripts/verify_phase6_router_batch02.sh',
         'phase6 CI workflow',
     ]:
         if marker not in testing:

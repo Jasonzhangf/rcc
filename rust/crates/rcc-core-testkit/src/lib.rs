@@ -6,8 +6,9 @@ use rcc_core_provider::{
     preprocess_provider_request,
 };
 use rcc_core_router::{
-    ForcedInstructionTarget, ProviderRegistryView, ProviderRuntimeView, RouteCandidateInput,
-    RouteFeatures, RoutePoolTier, RouterBlock, RoutingInstructionState, RoutingPools,
+    ForcedInstructionTarget, ModelCapability, ProviderRegistryView, ProviderRuntimeView,
+    RouteCandidateInput, RouteFeatures, RoutePoolTier, RouterBlock, RoutingInstructionState,
+    RoutingPools,
 };
 use serde_json::json;
 use std::io::{Read, Write};
@@ -213,10 +214,9 @@ pub fn run_provider_http_execute_smoke() -> String {
     let handle = thread::spawn(move || {
         let (mut stream, _) = listener.accept().expect("accept provider smoke");
         stream
-            .set_read_timeout(Some(Duration::from_millis(500)))
+            .set_read_timeout(Some(Duration::from_millis(1_500)))
             .expect("set provider smoke timeout");
-        let mut buffer = [0_u8; 4096];
-        let _ = stream.read(&mut buffer);
+        let _ = drain_http_request(&mut stream);
         let body = "{\"id\":\"resp_smoke\",\"ok\":true}";
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
@@ -301,10 +301,9 @@ pub fn run_provider_sse_transport_smoke() -> String {
     let handle = thread::spawn(move || {
         let (mut stream, _) = listener.accept().expect("accept provider sse smoke");
         stream
-            .set_read_timeout(Some(Duration::from_millis(500)))
+            .set_read_timeout(Some(Duration::from_millis(1_500)))
             .expect("set provider sse smoke timeout");
-        let mut buffer = [0_u8; 4096];
-        let _ = stream.read(&mut buffer);
+        let _ = drain_http_request(&mut stream);
         let body = "event: message\ndata: {\"ok\":true}\n\n";
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n{body}",
@@ -427,17 +426,112 @@ pub fn run_router_batch01_smoke() -> String {
     )
 }
 
+pub fn run_router_batch02_smoke() -> String {
+    let block = RouterBlock::default();
+    let routing = RoutingPools::from([
+        (
+            "default".to_string(),
+            vec![RoutePoolTier::new(
+                "default.primary",
+                vec!["openai.primary.gpt-5", "anthropic.ops.claude-3"],
+                100,
+            )],
+        ),
+        (
+            "multimodal".to_string(),
+            vec![RoutePoolTier::new(
+                "multimodal.primary",
+                vec!["openai.vision.gpt-4o"],
+                100,
+            )],
+        ),
+        (
+            "thinking".to_string(),
+            vec![RoutePoolTier::new(
+                "thinking.primary",
+                vec!["openai.primary.gpt-5"],
+                100,
+            )],
+        ),
+        (
+            "web_search".to_string(),
+            vec![RoutePoolTier::new(
+                "websearch.primary",
+                vec!["anthropic.ops.claude-3"],
+                100,
+            )],
+        ),
+    ]);
+    let provider_registry = ProviderRegistryView::from_runtimes(vec![
+        ProviderRuntimeView::new("openai.primary.gpt-5", "openai")
+            .with_alias("primary")
+            .with_runtime_index(1)
+            .with_model_id("gpt-5")
+            .with_model_capabilities([ModelCapability::Thinking]),
+        ProviderRuntimeView::new("openai.vision.gpt-4o", "openai")
+            .with_alias("vision")
+            .with_runtime_index(2)
+            .with_model_id("gpt-4o")
+            .with_model_capabilities([ModelCapability::Multimodal]),
+        ProviderRuntimeView::new("anthropic.ops.claude-3", "anthropic")
+            .with_alias("ops")
+            .with_runtime_index(1)
+            .with_model_id("claude-3")
+            .with_model_capabilities([ModelCapability::WebSearch]),
+    ]);
+    let reordered_for_capability = block.reorder_for_capability(
+        &[
+            "default".to_string(),
+            "web_search".to_string(),
+            "thinking".to_string(),
+        ],
+        &ModelCapability::Thinking,
+        &routing,
+        &provider_registry,
+    );
+    let reordered_for_model = block.reorder_for_preferred_model(
+        &["default".to_string(), "multimodal".to_string()],
+        "gpt-4o",
+        &routing,
+        &provider_registry,
+    );
+
+    format!(
+        "capability={} preferred_model={}",
+        reordered_for_capability.join(","),
+        reordered_for_model.join(",")
+    )
+}
+
+fn drain_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
+    let mut buffer = [0_u8; 4096];
+    let mut request = Vec::new();
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(read) => {
+                request.extend_from_slice(&buffer[..read]);
+                if request.windows(4).any(|window| window == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    request
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         run_provider_http_execute_smoke, run_provider_runtime_metadata_smoke,
         run_provider_sse_transport_smoke, run_provider_transport_request_plan_smoke,
-        run_router_batch01_smoke, run_servertool_followup_injection_smoke,
-        run_servertool_followup_smoke, run_servertool_followup_system_vision_smoke,
-        run_servertool_followup_tool_governance_smoke, run_servertool_reasoning_stop_arm_smoke,
-        run_servertool_reasoning_stop_clear_smoke, run_servertool_reasoning_stop_mode_sync_smoke,
-        run_servertool_reasoning_stop_read_smoke, run_servertool_reasoning_stop_smoke,
-        run_servertool_reasoning_stop_sticky_load_smoke,
+        run_router_batch01_smoke, run_router_batch02_smoke,
+        run_servertool_followup_injection_smoke, run_servertool_followup_smoke,
+        run_servertool_followup_system_vision_smoke, run_servertool_followup_tool_governance_smoke,
+        run_servertool_reasoning_stop_arm_smoke, run_servertool_reasoning_stop_clear_smoke,
+        run_servertool_reasoning_stop_mode_sync_smoke, run_servertool_reasoning_stop_read_smoke,
+        run_servertool_reasoning_stop_smoke, run_servertool_reasoning_stop_sticky_load_smoke,
         run_servertool_reasoning_stop_sticky_save_smoke, run_servertool_stop_gateway_smoke,
         run_workspace_smoke,
     };
@@ -585,5 +679,12 @@ mod tests {
         assert!(summary.contains("filtered=multimodal,default"));
         assert!(summary.contains("target_mode=Exact"));
         assert!(summary.contains("target_key=openai.primary.gpt-5"));
+    }
+
+    #[test]
+    fn router_batch02_smoke_runs_capability_and_model_reorder_path() {
+        let summary = run_router_batch02_smoke();
+        assert!(summary.contains("capability=default,thinking,web_search"));
+        assert!(summary.contains("preferred_model=multimodal,default"));
     }
 }

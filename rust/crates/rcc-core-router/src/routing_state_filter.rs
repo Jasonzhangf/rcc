@@ -1,6 +1,16 @@
 use crate::route_candidates::RoutingPools;
 use std::collections::{BTreeMap, BTreeSet};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ModelCapability {
+    Thinking,
+    WebSearch,
+    Multimodal,
+    Video,
+    Text,
+    Reasoning,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ProviderRegistryView {
     runtimes: BTreeMap<String, ProviderRuntimeView>,
@@ -69,6 +79,12 @@ impl ProviderRegistryView {
             .and_then(|runtime| runtime.model_id.clone())
             .or_else(|| infer_model_id_from_provider_key(provider_key))
     }
+
+    pub fn has_capability(&self, provider_key: &str, capability: &ModelCapability) -> bool {
+        self.get(provider_key)
+            .map(|runtime| runtime.model_capabilities.contains(capability))
+            .unwrap_or(false)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -78,6 +94,7 @@ pub struct ProviderRuntimeView {
     pub key_alias: Option<String>,
     pub runtime_index: Option<usize>,
     pub model_id: Option<String>,
+    pub model_capabilities: BTreeSet<ModelCapability>,
 }
 
 impl ProviderRuntimeView {
@@ -88,6 +105,7 @@ impl ProviderRuntimeView {
             key_alias: None,
             runtime_index: None,
             model_id: None,
+            model_capabilities: BTreeSet::new(),
         }
     }
 
@@ -103,6 +121,14 @@ impl ProviderRuntimeView {
 
     pub fn with_model_id(mut self, model_id: impl Into<String>) -> Self {
         self.model_id = Some(model_id.into());
+        self
+    }
+
+    pub fn with_model_capabilities(
+        mut self,
+        capabilities: impl IntoIterator<Item = ModelCapability>,
+    ) -> Self {
+        self.model_capabilities = capabilities.into_iter().collect();
         self
     }
 }

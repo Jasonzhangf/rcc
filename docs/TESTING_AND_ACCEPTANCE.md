@@ -113,6 +113,7 @@
 ## Phase 06 router block gate
 - 文档/技能阶段：`python3 scripts/verify_phase6_router_block.py`
 - Batch 01 实现阶段：`bash scripts/verify_phase6_router_batch01.sh`
+- Batch 02 实现阶段：`bash scripts/verify_phase6_router_batch02.sh`
 - 检查对象：Phase 06 路由、workflow/batch 文档、router block migration skill、router crate Rust 单测、testkit smoke、host smoke、phase6 CI workflow。
 
 ## CI 约束

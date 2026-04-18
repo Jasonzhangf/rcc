@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::routing_state_filter::{ModelCapability, ProviderRegistryView};
+
 pub const DEFAULT_ROUTE: &str = "default";
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -101,4 +103,109 @@ pub fn build_route_candidates(input: &RouteCandidateInput) -> Vec<String> {
 
 pub fn route_has_targets(pools: Option<&Vec<RoutePoolTier>>) -> bool {
     pools.is_some_and(|tiers| tiers.iter().any(|tier| !tier.targets.is_empty()))
+}
+
+pub fn route_supports_capability(
+    route_name: &str,
+    capability: &ModelCapability,
+    routing: &RoutingPools,
+    provider_registry: &ProviderRegistryView,
+) -> bool {
+    let Some(pools) = routing.get(route_name) else {
+        return false;
+    };
+
+    pools.iter().any(|pool| {
+        pool.targets
+            .iter()
+            .any(|provider_key| provider_registry.has_capability(provider_key, capability))
+    })
+}
+
+pub fn reorder_for_capability(
+    route_names: &[String],
+    capability: &ModelCapability,
+    routing: &RoutingPools,
+    provider_registry: &ProviderRegistryView,
+) -> Vec<String> {
+    let unique = dedupe_route_names(route_names);
+    if unique.is_empty() {
+        return unique;
+    }
+    let preferred = unique
+        .iter()
+        .filter(|route_name| {
+            route_supports_capability(route_name, capability, routing, provider_registry)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    if preferred.is_empty() {
+        return unique;
+    }
+    let remaining = unique
+        .iter()
+        .filter(|route_name| !preferred.contains(route_name))
+        .cloned()
+        .collect::<Vec<_>>();
+    [preferred, remaining].concat()
+}
+
+pub fn reorder_for_preferred_model(
+    route_names: &[String],
+    model_id: &str,
+    routing: &RoutingPools,
+    provider_registry: &ProviderRegistryView,
+) -> Vec<String> {
+    let unique = dedupe_route_names(route_names);
+    let normalized_model = model_id.trim().to_lowercase();
+    if unique.is_empty() || normalized_model.is_empty() {
+        return unique;
+    }
+    let preferred = unique
+        .iter()
+        .filter(|route_name| {
+            route_supports_model(route_name, &normalized_model, routing, provider_registry)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    if preferred.is_empty() {
+        return unique;
+    }
+    let remaining = unique
+        .iter()
+        .filter(|route_name| !preferred.contains(route_name))
+        .cloned()
+        .collect::<Vec<_>>();
+    [preferred, remaining].concat()
+}
+
+fn route_supports_model(
+    route_name: &str,
+    normalized_model: &str,
+    routing: &RoutingPools,
+    provider_registry: &ProviderRegistryView,
+) -> bool {
+    let Some(pools) = routing.get(route_name) else {
+        return false;
+    };
+
+    pools.iter().any(|pool| {
+        pool.targets.iter().any(|provider_key| {
+            provider_registry
+                .model_id_of(provider_key)
+                .map(|candidate| candidate.trim().to_lowercase() == normalized_model)
+                .unwrap_or(false)
+        })
+    })
+}
+
+fn dedupe_route_names(route_names: &[String]) -> Vec<String> {
+    let mut unique = Vec::new();
+    let mut seen = BTreeSet::new();
+    for route_name in route_names {
+        if !route_name.is_empty() && seen.insert(route_name.clone()) {
+            unique.push(route_name.clone());
+        }
+    }
+    unique
 }

@@ -20,4 +20,4 @@ jobs:
           python-version: '3.11'
 
       - name: Verify phase5 provider block
-        run: bash scripts/verify_phase5_provider_transport_request_plan.sh
+        run: bash scripts/verify_phase5_provider_sse_transport.sh

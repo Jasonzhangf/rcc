@@ -105,6 +105,9 @@
 ## Phase 05 provider block gate
 - 文档/技能阶段：`python3 scripts/verify_phase5_provider_block.py`
 - Batch 01 实现阶段：`bash scripts/verify_phase5_provider_transport_request_plan.sh`
+- Batch 02 实现阶段：`bash scripts/verify_phase5_provider_http_execute.sh`
+- Batch 03 实现阶段：`bash scripts/verify_phase5_provider_runtime_metadata.sh`
+- Batch 04 实现阶段：`bash scripts/verify_phase5_provider_sse_transport.sh`
 - 检查对象：Phase 05 路由、workflow/batch 文档、provider block migration skill、provider crate Rust 单测、testkit smoke、host smoke、phase5 CI workflow。
 
 ## CI 约束

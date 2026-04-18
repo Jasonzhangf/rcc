@@ -1,7 +1,15 @@
 use rcc_core_domain::RequestEnvelope;
 use rcc_core_orchestrator::SkeletonApplication;
-use rcc_core_provider::build_transport_request_plan;
+use rcc_core_provider::{
+    build_transport_request_plan, execute_sse_transport_request, execute_transport_request,
+    extract_client_request_id, extract_entry_endpoint, extract_provider_runtime_metadata,
+    preprocess_provider_request,
+};
 use serde_json::json;
+use std::io::{Read, Write};
+use std::net::{Shutdown, TcpListener};
+use std::thread;
+use std::time::Duration;
 
 pub fn run_workspace_smoke() -> String {
     let app = SkeletonApplication::new();
@@ -195,15 +203,155 @@ pub fn run_provider_transport_request_plan_smoke() -> String {
     )
 }
 
+pub fn run_provider_http_execute_smoke() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind provider smoke server");
+    let addr = listener.local_addr().expect("provider smoke addr");
+    let handle = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept provider smoke");
+        stream
+            .set_read_timeout(Some(Duration::from_millis(500)))
+            .expect("set provider smoke timeout");
+        let mut buffer = [0_u8; 4096];
+        let _ = stream.read(&mut buffer);
+        let body = "{\"id\":\"resp_smoke\",\"ok\":true}";
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
+            body.len()
+        );
+        let _ = stream.write_all(response.as_bytes());
+        let _ = stream.flush();
+        let _ = stream.shutdown(Shutdown::Both);
+    });
+
+    let result = execute_transport_request(&json!({
+        "request_plan": {
+            "method": "POST",
+            "target_url": format!("http://{}/chat/completions", addr),
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "model": "gpt-5"
+            },
+            "timeout_ms": 200
+        },
+        "retry": {
+            "max_attempts": 1
+        }
+    }))
+    .expect("provider execute");
+
+    handle.join().expect("provider smoke join");
+
+    format!(
+        "status={} attempts={} ok={}",
+        result["status"].as_i64().unwrap_or_default(),
+        result["attempts"].as_i64().unwrap_or_default(),
+        result["body"]["ok"].as_bool().unwrap_or(false)
+    )
+}
+
+pub fn run_provider_runtime_metadata_smoke() -> String {
+    let processed = preprocess_provider_request(&json!({
+        "request": {
+            "model": "gpt-5",
+            "stream": true,
+            "metadata": {
+                "entryEndpoint": "/v1/responses",
+                "clientHeaders": {
+                    "x-trace-id": "trace-1"
+                }
+            }
+        },
+        "runtime_metadata": {
+            "requestId": "req-1",
+            "providerKey": "openai",
+            "metadata": {
+                "clientRequestId": "client-1",
+                "clientHeaders": {
+                    "x-client": "codex"
+                }
+            }
+        }
+    }))
+    .expect("provider runtime metadata preprocess");
+    let extracted = extract_provider_runtime_metadata(&processed).expect("runtime metadata");
+    let entry = extract_entry_endpoint(&processed).expect("entry endpoint");
+    let client_request_id = extract_client_request_id(&processed).expect("client request id");
+
+    format!(
+        "provider_key={} entry_endpoint={} client_request_id={}",
+        extracted["runtime_metadata"]["providerKey"]
+            .as_str()
+            .unwrap_or(""),
+        entry["entry_endpoint"].as_str().unwrap_or(""),
+        client_request_id["client_request_id"]
+            .as_str()
+            .unwrap_or("")
+    )
+}
+
+pub fn run_provider_sse_transport_smoke() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind provider sse smoke server");
+    let addr = listener.local_addr().expect("provider sse smoke addr");
+    let handle = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept provider sse smoke");
+        stream
+            .set_read_timeout(Some(Duration::from_millis(500)))
+            .expect("set provider sse smoke timeout");
+        let mut buffer = [0_u8; 4096];
+        let _ = stream.read(&mut buffer);
+        let body = "event: message\ndata: {\"ok\":true}\n\n";
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n{body}",
+            body.len()
+        );
+        let _ = stream.write_all(response.as_bytes());
+        let _ = stream.flush();
+        let _ = stream.shutdown(Shutdown::Both);
+    });
+
+    let result = execute_sse_transport_request(&json!({
+        "request": {
+            "stream": true
+        },
+        "request_plan": {
+            "method": "POST",
+            "target_url": format!("http://{}/v1/responses", addr),
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "model": "gpt-5",
+                "input": "hello"
+            },
+            "timeout_ms": 200
+        }
+    }))
+    .expect("provider sse execute");
+
+    handle.join().expect("provider sse smoke join");
+
+    format!(
+        "content_type={} attempts={} ok={}",
+        result["__sse_responses"]["content_type"]
+            .as_str()
+            .unwrap_or(""),
+        result["attempts"].as_i64().unwrap_or_default(),
+        result["ok"].as_bool().unwrap_or(false)
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        run_provider_transport_request_plan_smoke, run_servertool_followup_injection_smoke,
-        run_servertool_followup_smoke, run_servertool_followup_system_vision_smoke,
-        run_servertool_followup_tool_governance_smoke, run_servertool_reasoning_stop_arm_smoke,
-        run_servertool_reasoning_stop_clear_smoke, run_servertool_reasoning_stop_mode_sync_smoke,
-        run_servertool_reasoning_stop_read_smoke, run_servertool_reasoning_stop_smoke,
-        run_servertool_reasoning_stop_sticky_load_smoke,
+        run_provider_http_execute_smoke, run_provider_runtime_metadata_smoke,
+        run_provider_sse_transport_smoke, run_provider_transport_request_plan_smoke,
+        run_servertool_followup_injection_smoke, run_servertool_followup_smoke,
+        run_servertool_followup_system_vision_smoke, run_servertool_followup_tool_governance_smoke,
+        run_servertool_reasoning_stop_arm_smoke, run_servertool_reasoning_stop_clear_smoke,
+        run_servertool_reasoning_stop_mode_sync_smoke, run_servertool_reasoning_stop_read_smoke,
+        run_servertool_reasoning_stop_smoke, run_servertool_reasoning_stop_sticky_load_smoke,
         run_servertool_reasoning_stop_sticky_save_smoke, run_servertool_stop_gateway_smoke,
         run_workspace_smoke,
     };
@@ -294,6 +442,30 @@ mod tests {
         assert!(summary.contains("target_url=https://api.example.com/v1/chat/completions"));
         assert!(summary.contains("auth=Bearer sk-smoke"));
         assert!(summary.contains("timeout_ms=60000"));
+    }
+
+    #[test]
+    fn provider_http_execute_smoke_runs_minimal_execute_path() {
+        let summary = run_provider_http_execute_smoke();
+        assert!(summary.contains("status=200"));
+        assert!(summary.contains("attempts=1"));
+        assert!(summary.contains("ok=true"));
+    }
+
+    #[test]
+    fn provider_runtime_metadata_smoke_runs_minimal_attach_read_path() {
+        let summary = run_provider_runtime_metadata_smoke();
+        assert!(summary.contains("provider_key=openai"));
+        assert!(summary.contains("entry_endpoint=/v1/responses"));
+        assert!(summary.contains("client_request_id=client-1"));
+    }
+
+    #[test]
+    fn provider_sse_transport_smoke_runs_minimal_stream_boundary() {
+        let summary = run_provider_sse_transport_smoke();
+        assert!(summary.contains("content_type=text/event-stream"));
+        assert!(summary.contains("attempts=1"));
+        assert!(summary.contains("ok=true"));
     }
 
     #[test]

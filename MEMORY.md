@@ -197,3 +197,54 @@
 - Kept semantics: batch01 为 `rcc-core-provider` 增加了最小 provider block API：`resolve_effective_base_url(payload)`、`resolve_effective_endpoint(payload)`、`build_apikey_headers(payload)`、`build_transport_request_plan(payload)`；只消费显式 provider/runtime/service config 与 `request_body`，输出 canonical transport request plan（`method/target_url/headers/body/timeout_ms`）。`Authorization` 默认 `Bearer <apiKey>`，自定义 header 直接写原值，空 key 允许 no-auth，`timeout_ms` 缺失或非法时回退 `60000`。
 - Skill refined: provider batch01 先只收 `base_url + endpoint + apikey/no-auth headers + timeout + body -> canonical transport request plan` 这条真实主链；不要把真实 HTTP、OAuth、runtime metadata、SSE、provider health 或 route/tool 业务语义提前混进 provider。
 - Verification: `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_transport_request_plan.sh`, `cargo test --manifest-path rust/Cargo.toml -p rcc-core-provider -p rcc-core-testkit`, `cargo run --manifest-path rust/Cargo.toml -p rcc-core-host --quiet`.
+
+
+## 2026-04-18 — Phase 05A Batch 02 docs/skills gate closed
+- Source: `../routecodex/src/providers/core/runtime/http-request-executor.ts` + `../routecodex/src/providers/core/runtime/provider-http-executor-utils.ts` + `../routecodex/src/providers/core/runtime/http-transport-provider.ts`（只锁最小 HTTP execute/retry skeleton 边界，不进入实现）。
+- Scope: 已落盘 `docs/PHASE_05_PROVIDER_BLOCK_BATCH_02.md`，并同步更新 `docs/PHASE_05_PROVIDER_BLOCK_WORKFLOW.md`、`docs/agent-routing/80-provider-block-routing.md`、`.agents/skills/rcc-provider-block-migration/SKILL.md`、`docs/TESTING_AND_ACCEPTANCE.md`、`scripts/verify_phase5_provider_block.py`。
+- Locked boundary: batch02 先只收 `canonical transport request plan -> minimal HTTP execute + retry skeleton + normalized transport error`；默认 `max_attempts=1`，只有显式提高上限时才允许对 `5xx` 做 retry 判定；不提前混入 OAuth recovery、runtime metadata、SSE、provider health、virtual router failover、snapshot telemetry。
+- Skill refined: provider HTTP execute 迁移必须继续保持薄包装和资源受控；若需要 client/依赖，优先单 runtime 内轻量收敛，不为了 transport execute 提前引入 daemon、sidecar、后台 worker 或多余 async 基础设施。
+- Verification: `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_transport_request_plan.sh`.
+
+
+## 2026-04-18 — Phase 05A Batch 02 closed
+- Source: `../routecodex/src/providers/core/runtime/http-request-executor.ts` + `../routecodex/src/providers/core/runtime/provider-http-executor-utils.ts` + `../routecodex/src/providers/core/runtime/http-transport-provider.ts`（最小 HTTP execute / retry / error normalize slice）。
+- Target: `rust/crates/rcc-core-provider/src/http_execute.rs` + `rust/crates/rcc-core-provider/src/http_retry.rs` + `rust/crates/rcc-core-provider/src/lib.rs` + `rust/crates/rcc-core-provider/Cargo.toml` + `rust/crates/rcc-core-testkit/src/lib.rs` + `scripts/verify_phase5_provider_http_execute.sh` + `.github/workflows/phase5-provider-block.yml`。
+- Kept semantics: batch02 为 `rcc-core-provider` 增加了最小 provider transport execute API：`execute_transport_request(payload)` 消费 Batch01 的 canonical request plan，返回 canonical execute result 或 normalized transport error；`get_http_retry_limit` / `should_retry_http_error` / `resolve_http_retry_delay_ms` 保持 provider 层默认单次尝试、仅显式提高上限时对 `5xx` 做 retry 判定、delay 维持 `min(500*attempt, 2000)`；错误稳定归一为 `http_status` / `transport` / `timeout`，存在状态码时生成 `HTTP_<status>` code。
+- Resource decision: 为保持单 runtime、薄包装和低资源占用，batch02 采用同步轻量 HTTP client（`ureq`）直接在 provider 内执行，不引入独立进程、后台 worker 或额外 async runtime；host/orchestrator 继续保持薄壳，没有复制 execute/retry 语义。
+- Skill refined: provider HTTP execute 迁移先只闭合 `request plan -> execute -> retry helper -> normalized error` 主链；retry 仍是 transport 辅助，不等于 router failover，不把 OAuth recovery、runtime metadata、SSE、provider health 混进同一批。
+- Verification: `cargo fmt --manifest-path rust/Cargo.toml --all`, `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_http_execute.sh`.
+
+
+## 2026-04-18 — Phase 05A Batch 03 docs/skills gate closed
+- Source: `../routecodex/src/providers/core/runtime/provider-runtime-metadata.ts` + `../routecodex/src/providers/core/runtime/provider-request-preprocessor.ts` + `../routecodex/src/providers/core/runtime/transport/provider-payload-utils.ts` + `../routecodex/src/providers/core/runtime/base-provider-runtime-helpers.ts`（只锁最小 runtime metadata attach-read / preprocess 边界，不进入实现）。
+- Scope: 已落盘 `docs/PHASE_05_PROVIDER_BLOCK_BATCH_03.md`，并同步更新 `docs/PHASE_05_PROVIDER_BLOCK_WORKFLOW.md`、`docs/agent-routing/80-provider-block-routing.md`、`.agents/skills/rcc-provider-block-migration/SKILL.md`、`docs/TESTING_AND_ACCEPTANCE.md`、`scripts/verify_phase5_provider_block.py`。
+- Locked boundary: batch03 先只收 `runtime metadata attach-read + request preprocess 的最小 metadata 投影`；provider 只允许 attach/read carrier，并只投影 `entryEndpoint` / `stream` / `clientHeaders` / `__origModel`；不提前混入 tmux/session/conversation/followup/stopless、sticky scope、response metadata enrich、provider family profile、runtime detector 或 protocol conversion。
+- Skill refined: provider runtime metadata 迁移必须继续保持薄包装和资源受控；provider 只负责 transport/runtime 级 carrier 附着与读取，不负责解释更上层业务字段，也不为此引入新进程、daemon、后台 worker 或额外常驻 runtime。
+- Verification: `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_http_execute.sh`.
+
+
+## 2026-04-18 — Phase 05A Batch 03 closed
+- Source: `../routecodex/src/providers/core/runtime/provider-runtime-metadata.ts` + `../routecodex/src/providers/core/runtime/provider-request-preprocessor.ts` + `../routecodex/src/providers/core/runtime/transport/provider-payload-utils.ts` + `../routecodex/src/providers/core/runtime/base-provider-runtime-helpers.ts`（最小 runtime metadata attach-read / preprocess slice）。
+- Target: `rust/crates/rcc-core-provider/src/runtime_metadata.rs` + `rust/crates/rcc-core-provider/src/request_preprocessor.rs` + `rust/crates/rcc-core-provider/src/lib.rs` + `rust/crates/rcc-core-testkit/src/lib.rs` + `scripts/verify_phase5_provider_runtime_metadata.sh` + `.github/workflows/phase5-provider-block.yml`。
+- Kept semantics: batch03 为 `rcc-core-provider` 增加了最小 runtime metadata API：`attach_provider_runtime_metadata(payload)`、`extract_provider_runtime_metadata(payload)`、`extract_entry_endpoint(payload)`、`extract_client_request_id(payload)`、`normalize_client_headers(payload)`、`preprocess_provider_request(payload)`；provider 只处理 attach/read carrier 与 request preprocess，且只投影 `entryEndpoint` / `stream` / `clientHeaders` / `__origModel` 这四类 transport/runtime 需要的 metadata，`request.metadata.clientHeaders` 优先于 runtime metadata 同名 headers。
+- Resource decision: 为保持 payload 语义和 host/provider 薄边界，batch03 没有把 runtime metadata 混进真实 transport body，也没有引入新进程、daemon、后台 worker 或额外 runtime；attach/read 只在 provider 内部 envelope 闭环。
+- Skill refined: runtime metadata 迁移先只闭合 `attach -> preprocess -> read helper` 主链；provider 不解释 tmux/session/conversation/followup/stopless 等业务语义，也不把 session key/sticky scope/runtime detector 混进同一批。
+- Verification: `cargo fmt --manifest-path rust/Cargo.toml --all`, `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_runtime_metadata.sh`.
+
+
+## 2026-04-18 — Phase 05A Batch 04 docs/skills gate closed
+- Source: `../routecodex/src/providers/core/runtime/http-transport-provider.ts` + `../routecodex/src/providers/core/runtime/http-request-executor.ts` + `../routecodex/src/providers/core/runtime/provider-response-postprocessor.ts` + `../routecodex/src/providers/core/utils/http-client.ts`（只锁最小 upstream SSE transport boundary，不进入 snapshot/normalizer/host bridge）。
+- Scope: 已落盘 `docs/PHASE_05_PROVIDER_BLOCK_BATCH_04.md`，并同步更新 `docs/PHASE_05_PROVIDER_BLOCK_WORKFLOW.md`、`docs/agent-routing/80-provider-block-routing.md`、`.agents/skills/rcc-provider-block-migration/SKILL.md`、`docs/TESTING_AND_ACCEPTANCE.md`、`scripts/verify_phase5_provider_block.py`。
+- Locked boundary: batch04 先只收 `wants upstream SSE -> request body stream=true -> raw SSE carrier wrap`；provider 只输出 canonical `__sse_responses` raw carrier，不提前混入 snapshot attach、event normalizer、Host->Client bridge、Gemini/Qwen/Responses 专用协议语义。
+- Skill refined: SSE 迁移必须继续保持薄包装和资源受控；provider 只负责 upstream transport boundary，不负责业务级流式语义解释，也不为此引入独立进程、daemon、后台 worker 或额外 runtime。
+- Verification: `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_runtime_metadata.sh`.
+
+
+## 2026-04-18 — Phase 05A Batch 04 closed
+- Source: `../routecodex/src/providers/core/runtime/http-transport-provider.ts` + `../routecodex/src/providers/core/runtime/http-request-executor.ts` + `../routecodex/src/providers/core/runtime/provider-response-postprocessor.ts` + `../routecodex/src/providers/core/utils/http-client.ts`（最小 upstream SSE transport slice）。
+- Target: `rust/crates/rcc-core-provider/src/sse_transport.rs` + `rust/crates/rcc-core-provider/src/lib.rs` + `rust/crates/rcc-core-testkit/src/lib.rs` + `scripts/verify_phase5_provider_sse_transport.sh` + `.github/workflows/phase5-provider-block.yml`。
+- Kept semantics: batch04 为 `rcc-core-provider` 增加了最小 SSE transport API：`resolve_wants_upstream_sse(payload)`、`prepare_sse_request_body(payload)`、`wrap_upstream_sse_response(payload)`、`execute_sse_transport_request(payload)`；provider 只根据显式 `request.stream` / `request.metadata.stream` / `wants_sse` 判定是否走 upstream SSE，把 request body 归一为 `stream=true`，并把上游 `text/event-stream` 原始返回包装成 canonical `__sse_responses { status, headers, content_type, body }` raw carrier，不做 event 级解释。
+- Resource decision: 为保持单 runtime 与薄包装，batch04 继续复用同步轻量 HTTP client（`ureq`）读取 raw SSE body，不引入 snapshot attach、event normalizer、Host bridge、独立进程或额外 async runtime；host/orchestrator 仍然保持极薄，没有复制 streaming transport 语义。
+- Skill refined: SSE 迁移先只闭合 `resolve wants_sse -> mark request body -> execute raw SSE -> wrap carrier` 主链；provider 不解释业务级 streaming semantics，也不把协议层 responses/gemini/qwen 专用处理混进同一批。
+- Verification: `cargo fmt --manifest-path rust/Cargo.toml --all`, `python3 scripts/verify_phase5_provider_block.py`, `bash scripts/verify_phase5_provider_sse_transport.sh`.

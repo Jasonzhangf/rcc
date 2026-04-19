@@ -1,0 +1,40 @@
+name: phase14-host-provider-continuity-e2e
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AGENTS.md'
+      - 'docs/agent-routing/00-entry-routing.md'
+      - 'docs/agent-routing/170-host-provider-continuity-e2e-routing.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_WORKFLOW.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_01.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_02.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_03.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_04.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_05.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_CLOSEOUT.md'
+      - 'docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_GAP_INVENTORY.md'
+      - 'docs/TESTING_AND_ACCEPTANCE.md'
+      - '.agents/skills/rcc-host-provider-continuity-e2e/SKILL.md'
+      - 'scripts/verify_phase14_host_provider_continuity_e2e.py'
+      - 'scripts/verify_phase14_host_provider_continuity_e2e_batch01.sh'
+      - 'scripts/verify_phase14_host_provider_continuity_e2e_batch02.sh'
+      - 'scripts/verify_phase14_host_provider_continuity_e2e_batch03.sh'
+      - 'scripts/verify_phase14_host_provider_continuity_e2e_batch04.sh'
+      - 'scripts/verify_phase14_host_provider_continuity_e2e_batch05.sh'
+      - '.github/workflows/phase14-host-provider-continuity-e2e.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Verify phase14 docs gate
+        run: python3 scripts/verify_phase14_host_provider_continuity_e2e.py
+      - name: Verify phase14 batch05 final gate
+        run: bash scripts/verify_phase14_host_provider_continuity_e2e_batch05.sh

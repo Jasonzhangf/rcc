@@ -206,6 +206,22 @@
 - Batch 05 收敛阶段：`bash scripts/verify_phase13_responses_continuation_matrix_batch05.sh`
 - 检查对象：Phase 13 路由、workflow/batch/closeout 文档、`docs/PHASE_13_RESPONSES_CONTINUATION_MATRIX_GAP_INVENTORY.md`、responses continuation matrix skill、`rcc-core-domain` 的 response-id keyed continuation projection/shared helpers、request/response continuation semantics helper、responses shell continuity projection、`rcc-core-pipeline` 的 route-aware native delta / cross-provider materialize、`rcc-core-testkit` smoke、phase13 CI workflow。
 
+## Phase 14 host/provider continuity E2E gate
+- 文档/技能阶段：`python3 scripts/verify_phase14_host_provider_continuity_e2e.py`
+- Batch 01 文档/实现入口：`docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_01.md`
+- Batch 01 实现阶段：`bash scripts/verify_phase14_host_provider_continuity_e2e_batch01.sh`
+- Batch 02 文档/实现入口：`docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_02.md`
+- Batch 02 实现阶段：`bash scripts/verify_phase14_host_provider_continuity_e2e_batch02.sh`
+- Batch 03 文档/实现入口：`docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_03.md`
+- Batch 03 实现阶段：`bash scripts/verify_phase14_host_provider_continuity_e2e_batch03.sh`
+- Batch 04 文档/收敛入口：`docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_04.md`
+- Batch 04 收敛阶段：`bash scripts/verify_phase14_host_provider_continuity_e2e_batch04.sh`
+- Batch 05 文档/closeout 入口：`docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_BATCH_05.md`
+- Batch 05 closeout 阶段：`bash scripts/verify_phase14_host_provider_continuity_e2e_batch05.sh`
+- Closeout 真源：`docs/PHASE_14_HOST_PROVIDER_CONTINUITY_E2E_CLOSEOUT.md`
+- 检查对象：Phase 14 路由、workflow/batch/gap inventory 文档、host/provider continuity E2E skill、`host /v1/responses -> orchestrator -> pipeline -> compat -> provider` 安装态 continuity ownership、legacy anthropic provider fallback continuity 主线、host 安装态 create-turn `requires_action / id / required_action / provider_runtime / route`、host 安装态 `submit_tool_outputs` response-id restore、phase14 docs gate、phase14 CI workflow。
+- 当前 CI：`.github/workflows/phase14-host-provider-continuity-e2e.yml`
+
 ## CI 约束
 1. CI 与本地共用一个验证入口。
 2. CI 失败即视为闭环未完成。

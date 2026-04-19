@@ -55,7 +55,9 @@
    - 作用：定义 Phase 12A 旧仓矩阵回归迁移、批次和验证闭环。
 17. Responses continuation matrix：`docs/agent-routing/160-responses-continuation-matrix-routing.md`
    - 作用：定义 Phase 13A responses continuation 深矩阵迁移、批次和验证闭环。
-18. 本地 skills：
+18. Host/provider continuity E2E：`docs/agent-routing/170-host-provider-continuity-e2e-routing.md`
+   - 作用：定义 Phase 14A host 安装态 `/v1/responses` + provider real continuity E2E、批次和验证闭环。
+19. 本地 skills：
    - `.agents/skills/rcc-closed-loop/SKILL.md`
    - `.agents/skills/rcc-doc-driven-dev/SKILL.md`
    - `.agents/skills/rcc-test-gate/SKILL.md`
@@ -71,6 +73,7 @@
    - `.agents/skills/rcc-config-foundation/SKILL.md`
    - `.agents/skills/rcc-regression-matrix/SKILL.md`
    - `.agents/skills/rcc-responses-continuation-matrix/SKILL.md`
+   - `.agents/skills/rcc-host-provider-continuity-e2e/SKILL.md`
 
 ## 标准执行顺序
 1. 读本文件，确认硬护栏与路由入口。

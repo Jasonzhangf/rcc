@@ -26,7 +26,8 @@
 14. Responses 主线 provider execute integration → `130-responses-provider-execute-routing.md`
 15. Config 两文件基础设施 → `140-config-foundation-routing.md`
 16. 旧仓 responses continuation 深矩阵 → `160-responses-continuation-matrix-routing.md`
-17. 本地闭环 skill 入口 → `../../.agents/skills/rcc-closed-loop/SKILL.md`
+17. host 安装态 provider continuity E2E → `170-host-provider-continuity-e2e-routing.md`
+18. 本地闭环 skill 入口 → `../../.agents/skills/rcc-closed-loop/SKILL.md`
 
 ## 标准分发顺序
 1. 先判定当前任务属于“定义规则 / 更新规则 / 按规则实现 / 按规则验收”。

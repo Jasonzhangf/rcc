@@ -192,6 +192,20 @@
 - Batch 05 实现阶段：`bash scripts/verify_phase11_config_foundation_batch05.sh`
 - 检查对象：Phase 11 路由、workflow/batch 文档、`docs/PHASE_11_CONFIG_FOUNDATION_GAP_INVENTORY.md`、config foundation skill、`rcc-core-config` 两文件加载与 merge、legacy inline provider projection、legacy routing bootstrap projection、provider runtime registry bootstrap projection、runtime router bootstrap handoff、host/orchestrator 的 config 接线、phase11 CI workflow。
 
+## Phase 13 responses continuation matrix gate
+- 文档/技能阶段：`python3 scripts/verify_phase13_responses_continuation_matrix.py`
+- Batch 01 文档/实现入口：`docs/PHASE_13_RESPONSES_CONTINUATION_MATRIX_BATCH_01.md`
+- Batch 01 实现阶段：`bash scripts/verify_phase13_responses_continuation_matrix_batch01.sh`
+- Batch 02 文档/实现入口：`docs/PHASE_13_RESPONSES_CONTINUATION_MATRIX_BATCH_02.md`
+- Batch 02 实现阶段：`bash scripts/verify_phase13_responses_continuation_matrix_batch02.sh`
+- Batch 03 文档/实现入口：`docs/PHASE_13_RESPONSES_CONTINUATION_MATRIX_BATCH_03.md`
+- Batch 03 实现阶段：`bash scripts/verify_phase13_responses_continuation_matrix_batch03.sh`
+- Batch 04 文档/实现入口：`docs/PHASE_13_RESPONSES_CONTINUATION_MATRIX_BATCH_04.md`
+- Batch 04 实现阶段：`bash scripts/verify_phase13_responses_continuation_matrix_batch04.sh`
+- Batch 05 文档/收敛入口：`docs/PHASE_13_RESPONSES_CONTINUATION_MATRIX_BATCH_05.md`
+- Batch 05 收敛阶段：`bash scripts/verify_phase13_responses_continuation_matrix_batch05.sh`
+- 检查对象：Phase 13 路由、workflow/batch/closeout 文档、`docs/PHASE_13_RESPONSES_CONTINUATION_MATRIX_GAP_INVENTORY.md`、responses continuation matrix skill、`rcc-core-domain` 的 response-id keyed continuation projection/shared helpers、request/response continuation semantics helper、responses shell continuity projection、`rcc-core-pipeline` 的 route-aware native delta / cross-provider materialize、`rcc-core-testkit` smoke、phase13 CI workflow。
+
 ## CI 约束
 1. CI 与本地共用一个验证入口。
 2. CI 失败即视为闭环未完成。

@@ -1,7 +1,8 @@
 use rcc_core_domain::{
     build_hub_chat_process_request, lift_request_envelope_to_canonical,
-    materialize_responses_continuation_fallback, normalize_hub_inbound_request,
-    normalize_hub_outbound_request, prepare_responses_conversation_entry,
+    materialize_responses_continuation_fallback, materialize_responses_continuation_from_entry,
+    normalize_hub_inbound_request, normalize_hub_outbound_request,
+    prepare_responses_conversation_entry, project_responses_native_continuation,
     record_responses_conversation_response, resolve_responses_continuation_owner,
     response_id_from_continuation_request, resume_responses_conversation,
     HubCanonicalOutboundRequest, HubCanonicalRequest, HubChatProcessRequest, HubInboundRequest,
@@ -84,6 +85,9 @@ impl PipelineBlock {
     ) -> Result<CanonicalChatProcessState, String> {
         let continuation = resolve_responses_continuation_owner(&continuation_context);
         let request = match continuation.owner {
+            rcc_core_domain::ResponsesContinuationOwner::ProviderNative => {
+                self.project_provider_native_request(inbound)?
+            }
             rcc_core_domain::ResponsesContinuationOwner::ChatProcessFallback => {
                 self.restore_or_materialize_fallback(inbound)?
             }
@@ -139,12 +143,13 @@ impl PipelineBlock {
         &self,
         inbound: HubCanonicalRequest,
     ) -> Result<HubCanonicalRequest, String> {
+        let continuation_id = response_id_from_continuation_request(&inbound).map(str::to_string);
         let should_try_store_restore = !inbound.tool_results.is_empty()
             && !rcc_core_domain::canonical_messages_contain_tool_call(&inbound.messages);
 
         if should_try_store_restore {
-            let response_id = response_id_from_continuation_request(&inbound)
-                .map(str::to_string)
+            let response_id = continuation_id
+                .clone()
                 .ok_or_else(|| "responses conversation restore requires response_id".to_string())?;
             let entry = {
                 let store = self
@@ -167,7 +172,53 @@ impl PipelineBlock {
             return Ok(restored);
         }
 
+        if inbound.tool_results.is_empty() {
+            if let Some(response_id) = continuation_id {
+                let entry = {
+                    let store = self
+                        .responses_store
+                        .lock()
+                        .map_err(|_| "responses conversation store lock poisoned".to_string())?;
+                    store.get_cloned(&response_id)
+                }
+                .ok_or_else(|| {
+                    format!("responses conversation `{response_id}` not found in pipeline store")
+                })?;
+
+                return materialize_responses_continuation_from_entry(&entry, inbound)
+                    .map_err(|error| error.to_string());
+            }
+        }
+
         materialize_responses_continuation_fallback(inbound).map_err(|error| error.to_string())
+    }
+
+    fn project_provider_native_request(
+        &self,
+        inbound: HubCanonicalRequest,
+    ) -> Result<HubCanonicalRequest, String> {
+        if !inbound.tool_results.is_empty() {
+            return Ok(inbound);
+        }
+
+        let Some(response_id) = response_id_from_continuation_request(&inbound).map(str::to_string)
+        else {
+            return Ok(inbound);
+        };
+
+        let maybe_entry = {
+            let store = self
+                .responses_store
+                .lock()
+                .map_err(|_| "responses conversation store lock poisoned".to_string())?;
+            store.get_cloned(&response_id)
+        };
+
+        match maybe_entry {
+            Some(entry) => project_responses_native_continuation(&entry, inbound)
+                .map_err(|error| error.to_string()),
+            None => Ok(inbound),
+        }
     }
 }
 
@@ -410,5 +461,138 @@ mod tests {
             .expect_err("unknown response id must fail");
 
         assert!(error.contains("not found in pipeline store"));
+    }
+
+    #[test]
+    fn canonical_pipeline_projects_route_aware_previous_response_id_to_delta_for_provider_native() {
+        let block = PipelineBlock::default();
+        let create_request = block
+            .inbound_canonical(RequestEnvelope::new(
+                "responses",
+                r#"{"model":"gpt-5.3-codex","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}]}"#,
+            ))
+            .expect("create request");
+        block
+            .remember_responses_conversation(
+                &create_request,
+                &json!({
+                    "id": "resp_route_native_1",
+                    "output": [{
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type":"output_text","text":"world"}]
+                    }]
+                }),
+            )
+            .expect("remember response");
+
+        let continued = block
+            .inbound_canonical(RequestEnvelope::new(
+                "responses",
+                r#"{
+                  "model":"gpt-5.3-codex",
+                  "previous_response_id":"resp_route_native_1",
+                  "input":[
+                    {"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]},
+                    {"type":"message","role":"assistant","content":[{"type":"output_text","text":"world"}]},
+                    {"type":"message","role":"user","content":[{"type":"input_text","text":"next turn"}]}
+                  ]
+                }"#,
+            ))
+            .expect("continued request");
+
+        let state = block
+            .chat_process_canonical(
+                continued,
+                rcc_core_domain::ResponsesContinuationContext {
+                    entry_endpoint: "/v1/responses",
+                    inbound_provider_id: Some("openai"),
+                    outbound_provider_id: Some("openai"),
+                    provider_supports_native: true,
+                    response_id: None,
+                    previous_response_id: Some("resp_route_native_1"),
+                },
+            )
+            .expect("projected native continuation");
+
+        assert_eq!(
+            state.continuation.owner,
+            ResponsesContinuationOwner::ProviderNative
+        );
+        assert_eq!(
+            state.request.previous_response_id.as_deref(),
+            Some("resp_route_native_1")
+        );
+        assert_eq!(state.request.messages.len(), 1);
+        assert_eq!(state.request.messages[0].role, "user");
+        assert_eq!(
+            state.request.messages[0].content[0].text.as_deref(),
+            Some("next turn")
+        );
+    }
+
+    #[test]
+    fn canonical_pipeline_materializes_route_aware_previous_response_id_for_cross_provider() {
+        let block = PipelineBlock::default();
+        let create_request = block
+            .inbound_canonical(RequestEnvelope::new(
+                "responses",
+                r#"{"model":"gpt-5.3-codex","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}]}"#,
+            ))
+            .expect("create request");
+        block
+            .remember_responses_conversation(
+                &create_request,
+                &json!({
+                    "id": "resp_route_fallback_1",
+                    "output": [{
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type":"output_text","text":"world"}]
+                    }]
+                }),
+            )
+            .expect("remember response");
+
+        let continued = block
+            .inbound_canonical(RequestEnvelope::new(
+                "responses",
+                r#"{
+                  "model":"gpt-5.3-codex",
+                  "previous_response_id":"resp_route_fallback_1",
+                  "input":[
+                    {"type":"message","role":"user","content":[{"type":"input_text","text":"next turn"}]}
+                  ]
+                }"#,
+            ))
+            .expect("continued request");
+
+        let state = block
+            .chat_process_canonical(
+                continued,
+                rcc_core_domain::ResponsesContinuationContext {
+                    entry_endpoint: "/v1/responses",
+                    inbound_provider_id: Some("openai"),
+                    outbound_provider_id: Some("anthropic"),
+                    provider_supports_native: false,
+                    response_id: None,
+                    previous_response_id: Some("resp_route_fallback_1"),
+                },
+            )
+            .expect("materialized continuation");
+
+        assert_eq!(
+            state.continuation.owner,
+            ResponsesContinuationOwner::ChatProcessFallback
+        );
+        assert!(state.request.previous_response_id.is_none());
+        assert_eq!(state.request.messages.len(), 3);
+        assert_eq!(state.request.messages[0].role, "user");
+        assert_eq!(state.request.messages[1].role, "assistant");
+        assert_eq!(state.request.messages[2].role, "user");
+        assert_eq!(
+            state.request.messages[2].content[0].text.as_deref(),
+            Some("next turn")
+        );
     }
 }

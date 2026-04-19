@@ -88,6 +88,40 @@ pub fn resume_responses_conversation(
     materialize_responses_continuation_fallback(restored)
 }
 
+pub fn project_responses_native_continuation(
+    entry: &ResponsesConversationEntry,
+    incoming: HubCanonicalRequest,
+) -> Result<HubCanonicalRequest, HubCanonicalError> {
+    validate_responses_continuation_match(entry, &incoming)?;
+
+    let mut projected = incoming;
+    projected.messages = project_continuation_delta_messages(entry, &projected.messages);
+    Ok(projected)
+}
+
+pub fn materialize_responses_continuation_from_entry(
+    entry: &ResponsesConversationEntry,
+    incoming: HubCanonicalRequest,
+) -> Result<HubCanonicalRequest, HubCanonicalError> {
+    validate_responses_continuation_match(entry, &incoming)?;
+
+    let delta_messages = project_continuation_delta_messages(entry, &incoming.messages);
+    let mut materialized = entry.request.clone();
+    if incoming.model.is_some() {
+        materialized.model = incoming.model.clone();
+    }
+    if incoming.stream.is_some() {
+        materialized.stream = incoming.stream;
+    }
+    if !incoming.tools.is_empty() {
+        materialized.tools = incoming.tools.clone();
+    }
+    merge_metadata(&mut materialized.metadata, &incoming.metadata);
+    materialized.messages.extend(delta_messages);
+    materialized.raw_payload_text = incoming.raw_payload_text.clone();
+    Ok(materialized)
+}
+
 pub fn response_id_from_continuation_request(request: &HubCanonicalRequest) -> Option<&str> {
     request
         .response_id
@@ -95,6 +129,37 @@ pub fn response_id_from_continuation_request(request: &HubCanonicalRequest) -> O
         .or(request.previous_response_id.as_deref())
         .map(str::trim)
         .filter(|value| !value.is_empty())
+}
+
+fn validate_responses_continuation_match(
+    entry: &ResponsesConversationEntry,
+    incoming: &HubCanonicalRequest,
+) -> Result<(), HubCanonicalError> {
+    let response_id = response_id_from_continuation_request(incoming).ok_or_else(|| {
+        HubCanonicalError::new(
+            "responses continuation projection requires response_id or previous_response_id",
+        )
+    })?;
+
+    if entry.last_response_id.as_deref() != Some(response_id) {
+        return Err(HubCanonicalError::new(format!(
+            "responses conversation `{response_id}` not found or mismatched"
+        )));
+    }
+
+    Ok(())
+}
+
+fn project_continuation_delta_messages(
+    entry: &ResponsesConversationEntry,
+    incoming_messages: &[HubCanonicalMessage],
+) -> Vec<HubCanonicalMessage> {
+    let stored_messages = entry.request.messages.as_slice();
+    if incoming_messages.starts_with(stored_messages) {
+        incoming_messages[stored_messages.len()..].to_vec()
+    } else {
+        incoming_messages.to_vec()
+    }
 }
 
 fn extract_response_messages(
@@ -285,7 +350,8 @@ fn merge_metadata(target: &mut Map<String, Value>, incoming: &Map<String, Value>
 #[cfg(test)]
 mod tests {
     use super::{
-        prepare_responses_conversation_entry, record_responses_conversation_response,
+        materialize_responses_continuation_from_entry, prepare_responses_conversation_entry,
+        project_responses_native_continuation, record_responses_conversation_response,
         response_id_from_continuation_request, resume_responses_conversation,
     };
     use crate::{
@@ -433,5 +499,135 @@ mod tests {
         .expect_err("must fail");
 
         assert!(error.to_string().contains("not found or mismatched"));
+    }
+
+    #[test]
+    fn record_responses_conversation_response_extracts_required_action_tool_calls() {
+        let mut entry = prepare_responses_conversation_entry(&base_request());
+        let response_id = record_responses_conversation_response(
+            &mut entry,
+            &json!({
+                "id": "resp_required_1",
+                "required_action": {
+                    "submit_tool_outputs": {
+                        "tool_calls": [{
+                            "call_id": "call_lookup_price",
+                            "name": "lookup_price",
+                            "arguments": "{\"ticker\":\"AAPL\"}"
+                        }]
+                    }
+                }
+            }),
+        )
+        .expect("record response");
+
+        assert_eq!(response_id.as_deref(), Some("resp_required_1"));
+        assert_eq!(entry.request.messages.len(), 2);
+        assert_eq!(
+            entry.request.messages[1].content[0].data["call_id"],
+            "call_lookup_price"
+        );
+    }
+
+    #[test]
+    fn project_responses_native_continuation_trims_replayed_prefix_to_delta() {
+        let mut entry = prepare_responses_conversation_entry(&base_request());
+        record_responses_conversation_response(
+            &mut entry,
+            &json!({
+                "id": "resp_native_1",
+                "output": [{
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type":"output_text","text":"world"}]
+                }]
+            }),
+        )
+        .expect("record response");
+
+        let projected = project_responses_native_continuation(
+            &entry,
+            HubCanonicalRequest {
+                previous_response_id: Some("resp_native_1".to_string()),
+                messages: vec![
+                    base_request().messages[0].clone(),
+                    HubCanonicalMessage {
+                        role: "assistant".to_string(),
+                        name: None,
+                        content: vec![HubCanonicalContentPart {
+                            part_type: "output_text".to_string(),
+                            text: Some("world".to_string()),
+                            data: json!({"type":"output_text","text":"world"}),
+                        }],
+                    },
+                    HubCanonicalMessage {
+                        role: "user".to_string(),
+                        name: None,
+                        content: vec![HubCanonicalContentPart {
+                            part_type: "input_text".to_string(),
+                            text: Some("继续".to_string()),
+                            data: json!({"type":"input_text","text":"继续"}),
+                        }],
+                    },
+                ],
+                ..base_request()
+            },
+        )
+        .expect("project native continuation");
+
+        assert_eq!(
+            projected.previous_response_id.as_deref(),
+            Some("resp_native_1")
+        );
+        assert_eq!(projected.messages.len(), 1);
+        assert_eq!(projected.messages[0].role, "user");
+        assert_eq!(
+            projected.messages[0].content[0].text.as_deref(),
+            Some("继续")
+        );
+    }
+
+    #[test]
+    fn materialize_responses_continuation_from_entry_rebuilds_full_input() {
+        let mut entry = prepare_responses_conversation_entry(&base_request());
+        record_responses_conversation_response(
+            &mut entry,
+            &json!({
+                "id": "resp_materialize_1",
+                "output": [{
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type":"output_text","text":"world"}]
+                }]
+            }),
+        )
+        .expect("record response");
+
+        let materialized = materialize_responses_continuation_from_entry(
+            &entry,
+            HubCanonicalRequest {
+                previous_response_id: Some("resp_materialize_1".to_string()),
+                messages: vec![HubCanonicalMessage {
+                    role: "user".to_string(),
+                    name: None,
+                    content: vec![HubCanonicalContentPart {
+                        part_type: "input_text".to_string(),
+                        text: Some("next turn".to_string()),
+                        data: json!({"type":"input_text","text":"next turn"}),
+                    }],
+                }],
+                ..base_request()
+            },
+        )
+        .expect("materialize continuation");
+
+        assert_eq!(response_id_from_continuation_request(&materialized), None);
+        assert_eq!(materialized.messages.len(), 3);
+        assert_eq!(materialized.messages[0].role, "user");
+        assert_eq!(materialized.messages[1].role, "assistant");
+        assert_eq!(
+            materialized.messages[2].content[0].text.as_deref(),
+            Some("next turn")
+        );
     }
 }

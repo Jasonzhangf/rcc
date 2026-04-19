@@ -53,7 +53,9 @@
    - 作用：定义 Phase 11A 两文件 config foundation、批次和验证闭环。
 16. Regression matrix：`docs/agent-routing/150-regression-matrix-routing.md`
    - 作用：定义 Phase 12A 旧仓矩阵回归迁移、批次和验证闭环。
-16. 本地 skills：
+17. Responses continuation matrix：`docs/agent-routing/160-responses-continuation-matrix-routing.md`
+   - 作用：定义 Phase 13A responses continuation 深矩阵迁移、批次和验证闭环。
+18. 本地 skills：
    - `.agents/skills/rcc-closed-loop/SKILL.md`
    - `.agents/skills/rcc-doc-driven-dev/SKILL.md`
    - `.agents/skills/rcc-test-gate/SKILL.md`
@@ -68,6 +70,7 @@
    - `.agents/skills/rcc-responses-provider-execute/SKILL.md`
    - `.agents/skills/rcc-config-foundation/SKILL.md`
    - `.agents/skills/rcc-regression-matrix/SKILL.md`
+   - `.agents/skills/rcc-responses-continuation-matrix/SKILL.md`
 
 ## 标准执行顺序
 1. 读本文件，确认硬护栏与路由入口。

@@ -993,6 +993,298 @@ pub fn run_phase12_batch03_provider_compat_samples_smoke() -> String {
     )
 }
 
+pub fn run_phase13_batch01_responses_continuation_smoke() -> String {
+    let block = PipelineBlock::default();
+    let create_request = block
+        .inbound_canonical(RequestEnvelope::new(
+            "responses",
+            r#"{"model":"gpt-5.3-codex","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}]}"#,
+        ))
+        .expect("phase13 create request");
+    let remembered_response_id = block
+        .remember_responses_conversation(
+            &create_request,
+            &json!({
+                "id": "phase13_resp_1",
+                "output": [{
+                    "type": "function_call",
+                    "call_id": "call_lookup_price",
+                    "name": "lookup_price",
+                    "arguments": "{\"ticker\":\"AAPL\"}"
+                }]
+            }),
+        )
+        .expect("phase13 remember response")
+        .unwrap_or_default();
+
+    let native_state = block
+        .chat_process_canonical(
+            block.inbound_canonical(RequestEnvelope::new(
+                "responses",
+                r#"{
+                  "model":"gpt-5.3-codex",
+                  "previous_response_id":"phase13_resp_1",
+                  "input":[
+                    {"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]},
+                    {"type":"message","role":"assistant","content":[{"type":"function_call","call_id":"call_lookup_price","name":"lookup_price","arguments":"{\"ticker\":\"AAPL\"}"}]},
+                    {"type":"message","role":"user","content":[{"type":"input_text","text":"next turn"}]}
+                  ]
+                }"#,
+            ))
+            .expect("phase13 native inbound"),
+            rcc_core_domain::ResponsesContinuationContext {
+                entry_endpoint: "/v1/responses",
+                inbound_provider_id: Some("openai"),
+                outbound_provider_id: Some("openai"),
+                provider_supports_native: true,
+                response_id: None,
+                previous_response_id: Some("phase13_resp_1"),
+            },
+        )
+        .expect("phase13 native state");
+
+    let fallback_state = block
+        .chat_process_canonical(
+            block.inbound_canonical(RequestEnvelope::new(
+                "responses",
+                r#"{
+                  "model":"gpt-5.3-codex",
+                  "previous_response_id":"phase13_resp_1",
+                  "input":[
+                    {"type":"message","role":"user","content":[{"type":"input_text","text":"next turn"}]}
+                  ]
+                }"#,
+            ))
+            .expect("phase13 fallback inbound"),
+            rcc_core_domain::ResponsesContinuationContext {
+                entry_endpoint: "/v1/responses",
+                inbound_provider_id: Some("openai"),
+                outbound_provider_id: Some("anthropic"),
+                provider_supports_native: false,
+                response_id: None,
+                previous_response_id: Some("phase13_resp_1"),
+            },
+        )
+        .expect("phase13 fallback state");
+
+    let submit_state = block
+        .chat_process_canonical(
+            block
+                .inbound_canonical(RequestEnvelope::new(
+                    "responses",
+                    r#"{
+                  "model":"gpt-5.3-codex",
+                  "response_id":"phase13_resp_1",
+                  "tool_outputs":[
+                    {"tool_call_id":"call_lookup_price","output":"AAPL: 189.10"}
+                  ]
+                }"#,
+                ))
+                .expect("phase13 submit inbound"),
+            rcc_core_domain::ResponsesContinuationContext {
+                entry_endpoint: "/v1/responses.submit_tool_outputs",
+                inbound_provider_id: Some("anthropic"),
+                outbound_provider_id: Some("anthropic"),
+                provider_supports_native: false,
+                response_id: Some("phase13_resp_1"),
+                previous_response_id: None,
+            },
+        )
+        .expect("phase13 submit state");
+
+    format!(
+        "remembered_response_id={} native_owner={:?} native_messages={} native_previous_response_id={} fallback_owner={:?} fallback_messages={} submit_owner={:?} submit_tool_use={}",
+        remembered_response_id,
+        native_state.continuation.owner,
+        native_state.request.messages.len(),
+        native_state.request.previous_response_id.as_deref().unwrap_or(""),
+        fallback_state.continuation.owner,
+        fallback_state.request.messages.len(),
+        submit_state.continuation.owner,
+        submit_state.request.messages[2].content[0].data["tool_use_id"]
+            .as_str()
+            .unwrap_or(""),
+    )
+}
+
+pub fn run_phase13_batch02_responses_continuation_semantics_smoke() -> String {
+    let mut responses_metadata = serde_json::Map::from_iter([(
+        "responsesResume".to_string(),
+        json!({
+            "previousRequestId": "req_chain_root_1",
+            "restoredFromResponseId": "resp_restored_1",
+            "toolOutputsDetailed": [{"callId":"tool_call_1","outputText":"done"}]
+        }),
+    )]);
+    let request_lift = rcc_core_domain::lift_request_continuation_semantics(
+        rcc_core_domain::RequestContinuationInput {
+            protocol: "openai-responses",
+            request_id: "req-stage2-continuation",
+            session_id: None,
+            conversation_id: None,
+            previous_response_id: Some("resp_prev_1"),
+        },
+        &mut responses_metadata,
+    );
+
+    let openai_chat_lift = rcc_core_domain::lift_request_continuation_semantics(
+        rcc_core_domain::RequestContinuationInput {
+            protocol: "openai-chat",
+            request_id: "req-openai-chat-session-cont",
+            session_id: Some("session_chat_1"),
+            conversation_id: None,
+            previous_response_id: None,
+        },
+        &mut serde_json::Map::new(),
+    );
+
+    let anthropic_lift = rcc_core_domain::lift_request_continuation_semantics(
+        rcc_core_domain::RequestContinuationInput {
+            protocol: "anthropic-messages",
+            request_id: "req-anthropic-conversation-cont",
+            session_id: None,
+            conversation_id: Some("conversation_anthropic_1"),
+            previous_response_id: None,
+        },
+        &mut serde_json::Map::new(),
+    );
+
+    let gemini_lift = rcc_core_domain::lift_request_continuation_semantics(
+        rcc_core_domain::RequestContinuationInput {
+            protocol: "gemini-chat",
+            request_id: "req-gemini-session-cont",
+            session_id: Some("session_gemini_1"),
+            conversation_id: None,
+            previous_response_id: None,
+        },
+        &mut serde_json::Map::new(),
+    );
+
+    let responses_response = rcc_core_domain::project_response_continuation_semantics(
+        rcc_core_domain::ResponseContinuationInput {
+            protocol: "openai-responses",
+            request_id: Some("req_chain_resp_1"),
+            response_id: Some("resp_out_1"),
+            previous_response_id: Some("resp_prev_1"),
+            required_action: Some(&json!({
+                "submit_tool_outputs": {
+                    "tool_calls": [{
+                        "call_id": "call_resp_1",
+                        "function": {"name":"shell_command","arguments":{"cmd":"pwd"}}
+                    }]
+                }
+            })),
+            request_semantics: None,
+        },
+    )
+    .expect("phase13 batch02 responses response semantics");
+
+    let non_responses_response = rcc_core_domain::project_response_continuation_semantics(
+        rcc_core_domain::ResponseContinuationInput {
+            protocol: "openai-chat",
+            request_id: Some("session_chat_resp_1"),
+            response_id: None,
+            previous_response_id: None,
+            required_action: None,
+            request_semantics: openai_chat_lift.semantics.as_ref(),
+        },
+    )
+    .expect("phase13 batch02 non-responses response semantics");
+
+    format!(
+        "responses_chain={} responses_resume_cleared={} responses_tool_call={} responses_tool_output={} openai_chat_scope={:?} anthropic_scope={:?} gemini_scope={:?} response_chain={} response_prev={} response_pending_call={} non_responses_chain={}",
+        request_lift
+            .semantics
+            .as_ref()
+            .map(|semantics| semantics.chain_id.as_str())
+            .unwrap_or(""),
+        responses_metadata.get("responsesResume").is_none(),
+        request_lift.tool_outputs.first().map(|item| item.tool_call_id.as_str()).unwrap_or(""),
+        request_lift.tool_outputs.first().map(|item| item.content.as_str()).unwrap_or(""),
+        openai_chat_lift.semantics.as_ref().map(|semantics| &semantics.sticky_scope),
+        anthropic_lift.semantics.as_ref().map(|semantics| &semantics.sticky_scope),
+        gemini_lift.semantics.as_ref().map(|semantics| &semantics.sticky_scope),
+        responses_response.chain_id,
+        responses_response.previous_turn_id.as_deref().unwrap_or(""),
+        responses_response
+            .tool_continuation
+            .as_ref()
+            .and_then(|tool| tool.pending_tool_call_ids.first())
+            .map(String::as_str)
+            .unwrap_or(""),
+        non_responses_response.chain_id,
+    )
+}
+
+pub fn run_phase13_batch03_responses_shell_continuity_smoke() -> String {
+    let shell = rcc_core_domain::serialize_responses_shell(
+        &json!({
+            "model":"gpt-5.3-codex",
+            "previous_response_id":"resp_prev_req_1"
+        }),
+        &rcc_core_domain::ResponseEnvelope {
+            route: rcc_core_domain::RouteDecision {
+                target_block: "pipeline".to_string(),
+                selected_route: Some("default".to_string()),
+                selected_target: Some("anthropic.claude-sonnet-4-5".to_string()),
+                candidate_routes: vec!["default".to_string()],
+            },
+            tool_plan: rcc_core_domain::ToolPlan::empty(),
+            provider_runtime: "transport-runtime",
+            status: "requires_action".to_string(),
+            payload: "继续执行".to_string(),
+            required_action: json!({
+                "submit_tool_outputs": {
+                    "tool_calls": [{"id":"call_resp_1","name":"exec_command"}]
+                }
+            }),
+            raw_provider_response: json!({
+                "body": {
+                    "id": "resp_shell_1",
+                    "request_id": "req_shell_1"
+                }
+            }),
+        },
+    );
+
+    let submit_shell = rcc_core_domain::serialize_responses_shell(
+        &json!({
+            "model":"gpt-5.3-codex",
+            "response_id":"resp_submit_1"
+        }),
+        &rcc_core_domain::ResponseEnvelope {
+            route: rcc_core_domain::RouteDecision {
+                target_block: "pipeline".to_string(),
+                selected_route: Some("default".to_string()),
+                selected_target: Some("anthropic.claude-sonnet-4-5".to_string()),
+                candidate_routes: vec!["default".to_string()],
+            },
+            tool_plan: rcc_core_domain::ToolPlan::empty(),
+            provider_runtime: "transport-runtime",
+            status: "completed".to_string(),
+            payload: "done".to_string(),
+            required_action: Value::Null,
+            raw_provider_response: json!({
+                "body": {
+                    "id": "resp_shell_submit_1"
+                }
+            }),
+        },
+    );
+
+    format!(
+        "shell_id={} shell_request_id={} shell_previous_response_id={} shell_required_action={} submit_id={} submit_previous_response_id={}",
+        shell["id"].as_str().unwrap_or(""),
+        shell["request_id"].as_str().unwrap_or(""),
+        shell["previous_response_id"].as_str().unwrap_or(""),
+        shell["required_action"]["submit_tool_outputs"]["tool_calls"][0]["id"]
+            .as_str()
+            .unwrap_or(""),
+        submit_shell["id"].as_str().unwrap_or(""),
+        submit_shell["previous_response_id"].as_str().unwrap_or(""),
+    )
+}
+
 fn drain_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
     let mut buffer = [0_u8; 4096];
     let mut request = Vec::new();
@@ -1099,18 +1391,21 @@ mod tests {
     use super::{
         run_compat_batch02_smoke, run_phase12_batch01_regression_smoke,
         run_phase12_batch02_protocol_matrix_smoke,
-        run_phase12_batch03_provider_compat_samples_smoke, run_phase8_batch04_gemini_compat_smoke,
-        run_phase9_batch05_matrix_smoke, run_phase9_batch06_audit_matrix_smoke,
-        run_phase9_batch07_audit_sidecar_smoke, run_pipeline_batch01_smoke,
-        run_provider_http_execute_smoke, run_provider_runtime_metadata_smoke,
-        run_provider_sse_transport_smoke, run_provider_transport_request_plan_smoke,
-        run_responses_provider_execute_batch01_smoke, run_router_batch01_smoke,
-        run_router_batch02_smoke, run_servertool_followup_injection_smoke,
-        run_servertool_followup_smoke, run_servertool_followup_system_vision_smoke,
-        run_servertool_followup_tool_governance_smoke, run_servertool_reasoning_stop_arm_smoke,
-        run_servertool_reasoning_stop_clear_smoke, run_servertool_reasoning_stop_mode_sync_smoke,
-        run_servertool_reasoning_stop_read_smoke, run_servertool_reasoning_stop_smoke,
-        run_servertool_reasoning_stop_sticky_load_smoke,
+        run_phase12_batch03_provider_compat_samples_smoke,
+        run_phase13_batch01_responses_continuation_smoke,
+        run_phase13_batch02_responses_continuation_semantics_smoke,
+        run_phase13_batch03_responses_shell_continuity_smoke,
+        run_phase8_batch04_gemini_compat_smoke, run_phase9_batch05_matrix_smoke,
+        run_phase9_batch06_audit_matrix_smoke, run_phase9_batch07_audit_sidecar_smoke,
+        run_pipeline_batch01_smoke, run_provider_http_execute_smoke,
+        run_provider_runtime_metadata_smoke, run_provider_sse_transport_smoke,
+        run_provider_transport_request_plan_smoke, run_responses_provider_execute_batch01_smoke,
+        run_router_batch01_smoke, run_router_batch02_smoke,
+        run_servertool_followup_injection_smoke, run_servertool_followup_smoke,
+        run_servertool_followup_system_vision_smoke, run_servertool_followup_tool_governance_smoke,
+        run_servertool_reasoning_stop_arm_smoke, run_servertool_reasoning_stop_clear_smoke,
+        run_servertool_reasoning_stop_mode_sync_smoke, run_servertool_reasoning_stop_read_smoke,
+        run_servertool_reasoning_stop_smoke, run_servertool_reasoning_stop_sticky_load_smoke,
         run_servertool_reasoning_stop_sticky_save_smoke, run_servertool_stop_gateway_smoke,
         run_workspace_smoke,
     };
@@ -1376,5 +1671,46 @@ mod tests {
         assert!(summary.contains("openai_chat_exists=true"));
         assert!(summary.contains("openai_chat_requests=1"));
         assert!(summary.contains("openai_chat_responses=1"));
+    }
+
+    #[test]
+    fn phase13_batch01_responses_continuation_smoke_covers_route_aware_and_submit_restore() {
+        let summary = run_phase13_batch01_responses_continuation_smoke();
+        assert!(summary.contains("remembered_response_id=phase13_resp_1"));
+        assert!(summary.contains("native_owner=ProviderNative"));
+        assert!(summary.contains("native_messages=1"));
+        assert!(summary.contains("native_previous_response_id=phase13_resp_1"));
+        assert!(summary.contains("fallback_owner=ChatProcessFallback"));
+        assert!(summary.contains("fallback_messages=3"));
+        assert!(summary.contains("submit_owner=ChatProcessFallback"));
+        assert!(summary.contains("submit_tool_use=call_lookup_price"));
+    }
+
+    #[test]
+    fn phase13_batch02_responses_continuation_semantics_smoke_covers_request_and_response_semantics(
+    ) {
+        let summary = run_phase13_batch02_responses_continuation_semantics_smoke();
+        assert!(summary.contains("responses_chain=req_chain_root_1"));
+        assert!(summary.contains("responses_resume_cleared=true"));
+        assert!(summary.contains("responses_tool_call=tool_call_1"));
+        assert!(summary.contains("responses_tool_output=done"));
+        assert!(summary.contains("openai_chat_scope=Some(Session)"));
+        assert!(summary.contains("anthropic_scope=Some(Conversation)"));
+        assert!(summary.contains("gemini_scope=Some(Session)"));
+        assert!(summary.contains("response_chain=req_chain_resp_1"));
+        assert!(summary.contains("response_prev=resp_prev_1"));
+        assert!(summary.contains("response_pending_call=call_resp_1"));
+        assert!(summary.contains("non_responses_chain=session_chat_1"));
+    }
+
+    #[test]
+    fn phase13_batch03_responses_shell_continuity_smoke_covers_shell_projection() {
+        let summary = run_phase13_batch03_responses_shell_continuity_smoke();
+        assert!(summary.contains("shell_id=resp_shell_1"));
+        assert!(summary.contains("shell_request_id=req_shell_1"));
+        assert!(summary.contains("shell_previous_response_id=resp_prev_req_1"));
+        assert!(summary.contains("shell_required_action=call_resp_1"));
+        assert!(summary.contains("submit_id=resp_shell_submit_1"));
+        assert!(summary.contains("submit_previous_response_id=resp_submit_1"));
     }
 }

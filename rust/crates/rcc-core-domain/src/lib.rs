@@ -6,6 +6,7 @@ pub mod compat_mapping;
 pub mod compat_request_projection;
 pub mod context_advisor;
 pub mod context_weighted;
+pub mod continuation_semantics;
 pub mod continuation_sticky_key;
 pub mod exec_command_normalize;
 pub mod followup_message_trim;
@@ -67,6 +68,14 @@ pub use context_weighted::{
     compute_context_multiplier, compute_effective_safe_window_tokens,
     resolve_context_weighted_config, ContextWeightedConfigInput, ResolvedContextWeightedConfig,
     DEFAULT_CONTEXT_WEIGHTED_CONFIG,
+};
+pub use continuation_semantics::{
+    lift_request_continuation_semantics, project_response_continuation_semantics,
+    project_responses_shell_continuation, take_responses_resume_state, ContinuationResumeFrom,
+    ContinuationSemantics, ContinuationToolMode, ContinuationToolSemantics,
+    RequestContinuationInput, RequestContinuationProjection, RequestContinuationToolOutput,
+    ResponseContinuationInput, ResponsesResumeState, ResponsesResumeToolOutput,
+    ResponsesShellContinuationProjection,
 };
 pub use continuation_sticky_key::{
     resolve_continuation_sticky_key, ContinuationStickyContext, ContinuationStickyScope,
@@ -133,7 +142,8 @@ pub use responses_continuation_policy::{
     ResponsesContinuationContext, ResponsesContinuationDecision, ResponsesContinuationOwner,
 };
 pub use responses_conversation::{
-    prepare_responses_conversation_entry, record_responses_conversation_response,
+    materialize_responses_continuation_from_entry, prepare_responses_conversation_entry,
+    project_responses_native_continuation, record_responses_conversation_response,
     response_id_from_continuation_request, resume_responses_conversation,
     ResponsesConversationEntry,
 };

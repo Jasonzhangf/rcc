@@ -114,7 +114,83 @@
 - 文档/技能阶段：`python3 scripts/verify_phase6_router_block.py`
 - Batch 01 实现阶段：`bash scripts/verify_phase6_router_batch01.sh`
 - Batch 02 实现阶段：`bash scripts/verify_phase6_router_batch02.sh`
-- 检查对象：Phase 06 路由、workflow/batch 文档、router block migration skill、router crate Rust 单测、testkit smoke、host smoke、phase6 CI workflow。
+- Batch 03 文档/实现入口：`docs/PHASE_06_ROUTER_BLOCK_BATCH_03.md`
+- Batch 03 实现阶段：`bash scripts/verify_phase6_router_batch03.sh`
+- Batch 04 文档/实现入口：`docs/PHASE_06_ROUTER_BLOCK_BATCH_04.md`
+- Batch 04 实现阶段：`bash scripts/verify_phase6_router_batch04.sh`
+- Batch 05 文档/实现入口：`docs/PHASE_06_ROUTER_BLOCK_BATCH_05.md`
+- Batch 05 实现阶段：`bash scripts/verify_phase6_router_batch05.sh`
+- 检查对象：Phase 06 路由、workflow/batch 文档、`docs/PHASE_06_RESPONSES_VIRTUAL_ROUTER_GAP_INVENTORY.md`、`rust/crates/rcc-core-domain/src/router_selection_input.rs`、router block migration skill、runtime route pool consumption、selected target handoff、domain/router/orchestrator/compat/provider/host crate Rust 单测、testkit smoke、host smoke、phase6 CI workflow。
+
+## Phase 07 host/server gate
+- 文档/技能阶段：`python3 scripts/verify_phase7_host_server.py`
+- Batch 01 实现阶段：`bash scripts/verify_phase7_host_server_batch01.sh`
+- Batch 02 实现阶段：`bash scripts/verify_phase7_host_server_batch02.sh`
+- Batch 03 实现阶段：`bash scripts/verify_phase7_host_server_batch03.sh`
+- Batch 04 实现阶段：`bash scripts/verify_phase7_host_server_batch04.sh`
+- 检查对象：Phase 07 路由、workflow/batch 文档、`docs/PHASE_07_RESPONSES_INGRESS_GAP_INVENTORY.md`、`rust/crates/rcc-core-domain/src/responses_ingress.rs`、host server skeleton skill、domain/host crate Rust 单测、testkit smoke、host smoke CLI、host HTTP `/healthz` + `/smoke` + `/requests` + `/chat` + `/v1/responses`、phase7 CI workflow。
+
+## Phase 08 compat block gate
+- 文档/技能阶段：`python3 scripts/verify_phase8_compat_block.py`
+- Batch 02 文档/实现入口：`docs/PHASE_08_COMPAT_BLOCK_BATCH_02.md`
+- Batch 02 实现阶段：`bash scripts/verify_phase8_compat_block_batch02.sh`
+- Batch 03 文档/实现入口：`docs/PHASE_08_COMPAT_BLOCK_BATCH_03.md`
+- Batch 03 实现阶段：`bash scripts/verify_phase8_compat_block_batch03.sh`
+- Batch 04 文档/实现入口：`docs/PHASE_08_COMPAT_BLOCK_BATCH_04.md`
+- Batch 04 实现阶段：`bash scripts/verify_phase8_compat_block_batch04.sh`
+- Batch 05 文档/收敛入口：`docs/PHASE_08_COMPAT_BLOCK_BATCH_05.md`
+- Batch 05 收敛阶段：`bash scripts/verify_phase8_compat_block_batch05.sh`
+- Batch 06 文档/实现入口：`docs/PHASE_08_COMPAT_BLOCK_BATCH_06.md`
+- Batch 06 实现阶段：`bash scripts/verify_phase8_compat_block_batch06.sh`
+- Batch 07 文档/实现入口：`docs/PHASE_08_COMPAT_BLOCK_BATCH_07.md`
+- Batch 07 实现阶段：`bash scripts/verify_phase8_compat_block_batch07.sh`
+- Batch 08 文档/实现入口：`docs/PHASE_08_COMPAT_BLOCK_BATCH_08.md`
+- Batch 08 实现阶段：`bash scripts/verify_phase8_compat_block_batch08.sh`
+- 检查对象：Phase 08 路由、workflow/batch 文档、`docs/PHASE_08_COMPAT_CONFIG_CONVERGENCE.md`、`docs/PHASE_08_RESPONSES_COMPAT_GAP_INVENTORY.md`、compat block migration skill、compat 位于 hub 后/provider 前的边界、route handoff sidecar、gemini provider-family request projection、compat config convergence、request-side spec skeleton、content/tool rule extraction、tool declaration / tool result field rules extraction、payload invariance、phase8 CI workflow。
+
+## Phase 09 hub pipeline gate
+- 文档/技能阶段：`python3 scripts/verify_phase9_hub_pipeline.py`
+- 审计真源：`docs/PHASE_09_HUB_PIPELINE_AUDIT.md`
+- 架构真源：`docs/HUB_CANONICAL_CHAT_ARCHITECTURE.md`
+- Batch 01 文档/实现入口：`docs/PHASE_09_HUB_PIPELINE_BATCH_01.md`
+- Batch 01 实现阶段：`bash scripts/verify_phase9_hub_pipeline_batch01.sh`
+- Batch 02 文档入口：`docs/PHASE_09_HUB_PIPELINE_BATCH_02.md`
+- Batch 03 文档入口：`docs/PHASE_09_HUB_PIPELINE_BATCH_03.md`
+- Batch 04 文档入口：`docs/PHASE_09_HUB_PIPELINE_BATCH_04.md`
+- Batch 05 文档入口：`docs/PHASE_09_HUB_PIPELINE_BATCH_05.md`
+- Batch 05 实现阶段：`bash scripts/verify_phase9_hub_pipeline_batch05.sh`
+- Batch 06 文档入口：`docs/PHASE_09_HUB_PIPELINE_BATCH_06.md`
+- Batch 06 实现阶段：`bash scripts/verify_phase9_hub_pipeline_batch06.sh`
+- Batch 07 文档入口：`docs/PHASE_09_HUB_PIPELINE_BATCH_07.md`
+- Batch 07 实现阶段：`bash scripts/verify_phase9_hub_pipeline_batch07.sh`
+- 检查对象：Phase 09 路由、workflow/batch 文档、`docs/PHASE_09_RESPONSES_HUB_PIPELINE_GAP_INVENTORY.md`、hub pipeline block migration skill、phase9 docs gate、no-copy/minimal-copy 规则、provider-first continuation ownership、response_id keyed restore 边界、fallback provider response normalize 边界、cross-protocol audit sidecar 只进 carrier metadata 不进 request body、旧仓 matrix regression 对齐计划。
+
+
+## Phase 10 responses provider execute gate
+- 文档/技能阶段：`python3 scripts/verify_phase10_responses_provider_execute.py`
+- Batch 01 文档/实现入口：`docs/PHASE_10_RESPONSES_PROVIDER_EXECUTE_BATCH_01.md`
+- Batch 01 实现阶段：`bash scripts/verify_phase10_responses_provider_execute_batch01.sh`
+- Batch 02 文档/实现入口：`docs/PHASE_10_RESPONSES_PROVIDER_EXECUTE_BATCH_02.md`
+- Batch 02 实现阶段：`bash scripts/verify_phase10_responses_provider_execute_batch02.sh`
+- Batch 03 文档/实现入口：`docs/PHASE_10_RESPONSES_PROVIDER_EXECUTE_BATCH_03.md`
+- Batch 03 实现阶段：`bash scripts/verify_phase10_responses_provider_execute_batch03.sh`
+- Batch 04 文档/实现入口：`docs/PHASE_10_RESPONSES_PROVIDER_EXECUTE_BATCH_04.md`
+- Batch 04 实现阶段：`bash scripts/verify_phase10_responses_provider_execute_batch04.sh`
+- 检查对象：Phase 10 路由、workflow/batch 文档、`docs/PHASE_10_RESPONSES_PROVIDER_EXECUTE_GAP_INVENTORY.md`、responses provider execute skill、orchestrator/provider/testkit/host 的最小主线集成验证、provider runtime route handoff contract、payload invariance、selected_target runtime bind、explicit missing-target failure、host `/v1/responses` 安装态 selected-target hit/miss、phase10 CI workflow。
+
+## Phase 11 config foundation gate
+- 文档/技能阶段：`python3 scripts/verify_phase11_config_foundation.py`
+- Batch 01 文档/实现入口：`docs/PHASE_11_CONFIG_FOUNDATION_BATCH_01.md`
+- Batch 01 实现阶段：`bash scripts/verify_phase11_config_foundation_batch01.sh`
+- Batch 02 文档/实现入口：`docs/PHASE_11_CONFIG_FOUNDATION_BATCH_02.md`
+- Batch 02 实现阶段：`bash scripts/verify_phase11_config_foundation_batch02.sh`
+- Batch 03 文档/实现入口：`docs/PHASE_11_CONFIG_FOUNDATION_BATCH_03.md`
+- Batch 03 实现阶段：`bash scripts/verify_phase11_config_foundation_batch03.sh`
+- Batch 04 文档/实现入口：`docs/PHASE_11_CONFIG_FOUNDATION_BATCH_04.md`
+- Batch 04 实现阶段：`bash scripts/verify_phase11_config_foundation_batch04.sh`
+- Batch 05 文档/实现入口：`docs/PHASE_11_CONFIG_FOUNDATION_BATCH_05.md`
+- Batch 05 实现阶段：`bash scripts/verify_phase11_config_foundation_batch05.sh`
+- 检查对象：Phase 11 路由、workflow/batch 文档、`docs/PHASE_11_CONFIG_FOUNDATION_GAP_INVENTORY.md`、config foundation skill、`rcc-core-config` 两文件加载与 merge、legacy inline provider projection、legacy routing bootstrap projection、provider runtime registry bootstrap projection、runtime router bootstrap handoff、host/orchestrator 的 config 接线、phase11 CI workflow。
 
 ## CI 约束
 1. CI 与本地共用一个验证入口。

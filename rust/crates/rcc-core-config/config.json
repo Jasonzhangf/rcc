@@ -1,0 +1,12 @@
+{
+  "host": {
+    "server": {
+      "addr": "127.0.0.1:38080"
+    }
+  },
+  "provider": {
+    "runtime": {
+      "kind": "noop"
+    }
+  }
+}

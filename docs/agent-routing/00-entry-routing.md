@@ -20,7 +20,12 @@
 8. Servertool block 真源迁移 → `70-servertool-block-routing.md`
 9. Provider block 真源迁移 → `80-provider-block-routing.md`
 10. Router block 真源迁移 → `90-router-block-routing.md`
-11. 本地闭环 skill 入口 → `../../.agents/skills/rcc-closed-loop/SKILL.md`
+11. Host/server skeleton → `100-host-server-routing.md`
+12. Compat block 真源迁移 → `110-compat-block-routing.md`
+13. Hub pipeline block 真源迁移 → `120-hub-pipeline-routing.md`
+14. Responses 主线 provider execute integration → `130-responses-provider-execute-routing.md`
+15. Config 两文件基础设施 → `140-config-foundation-routing.md`
+16. 本地闭环 skill 入口 → `../../.agents/skills/rcc-closed-loop/SKILL.md`
 
 ## 标准分发顺序
 1. 先判定当前任务属于“定义规则 / 更新规则 / 按规则实现 / 按规则验收”。

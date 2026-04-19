@@ -1,0 +1,22 @@
+{
+  "reqId": "openai-chat-glm.default.gpt-5.1-codex-gpt-5.1-codex-20251211T130247-001",
+  "entry": "openai-chat",
+  "endpoint": "/v1/chat/completions",
+  "providerId": "glm.default.gpt-5.1-codex",
+  "model": "gpt-5.1-codex",
+  "timestamp": "2025-12-11T13:02:48.120Z",
+  "status": 200,
+  "body": {
+    "id": "chatcmpl-regression-1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "request metadata summarized"
+        },
+        "finish_reason": "stop"
+      }
+    ]
+  }
+}

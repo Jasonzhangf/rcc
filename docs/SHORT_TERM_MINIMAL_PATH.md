@@ -65,5 +65,6 @@ bash scripts/verify_phase2_cargo_skeleton.sh
 
 ## 最小骨架跑通后的下一步
 1. 保持这条最小路径持续为绿。
-2. 在此基础上继续按批次推进 `servertool` 与 `domain` 的旧仓迁移。
-3. 新批次进入实现前，仍必须先补 docs / skills / test gate。
+2. 当前主线切到 `responses ingress server -> virtual router -> hub pipeline -> provider`。
+3. 每个新批次先做“缺函数 / 缺 block”盘点，缺就补，不缺继续接线。
+4. 新批次进入实现前，仍必须先补 docs / skills / test gate。

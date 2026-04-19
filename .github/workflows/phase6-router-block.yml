@@ -20,4 +20,4 @@ jobs:
           python-version: '3.11'
 
       - name: Verify phase6 router block
-        run: bash scripts/verify_phase6_router_batch02.sh
+        run: bash scripts/verify_phase6_router_batch05.sh

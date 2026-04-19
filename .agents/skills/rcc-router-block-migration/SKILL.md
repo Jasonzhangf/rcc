@@ -35,7 +35,20 @@ description: rcc-core 的 router block 真源迁移 skill。用于把 route sele
    - preferred-model reorder
    不提前混入 alias queue、sticky pool、health/quota/cooldown、provider failover。
    - provider registry 若需要 capability 信息，仍只扩到最小显式 view（`model_capabilities`），不要把完整 provider registry/config/runtime 带进 router。
-9. 变更后先跑 `python3 scripts/verify_phase6_router_block.py`，再跑当前 batch 验证脚本（如 `bash scripts/verify_phase6_router_batch01.sh` / `bash scripts/verify_phase6_router_batch02.sh`）。
+9. Batch 03 若进入 responses 主线，先只做：
+   - 先补 `rcc-core-domain` 中的 router 选择输入纯函数
+   - 再补 `rcc-core-router` 的 authoritative input / select shell
+   - 再把 orchestrator 顺序修到 router 在 pipeline 前
+   不提前混入 hub pipeline/provider 真源。
+10. Batch 04 若进入 runtime 接线，先只做：
+   - bootstrap route pools -> `RouterBlock`
+   - `select()` 返回最小 route result
+   - host/responses shell 只做透传，不复制 route 逻辑
+11. Batch 05 若进入 downstream handoff，先只做：
+   - `selected_route -> selected_target`
+   - route handoff 只通过 `RouteDecision` 下发
+   - compat/provider 只消费 handoff，不复制 target resolve
+12. 变更后先跑 `python3 scripts/verify_phase6_router_block.py`，再跑当前 batch 验证脚本（如 `bash scripts/verify_phase6_router_batch01.sh` / `bash scripts/verify_phase6_router_batch02.sh` / `bash scripts/verify_phase6_router_batch03.sh` / `bash scripts/verify_phase6_router_batch04.sh` / `bash scripts/verify_phase6_router_batch05.sh`）。
 
 ## Acceptance Gate
 - router 业务真源留在 `rcc-core-router`。
@@ -61,5 +74,8 @@ description: rcc-core 的 router block 真源迁移 skill。用于把 route sele
 - `docs/PHASE_06_ROUTER_BLOCK_WORKFLOW.md`
 - `docs/PHASE_06_ROUTER_BLOCK_BATCH_01.md`
 - `docs/PHASE_06_ROUTER_BLOCK_BATCH_02.md`
+- `docs/PHASE_06_ROUTER_BLOCK_BATCH_03.md`
+- `docs/PHASE_06_ROUTER_BLOCK_BATCH_04.md`
+- `docs/PHASE_06_ROUTER_BLOCK_BATCH_05.md`
 - `docs/CRATE_BOUNDARIES.md`
 - `docs/RUST_WORKSPACE_ARCHITECTURE.md`

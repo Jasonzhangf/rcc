@@ -1,9 +1,11 @@
 [workspace]
 members = [
   "crates/rcc-core-domain",
+  "crates/rcc-core-config",
   "crates/rcc-core-pipeline",
   "crates/rcc-core-router",
   "crates/rcc-core-servertool",
+  "crates/rcc-core-compat",
   "crates/rcc-core-provider",
   "crates/rcc-core-orchestrator",
   "crates/rcc-core-host",
@@ -18,10 +20,13 @@ version = "0.1.0"
 publish = false
 
 [workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
 rcc-core-domain = { path = "crates/rcc-core-domain" }
+rcc-core-config = { path = "crates/rcc-core-config" }
 rcc-core-pipeline = { path = "crates/rcc-core-pipeline" }
 rcc-core-router = { path = "crates/rcc-core-router" }
 rcc-core-servertool = { path = "crates/rcc-core-servertool" }
+rcc-core-compat = { path = "crates/rcc-core-compat" }
 rcc-core-provider = { path = "crates/rcc-core-provider" }
 rcc-core-orchestrator = { path = "crates/rcc-core-orchestrator" }
 rcc-core-host = { path = "crates/rcc-core-host" }

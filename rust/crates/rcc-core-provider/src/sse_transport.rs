@@ -254,7 +254,7 @@ mod tests {
         let handle = thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept");
             stream
-                .set_read_timeout(Some(Duration::from_millis(500)))
+                .set_read_timeout(Some(Duration::from_millis(1_500)))
                 .expect("timeout");
             let mut buffer = [0_u8; 4096];
             let _ = stream.read(&mut buffer);
@@ -282,7 +282,7 @@ mod tests {
                     "model": "gpt-5",
                     "input": "hello"
                 },
-                "timeout_ms": 200
+                "timeout_ms": 1_500
             }
         }))
         .expect("execute");

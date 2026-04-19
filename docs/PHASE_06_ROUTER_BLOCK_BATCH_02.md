@@ -51,3 +51,4 @@
 - 当前实现阶段证据：
   - `cargo test --manifest-path rust/Cargo.toml -p rcc-core-router -p rcc-core-testkit`
   - `cargo run --manifest-path rust/Cargo.toml -p rcc-core-host --quiet`
+- 下一批入口：`docs/PHASE_06_ROUTER_BLOCK_BATCH_03.md`

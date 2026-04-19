@@ -105,6 +105,15 @@ pub fn route_has_targets(pools: Option<&Vec<RoutePoolTier>>) -> bool {
     pools.is_some_and(|tiers| tiers.iter().any(|tier| !tier.targets.is_empty()))
 }
 
+pub fn resolve_selected_target(route_name: &str, routing: &RoutingPools) -> Option<String> {
+    let pools = routing.get(route_name)?;
+    pools
+        .iter()
+        .filter(|tier| !tier.targets.is_empty())
+        .max_by_key(|tier| tier.priority)
+        .and_then(|tier| tier.targets.first().cloned())
+}
+
 pub fn route_supports_capability(
     route_name: &str,
     capability: &ModelCapability,

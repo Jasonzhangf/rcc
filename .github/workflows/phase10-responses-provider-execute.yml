@@ -1,0 +1,23 @@
+name: phase10-responses-provider-execute
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify-phase10-responses-provider-execute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify phase10 responses provider execute
+        run: bash scripts/verify_phase10_responses_provider_execute_batch04.sh

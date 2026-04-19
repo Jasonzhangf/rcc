@@ -1,0 +1,21 @@
+{
+  "reqId": "anthropic-messages-glm-anthropic.default.glm-4.6-glm-4.6-20251211T131154-001",
+  "entry": "anthropic-messages",
+  "endpoint": "/v1/messages",
+  "providerId": "glm-anthropic.default.glm-4.6",
+  "model": "glm-4.6",
+  "timestamp": "2025-12-11T13:11:55.404Z",
+  "status": 200,
+  "body": {
+    "id": "msg_regression_1",
+    "type": "message",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "text",
+        "text": "README.md\nCargo.toml"
+      }
+    ],
+    "stop_reason": "end_turn"
+  }
+}

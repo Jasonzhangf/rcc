@@ -2,14 +2,20 @@ pub mod apply_patch_structured;
 pub mod apply_patch_text;
 pub mod args_json;
 pub mod blocked_report;
+pub mod compat_mapping;
+pub mod compat_request_projection;
 pub mod context_advisor;
 pub mod context_weighted;
+pub mod continuation_sticky_key;
 pub mod exec_command_normalize;
 pub mod followup_message_trim;
 pub mod followup_request_utils;
 pub mod followup_sanitize;
 pub mod followup_tool_compact;
 pub mod health_weighted;
+pub mod hub_canonical;
+pub mod hub_mapping_ops;
+pub mod hub_pipeline_skeleton;
 pub mod marker_lifecycle;
 pub mod mcp_resource_discovery;
 pub mod message_content_text;
@@ -17,7 +23,14 @@ pub mod message_utils;
 pub mod pre_command_directive;
 pub mod pre_command_state;
 pub mod pre_command_token;
+pub mod provider_target_hint;
 pub mod reasoning_markup;
+pub mod responses_continuation_materialize;
+pub mod responses_continuation_policy;
+pub mod responses_conversation;
+pub mod responses_ingress;
+pub mod responses_protocol_mapping_audit;
+pub mod router_selection_input;
 pub mod routing_instruction_clean;
 pub mod routing_instruction_preprocess;
 pub mod routing_stop_message_codec;
@@ -38,6 +51,13 @@ pub use blocked_report::{
     extract_blocked_report_from_messages, extract_blocked_report_from_text,
     normalize_blocked_report, BlockedReport,
 };
+pub use compat_mapping::{
+    build_canonical_response, build_provider_request_carrier,
+    build_provider_request_carrier_from_canonical_outbound, extract_output_text,
+    normalize_compat_canonical_request, normalize_compat_request_payload, CompatCanonicalRequest,
+    CompatCanonicalResponse, CompatProjectionError, ProviderRequestCarrier,
+    ProviderResponseCarrier, ANTHROPIC_MESSAGES_OPERATION, GEMINI_CHAT_OPERATION,
+};
 pub use context_advisor::{
     classify_context_pool, resolve_context_routing_config, ContextAdvisorResult,
     ContextRoutingConfigInput, ContextUsageSnapshot, ProviderContextLimit,
@@ -47,6 +67,9 @@ pub use context_weighted::{
     compute_context_multiplier, compute_effective_safe_window_tokens,
     resolve_context_weighted_config, ContextWeightedConfigInput, ResolvedContextWeightedConfig,
     DEFAULT_CONTEXT_WEIGHTED_CONFIG,
+};
+pub use continuation_sticky_key::{
+    resolve_continuation_sticky_key, ContinuationStickyContext, ContinuationStickyScope,
 };
 pub use exec_command_normalize::{
     normalize_exec_command_args, ExecCommandNormalizeError, ExecCommandNormalizeOptions,
@@ -63,6 +86,20 @@ pub use health_weighted::{
     compute_health_multiplier, compute_health_weight, resolve_health_weighted_config,
     HealthWeightResult, HealthWeightedConfigInput, ProviderQuotaViewEntryLite,
     ResolvedHealthWeightedConfig, DEFAULT_HEALTH_WEIGHTED_CONFIG,
+};
+pub use hub_canonical::{
+    infer_responses_entry_endpoint, lift_request_envelope_to_canonical,
+    lift_responses_request_to_canonical, HubCanonicalContentPart, HubCanonicalError,
+    HubCanonicalMessage, HubCanonicalOutboundRequest, HubCanonicalRequest,
+    HubCanonicalToolDefinition, HubCanonicalToolResult, HUB_SOURCE_PROTOCOL_RESPONSES,
+};
+pub use hub_mapping_ops::{
+    project_json_fields, JsonFieldMappingRule, JsonMappingError, ProtocolAuditDisposition,
+    ProtocolMappingAudit, ProtocolMappingAuditEntry,
+};
+pub use hub_pipeline_skeleton::{
+    build_hub_chat_process_request, normalize_hub_inbound_request, normalize_hub_outbound_request,
+    HubChatProcessRequest, HubInboundRequest, HubOutboundRequest,
 };
 pub use marker_lifecycle::{
     has_marker_syntax, strip_marker_syntax_from_content, strip_marker_syntax_from_messages,
@@ -86,7 +123,32 @@ pub use pre_command_state::{
     deserialize_pre_command_state, serialize_pre_command_state, PreCommandState,
 };
 pub use pre_command_token::read_pre_command_token;
+pub use provider_target_hint::resolve_responses_target_provider;
 pub use reasoning_markup::{strip_reasoning_transport_noise, value_may_contain_reasoning_markup};
+pub use responses_continuation_materialize::{
+    canonical_messages_contain_tool_call, materialize_responses_continuation_fallback,
+};
+pub use responses_continuation_policy::{
+    provider_supports_native_responses_continuation, resolve_responses_continuation_owner,
+    ResponsesContinuationContext, ResponsesContinuationDecision, ResponsesContinuationOwner,
+};
+pub use responses_conversation::{
+    prepare_responses_conversation_entry, record_responses_conversation_response,
+    response_id_from_continuation_request, resume_responses_conversation,
+    ResponsesConversationEntry,
+};
+pub use responses_ingress::{
+    build_responses_request_envelope, normalize_responses_ingress_body, serialize_responses_shell,
+    ResponsesIngressError, DEFAULT_RESPONSES_OPERATION,
+};
+pub use responses_protocol_mapping_audit::{
+    build_responses_cross_protocol_audit, RESPONSES_SOURCE_PROTOCOL, TARGET_PROTOCOL_ANTHROPIC,
+    TARGET_PROTOCOL_GEMINI,
+};
+pub use router_selection_input::{
+    extract_router_request_hints, normalize_router_request_payload, RouterFeatureHints,
+    RouterRequestHints,
+};
 pub use routing_instruction_clean::{
     clean_messages_from_routing_instructions, strip_code_segments,
 };
@@ -144,6 +206,15 @@ impl RequestEnvelope {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RouteDecision {
     pub target_block: String,
+    pub selected_route: Option<String>,
+    pub selected_target: Option<String>,
+    pub candidate_routes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProviderRouteHandoff {
+    pub selected_route: Option<String>,
+    pub selected_target: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -159,17 +230,20 @@ impl ToolPlan {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResponseEnvelope {
     pub route: RouteDecision,
     pub tool_plan: ToolPlan,
     pub provider_runtime: &'static str,
+    pub status: String,
     pub payload: String,
+    pub required_action: Value,
+    pub raw_provider_response: Value,
 }
 
 pub trait ProviderRuntime {
     fn runtime_name(&self) -> &'static str;
-    fn execute(&self, request: &RequestEnvelope, route: &RouteDecision) -> String;
+    fn execute(&self, request: &ProviderRequestCarrier) -> ProviderResponseCarrier;
 }
 
 pub fn parse_tool_args_json(input: &str) -> Value {

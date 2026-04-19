@@ -1,0 +1,23 @@
+{
+  "reqId": "openai-chat-glm.default.gpt-5.1-codex-gpt-5.1-codex-20251211T130247-001",
+  "entry": "openai-chat",
+  "endpoint": "/v1/chat/completions",
+  "providerId": "glm.default.gpt-5.1-codex",
+  "model": "gpt-5.1-codex",
+  "timestamp": "2025-12-11T13:02:47.850Z",
+  "body": {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are RCC sentinel."
+      },
+      {
+        "role": "user",
+        "content": "Call describe_current_request and summarize the metadata."
+      }
+    ],
+    "model": "gpt-5.1-codex",
+    "stream": false,
+    "tool_choice": "auto"
+  }
+}

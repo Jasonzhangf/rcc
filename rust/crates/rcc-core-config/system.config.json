@@ -1,0 +1,66 @@
+{
+  "runtime_home": {
+    "primary_dir_name": ".rcc",
+    "legacy_dir_name": ".routecodex",
+    "subdirs": {
+      "auth": "auth",
+      "tokens": "tokens",
+      "quota": "quota",
+      "state": "state",
+      "logs": "logs",
+      "sessions": "sessions",
+      "snapshots": "codex-samples",
+      "provider": "provider",
+      "config": "config",
+      "guardian": "guardian",
+      "login": "login",
+      "statics": "statics",
+      "errorsamples": "errorsamples",
+      "llms_shadow": "llms-shadow",
+      "camoufox_fingerprint": "camoufox-fp",
+      "camoufox_profiles": "camoufox-profiles",
+      "docs": "docs",
+      "precommand": "precommand"
+    }
+  },
+  "host": {
+    "service_name": "rcc-core-host",
+    "server": {
+      "addr": "127.0.0.1:38080"
+    },
+    "defaults": {
+      "smoke": {
+        "operation": "smoke",
+        "payload": "phase7"
+      },
+      "chat": {
+        "operation": "chat"
+      }
+    }
+  },
+  "router": {
+    "bootstrap": {
+      "routes": {}
+    }
+  },
+  "provider": {
+    "runtime": {
+      "kind": "noop",
+      "transport": {
+        "base_url": "http://127.0.0.1:1234",
+        "endpoint": "/v1/responses",
+        "timeout_ms": 30000,
+        "auth": {
+          "type": "apikey",
+          "api_key": ""
+        }
+      },
+      "registry": {
+        "transports": {}
+      },
+      "retry": {
+        "max_attempts": 1
+      }
+    }
+  }
+}

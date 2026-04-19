@@ -1,0 +1,29 @@
+{
+  "reqId": "anthropic-messages-glm-anthropic.default.glm-4.6-glm-4.6-20251211T131154-001",
+  "entry": "anthropic-messages",
+  "endpoint": "/v1/messages",
+  "providerId": "glm-anthropic.default.glm-4.6",
+  "model": "glm-4.6",
+  "timestamp": "2025-12-11T13:11:54.404Z",
+  "body": {
+    "model": "glm-4.6",
+    "system": [
+      {
+        "type": "text",
+        "text": "You are regression scout. Always keep tool ids."
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "列出当前仓库根目录下的文件。"
+          }
+        ]
+      }
+    ],
+    "stream": false
+  }
+}

@@ -17,54 +17,65 @@
 3. **包装尽量薄**：不创建没有边界价值的 wrapper/bridge。
 4. **模块单一职责**：crate 之间不重合、不偷长功能。
 5. **servertool 独立一级 block**。
-6. **provider 只做 `transport / auth / runtime`**。
-7. **host 从第一天开始极薄**：只做入口、聚合、启动，不写业务语义。
-8. **资源受控**：默认单进程、单 runtime、模块内聚；没有充分收益不拆独立进程。
+6. **compat 在 hub 后、provider 前**：只做 canonical request/response 与 provider-facing carrier 的 shape mapping，不拥有 ingress。
+7. **provider 只做 `transport / auth / runtime`**。
+8. **host 从第一天开始极薄**：只做入口、聚合、启动，不写业务语义。
+9. **资源受控**：默认单进程、单 runtime、模块内聚；没有充分收益不拆独立进程。
 
 ## 分层结构
 
 ```text
-CLI / HTTP / Config (host shell)
+CLI / HTTP (host shell)
             │
             ▼
-Orchestration 编排层
+Config bootstrap crate
             │
             ▼
-Blocks 真源层
-  ├─ pipeline
-  ├─ router
-  └─ servertool
+Orchestrator 薄编排壳
             │
             ▼
-Pure Functions 纯函数层
+Virtual Router block
+            │
+            ▼
+Hub Pipeline block
+     ├─ servertool block（按需）
+     ▼
+Compat adapter
+            │
+            ▼
+Provider adapter
+            │
+            ▼
+Upstream runtime / transport
+
+底座共享：Pure Functions 纯函数层
   ├─ dto / schema
   ├─ parser / codec
   └─ normalizer / validator
-
-外圈适配：provider transport/auth/runtime
 ```
 
 ### 1. 编排层
 职责：
 - request lifecycle
 - stage orchestration
-- 调用 pipeline/router/servertool/provider
+- 组织 `host -> virtual router -> hub pipeline -> compat -> provider` 主链
 - 把外部入口请求组织成内部调用链
 
 不负责：
 - 业务规则真源
 - tool 语义真源
-- provider 业务补丁
+- compat / provider 业务补丁
 
 ### 2. block 真源层
 职责：
-- `pipeline`：阶段处理主链
-- `router`：目标选择、状态与策略语义
+- `router`：virtual router，负责目标选择、状态与策略语义
+- `pipeline`：hub pipeline，负责阶段推进与主链收口
 - `servertool`：clock/heartbeat/followup 等服务端工具语义
 
 不负责：
-- 具体 HTTP transport
 - 入口启动壳
+- provider transport/auth/runtime
+- compat ingress ownership
 - 重复实现纯函数工具
 
 ### 3. 纯函数层
@@ -85,13 +96,15 @@ Pure Functions 纯函数层
 
 ### 4. 外圈 adapter
 职责：
+- compat request/response shape mapping
 - provider transport
 - auth
 - runtime 适配
 
 注意：
 - adapter 不是第四层业务真源，只是外圈接口层。
-- adapter 不能承载 router/tool/pipeline 业务语义。
+- compat 位于 **hub 后、provider 前**，不拥有 ingress，也不回收 router/hub 真源。
+- provider 不能承载 router/tool/pipeline/compat 业务语义。
 
 ## Workspace 建议组成
 
@@ -99,21 +112,32 @@ Pure Functions 纯函数层
 - 纯函数层
 - 放 DTO、schema、parser、codec、validator、shared state codec
 
+### `rcc-core-config`
+- foundation / bootstrap 层
+- 放两文件 config 加载、路径解析、system default + user config merge、runtime home 布局默认值
+- 可承载 legacy provider / routing 的薄 bootstrap projection，但不承载 route/provider 运行期决策
+- 不承载 router/pipeline/provider/servertool 业务语义
+
 ### `rcc-core-pipeline`
 - block 真源层
-- 放 pipeline 业务真源与阶段主链
+- 放 hub pipeline 业务真源与阶段主链
 
 ### `rcc-core-router`
 - block 真源层
-- 放 routing、state、selection、health/quota 语义
+- 放 virtual router 的 routing、state、selection、health/quota 语义
 
 ### `rcc-core-servertool`
 - block 真源层
 - 放 clock、heartbeat、followup、server-side tools 语义
 
+### `rcc-core-compat`（计划中的下一阶段 crate）
+- adapter 层
+- 放 hub pipeline 与 provider 之间的协议/shape mapping
+- 不拥有 ingress，不承载 transport/auth/runtime
+
 ### `rcc-core-orchestrator`
 - 编排层
-- 负责把 pipeline/router/servertool/provider 串成 request lifecycle
+- 负责把 router/pipeline/servertool/compat/provider 串成 request lifecycle
 
 ### `rcc-core-provider`
 - adapter 层
@@ -129,20 +153,23 @@ Pure Functions 纯函数层
 
 ## 依赖方向
 ```text
-host -> orchestrator
-orchestrator -> pipeline / router / servertool / provider / domain
+host -> config / orchestrator
+orchestrator -> config / router / pipeline / servertool / compat / provider / domain
 pipeline -> domain
 router -> domain
 servertool -> domain
+compat -> domain
 provider -> domain (仅共享 DTO/traits)
 testkit -> all (test-only)
 ```
 
 ### 禁止事项
 1. `host -> pipeline/router/servertool` 直接拼业务规则。
-2. `provider -> pipeline/router/servertool` 反向依赖。
-3. `servertool` 逻辑散落到 `host` 或 `provider`。
-4. 在 TS 层或外部 bridge 里复制 Rust 语义。
+2. `compat` 进入 ingress 层，或在 `host` 内复制 compat 真源。
+3. `provider -> pipeline/router/servertool/compat` 反向依赖。
+4. `servertool` 逻辑散落到 `host` 或 `provider`。
+5. 在 TS 层或外部 bridge 里复制 Rust 语义。
+6. `config` 不得实现 router/provider/servertool 业务语义；只负责加载、解析、merge 与 bootstrap data。
 
 ## Runtime 与资源策略
 1. 默认单进程、单 runtime。

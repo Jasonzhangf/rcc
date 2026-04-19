@@ -1,3 +1,6 @@
 fn main() {
-    println!("{}", rcc_core_host::run());
+    if let Err(error) = rcc_core_host::run_from_env() {
+        eprintln!("{error}");
+        std::process::exit(1);
+    }
 }

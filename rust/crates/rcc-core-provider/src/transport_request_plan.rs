@@ -41,11 +41,14 @@ pub fn build_transport_request_plan(payload: &Value) -> Option<Value> {
                 .and_then(Value::as_object)
         });
 
-    let mut headers = build_apikey_headers_map(auth)?;
-    headers.insert(
-        "Content-Type".to_string(),
-        Value::String("application/json".to_string()),
-    );
+    let mut headers = resolve_static_headers(runtime, Some(provider), service);
+    headers.extend(build_apikey_headers_map(auth)?);
+    if !has_header(&headers, "Content-Type") {
+        headers.insert(
+            "Content-Type".to_string(),
+            Value::String("application/json".to_string()),
+        );
+    }
 
     Some(json!({
         "method": "POST",
@@ -131,6 +134,32 @@ fn join_base_url_and_endpoint(base_url: &str, endpoint: &str) -> String {
         return base.to_string();
     }
     format!("{}/{}", base, suffix.trim_start_matches('/'))
+}
+
+fn resolve_static_headers(
+    runtime: Option<&Map<String, Value>>,
+    provider: Option<&Map<String, Value>>,
+    service: Option<&Map<String, Value>>,
+) -> Map<String, Value> {
+    let mut headers = Map::new();
+    for scope in [service, provider, runtime].into_iter().flatten() {
+        if let Some(scope_headers) = scope.get("headers").and_then(Value::as_object) {
+            for (key, value) in scope_headers {
+                if let Some(text) = value
+                    .as_str()
+                    .map(str::trim)
+                    .filter(|text| !text.is_empty())
+                {
+                    headers.insert(key.clone(), Value::String(text.to_string()));
+                }
+            }
+        }
+    }
+    headers
+}
+
+fn has_header(headers: &Map<String, Value>, name: &str) -> bool {
+    headers.keys().any(|key| key.eq_ignore_ascii_case(name))
 }
 
 #[cfg(test)]
@@ -228,6 +257,34 @@ mod tests {
 
         assert_eq!(result["headers"]["x-api-key"], json!("token-1"));
         assert_eq!(result["timeout_ms"], json!(DEFAULT_PROVIDER_TIMEOUT_MS));
+    }
+
+    #[test]
+    fn build_transport_request_plan_merges_static_headers_before_auth_and_content_type() {
+        let result = build_transport_request_plan(&json!({
+            "provider": {
+                "base_url": "https://api.anthropic.com",
+                "endpoint": "/v1/messages",
+                "headers": {
+                    "anthropic-version": "2023-06-01"
+                },
+                "auth": {
+                    "type": "apikey",
+                    "api_key": "sk-anthropic",
+                    "header_name": "x-api-key",
+                    "prefix": ""
+                }
+            },
+            "request_body": {
+                "model": "claude-sonnet-4-5",
+                "messages": []
+            }
+        }))
+        .expect("plan");
+
+        assert_eq!(result["headers"]["anthropic-version"], json!("2023-06-01"));
+        assert_eq!(result["headers"]["x-api-key"], json!("sk-anthropic"));
+        assert_eq!(result["headers"]["Content-Type"], json!("application/json"));
     }
 
     #[test]

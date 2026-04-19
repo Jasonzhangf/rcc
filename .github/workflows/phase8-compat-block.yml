@@ -1,0 +1,35 @@
+name: phase8-compat-block
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify-phase8-compat-block:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify phase8 compat block batch04
+        run: bash scripts/verify_phase8_compat_block_batch04.sh
+
+      - name: Verify phase8 compat block batch05
+        run: bash scripts/verify_phase8_compat_block_batch05.sh
+
+      - name: Verify phase8 compat block batch06
+        run: bash scripts/verify_phase8_compat_block_batch06.sh
+
+      - name: Verify phase8 compat block batch07
+        run: bash scripts/verify_phase8_compat_block_batch07.sh
+
+      - name: Verify phase8 compat block batch08
+        run: bash scripts/verify_phase8_compat_block_batch08.sh

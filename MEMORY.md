@@ -275,3 +275,26 @@
 - Kept semantics: Batch02 在不引入 alias queue、sticky pool、health/quota/cooldown、provider failover 的前提下，为 `rcc-core-router` 增加了最小 capability/model reorder API：`route_supports_capability(...)`、`reorder_for_capability(...)`、`reorder_for_preferred_model(...)`；provider registry 仍只以显式最小 view 进入 router，并只新增 `model_capabilities` 字段，不拖入完整 provider registry/runtime/auth/transport 配置。
 - Skill refined: router capability/model reorder 迁移先只闭合 `route candidates -> capability reorder / preferred-model reorder` 主链；支持路由前置时保持输入中的相对顺序，不提前混入 alias/sticky/health/quota/cooldown/failover。
 - Verification: `cargo test --manifest-path rust/Cargo.toml -p rcc-core-router -p rcc-core-testkit`, `bash scripts/verify_phase6_router_batch02.sh`.
+
+
+## 2026-04-19 — Phase 09A hub audit docs gate updated
+- Source: `../routecodex/src/server/handlers/responses-handler.ts` + `../routecodex/src/client/anthropic/anthropic-protocol-client.ts` + `../routecodex/src/modules/llmswitch/bridge/native-exports.ts` + `../routecodex/src/modules/llmswitch/bridge/runtime-integrations.ts` + continuation / roundtrip / audit matrix tests。
+- Locked boundary: hub 中间真源固定为 canonical extended-chat IR；compat 继续位于 hub 后/provider 前；provider 继续只做 `transport / auth / runtime`，但 provider-native continuation 能力优先留在 provider/server 侧。
+- Performance rule: Phase 09 后续实现默认 no-copy / minimal-copy；除 ownership、快照、持久化、独立响应壳必须外，不做无意义 deep copy。
+- Regression rule: Rust 新实现必须逐步对齐旧仓矩阵测试，至少先覆盖 anthropic roundtrip、responses continuation / submit_tool_outputs、hub I/O compare、cross-protocol audit。
+- Skill refined: hub pipeline 迁移时，先判定 `provider-native continuation` 与 `chat_process fallback` 的归属，再做 shared mapping ops；不要把 continuation policy、stream branching 或 provider capability 混成纯 JSON 配置。
+
+
+## 2026-04-19 — Host verify config isolation + SSE timeout stabilization
+- Root cause: 多个 verify 脚本直接 `cargo run rcc-core-host`，会误读本机 `~/.rcc/config.json`，导致验证结果被用户本地状态污染；另有 provider SSE loopback 单测使用 `200ms` 超短 timeout，在全量回归中会偶发假失败。
+- Reusable rule: 任何需要证明 bundled/system config 行为的 host smoke / serve 验证，都必须显式传入一个不存在的临时 `--config` 路径；不要隐式依赖 HOME。
+- Reusable rule: loopback HTTP/SSE 单测与 verify 脚本在全量批次下要给足 timeout 预算，优先保证稳定可重复，不用超短 timeout 制造假红。
+- Evidence: `bash scripts/verify_phase2_cargo_skeleton.sh`、`bash scripts/verify_phase9_hub_pipeline_batch01.sh`、`bash scripts/verify_phase11_config_foundation_batch01.sh` 均已恢复通过；`cargo test --manifest-path rust/Cargo.toml -p rcc-core-provider` 全绿。
+
+
+## 2026-04-19 — Phase 09A Batch 02 canonical domain foundation landed
+- Scope: 已在 `rcc-core-domain` 落最小 canonical foundation：`hub_canonical.rs`、`hub_mapping_ops.rs`、`responses_continuation_policy.rs`；并在 `rcc-core-pipeline` 增加最小 canonical inbound/chat_process/outbound wrapper。
+- Kept boundary: 现阶段只建立 canonical request / mapping ops / continuation owner selector，不把 compat/provider truth 拉回 pipeline；原有 `prepare()` skeleton 主线保持不变。
+- Performance decision: canonical lift 直接消费 `RequestEnvelope`，把 `operation` 与 `raw_payload_text` move 进 canonical request，避免为“保存原 payload”再做一次深拷贝。
+- Continuation rule kept: `same provider + native support -> ProviderNative`，否则 `ChatProcessFallback`；没有 continuation signal 则 `None`。
+- Verification: `cargo test --manifest-path rust/Cargo.toml -p rcc-core-domain -p rcc-core-pipeline`, `cargo test --manifest-path rust/Cargo.toml -p rcc-core-provider`, `bash scripts/verify_phase9_hub_pipeline_batch01.sh`, `bash scripts/verify_phase11_config_foundation_batch01.sh`.

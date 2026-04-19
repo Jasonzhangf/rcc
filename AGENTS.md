@@ -41,7 +41,19 @@
    - 作用：定义 Phase 05A provider block 真源迁移、批次和验证闭环。
 10. Router block migration：`docs/agent-routing/90-router-block-routing.md`
    - 作用：定义 Phase 06A router block 真源迁移、批次和验证闭环。
-11. 本地 skills：
+11. Host/server skeleton：`docs/agent-routing/100-host-server-routing.md`
+   - 作用：定义 Phase 07A 最小 host CLI / HTTP server 骨架、批次和验证闭环。
+12. Compat block migration：`docs/agent-routing/110-compat-block-routing.md`
+   - 作用：定义 Phase 08A compat block 真源迁移、批次和验证闭环。
+13. Hub pipeline block migration：`docs/agent-routing/120-hub-pipeline-routing.md`
+   - 作用：定义 Phase 09A hub pipeline(inbound / chat process / outbound) 真源迁移、批次和验证闭环。
+14. Responses provider execute：`docs/agent-routing/130-responses-provider-execute-routing.md`
+   - 作用：定义 Phase 10A responses 主线 provider real execute integration、批次和验证闭环。
+15. Config foundation：`docs/agent-routing/140-config-foundation-routing.md`
+   - 作用：定义 Phase 11A 两文件 config foundation、批次和验证闭环。
+16. Regression matrix：`docs/agent-routing/150-regression-matrix-routing.md`
+   - 作用：定义 Phase 12A 旧仓矩阵回归迁移、批次和验证闭环。
+16. 本地 skills：
    - `.agents/skills/rcc-closed-loop/SKILL.md`
    - `.agents/skills/rcc-doc-driven-dev/SKILL.md`
    - `.agents/skills/rcc-test-gate/SKILL.md`
@@ -50,6 +62,12 @@
    - `.agents/skills/rcc-servertool-block-migration/SKILL.md`
    - `.agents/skills/rcc-provider-block-migration/SKILL.md`
    - `.agents/skills/rcc-router-block-migration/SKILL.md`
+   - `.agents/skills/rcc-host-server-skeleton/SKILL.md`
+   - `.agents/skills/rcc-compat-block-migration/SKILL.md`
+   - `.agents/skills/rcc-hub-pipeline-block-migration/SKILL.md`
+   - `.agents/skills/rcc-responses-provider-execute/SKILL.md`
+   - `.agents/skills/rcc-config-foundation/SKILL.md`
+   - `.agents/skills/rcc-regression-matrix/SKILL.md`
 
 ## 标准执行顺序
 1. 读本文件，确认硬护栏与路由入口。
